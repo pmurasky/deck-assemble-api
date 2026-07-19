@@ -34,8 +34,10 @@ public class SecurityConfig {
                      .permitAll()
                      .requestMatchers(HttpMethod.GET, "/cards", "/cards/**")
                      .permitAll()
-                     .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
-                     .permitAll()
+            .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
+            .permitAll()
+            .requestMatchers(HttpMethod.GET, "/card-imports/latest")
+            .permitAll()
                      .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(

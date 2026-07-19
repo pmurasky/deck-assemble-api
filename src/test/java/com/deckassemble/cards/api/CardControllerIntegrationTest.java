@@ -13,8 +13,12 @@ import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.infrastructure.CardPrintingRepository;
 import com.deckassemble.cards.infrastructure.CardRepository;
 import com.deckassemble.cards.infrastructure.MagicSetRepository;
+import com.deckassemble.imports.domain.CardImportRun;
+import com.deckassemble.imports.infrastructure.CardImportRunRepository;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 class CardControllerIntegrationTest extends AbstractIntegrationTest {
@@ -23,6 +27,7 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
   @Autowired private CardRepository cardRepository;
   @Autowired private CardPrintingRepository cardPrintingRepository;
   @Autowired private MagicSetRepository magicSetRepository;
+  @Autowired private CardImportRunRepository cardImportRunRepository;
 
   @Test
   void shouldReturnActiveCardsMatchingTheNameQuery() throws Exception {
@@ -148,6 +153,21 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/thor.png"))
         .andExpect(jsonPath("$.content[0].setCode").value("msu"))
         .andExpect(jsonPath("$.content[0].rarity").value("mythic"));
+  }
+
+  @Test
+  void shouldReturnLatestImportRun() throws Exception {
+    var run = new CardImportRun("scryfall", "set:msh", OffsetDateTime.parse("2026-07-19T20:00:00Z"), "admin-sub");
+    run.finish(453, 300, 153, 0, OffsetDateTime.parse("2026-07-19T20:05:00Z"));
+    cardImportRunRepository.save(run);
+
+    mockMvc
+        .perform(get("/card-imports/latest"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.provider").value("scryfall"))
+        .andExpect(jsonPath("$.query").value("set:msh"))
+        .andExpect(jsonPath("$.recordsRead").value(453))
+        .andExpect(jsonPath("$.completedAt").isNotEmpty());
   }
 
   @Test
