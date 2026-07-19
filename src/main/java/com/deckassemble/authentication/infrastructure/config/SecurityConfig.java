@@ -31,10 +31,12 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/actuator/health", "/error")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/cards", "/cards/**")
-                    .permitAll()
-                    .anyRequest()
+                     .permitAll()
+                     .requestMatchers(HttpMethod.GET, "/cards", "/cards/**")
+                     .permitAll()
+                     .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
+                     .permitAll()
+                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(
             oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

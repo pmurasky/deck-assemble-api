@@ -76,6 +76,39 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
+  void shouldReturnEveryPrintingInASet() throws Exception {
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel-gallery", "msh", "Marvel Super Heroes"));
+    Card card = cardRepository.save(new Card("oracle-wolverine", "Wolverine, Best There Is"));
+    CardPrinting first = cardPrintingRepository.save(new CardPrinting(card, set, "printing-wolverine-1"));
+    CardPrinting second = cardPrintingRepository.save(new CardPrinting(card, set, "printing-wolverine-2"));
+    first.setImageUriNormal("https://img.example/wolverine-1.png");
+    second.setImageUriNormal("https://img.example/wolverine-2.png");
+    cardPrintingRepository.saveAll(java.util.List.of(first, second));
+
+    mockMvc
+        .perform(get("/sets/{setCode}/printings", "msh"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(2))
+        .andExpect(jsonPath("$.content[0].printingId").exists())
+        .andExpect(jsonPath("$.content[1].printingId").exists());
+  }
+
+  @Test
+  void shouldSearchPrintingsByCardNameWithinASet() throws Exception {
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel-search", "mshs", "Marvel Search"));
+    Card wolverine = cardRepository.save(new Card("oracle-wolverine-search", "Wolverine"));
+    Card storm = cardRepository.save(new Card("oracle-storm-search", "Storm"));
+    cardPrintingRepository.save(new CardPrinting(wolverine, set, "printing-wolverine-search"));
+    cardPrintingRepository.save(new CardPrinting(storm, set, "printing-storm-search"));
+
+    mockMvc
+        .perform(get("/sets/{setCode}/printings", "mshs").queryParam("query", "wolverine"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.content[0].name").value("Wolverine"));
+  }
+
+  @Test
   void shouldFilterCardsBySetAndColorIdentity() throws Exception {
     Card card = cardRepository.save(new Card("oracle-storm", "Storm"));
     card.setColorIdentity("U,R");

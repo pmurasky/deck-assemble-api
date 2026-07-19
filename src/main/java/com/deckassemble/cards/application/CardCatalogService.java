@@ -69,6 +69,20 @@ public class CardCatalogService {
         .orElseThrow(CardNotFoundException::new);
   }
 
+  public Page<CardSummaryResponse> getSetPrintings(String setCode, Pageable pageable) {
+    return getSetPrintings(setCode, "", pageable);
+  }
+
+  public Page<CardSummaryResponse> getSetPrintings(String setCode, String query, Pageable pageable) {
+    Page<CardPrinting> printings = query.isBlank()
+        ? cardPrintingRepository.findByMagicSetSetCodeAndActiveTrueAndCardActiveTrue(setCode, pageable)
+        : cardPrintingRepository
+            .findByMagicSetSetCodeAndActiveTrueAndCardActiveTrueAndCardNameContainingIgnoreCase(
+                setCode, query, pageable);
+    return printings
+        .map(printing -> CardSummaryResponse.from(printing.getCard(), printing));
+  }
+
   public List<CardPrintingResponse> getPrintings(long cardId) {
     getById(cardId);
     return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
