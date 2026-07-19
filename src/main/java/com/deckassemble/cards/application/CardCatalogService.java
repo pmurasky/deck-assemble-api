@@ -62,6 +62,13 @@ public class CardCatalogService {
         .orElseThrow(CardNotFoundException::new);
   }
 
+  public CardSummaryResponse getSummaryByPrintingId(long cardPrintingId) {
+    return cardPrintingRepository.findById(cardPrintingId)
+        .filter(printing -> printing.getActive() && printing.getCard().getActive())
+        .map(printing -> CardSummaryResponse.from(printing.getCard(), printing))
+        .orElseThrow(CardNotFoundException::new);
+  }
+
   public List<CardPrintingResponse> getPrintings(long cardId) {
     getById(cardId);
     return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()

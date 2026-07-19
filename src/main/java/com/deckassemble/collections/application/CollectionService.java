@@ -1,5 +1,6 @@
 package com.deckassemble.collections.application;
 
+import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.collections.api.CollectionCardAddRequest;
 import com.deckassemble.collections.api.CollectionCardResponse;
 import com.deckassemble.collections.api.CollectionCardUpdateRequest;
@@ -24,16 +25,19 @@ public class CollectionService {
   private final CollectionCardRepository collectionCardRepository;
   private final CurrentUser currentUser;
   private final ProfileService profileService;
+  private final CardCatalogService cardCatalogService;
 
   public CollectionService(
       CardCollectionRepository collectionRepository,
       CollectionCardRepository collectionCardRepository,
       CurrentUser currentUser,
-      ProfileService profileService) {
+      ProfileService profileService,
+      CardCatalogService cardCatalogService) {
     this.collectionRepository = collectionRepository;
     this.collectionCardRepository = collectionCardRepository;
     this.currentUser = currentUser;
     this.profileService = profileService;
+    this.cardCatalogService = cardCatalogService;
   }
 
   public List<CollectionResponse> list() {
@@ -77,7 +81,7 @@ public class CollectionService {
   public List<CollectionCardResponse> listCards(long collectionId) {
     owned(collectionId);
     return collectionCardRepository.findByCollectionId(collectionId).stream()
-        .map(CollectionCardResponse::from)
+        .map(this::responseFor)
         .toList();
   }
 
@@ -100,7 +104,7 @@ public class CollectionService {
                         request.cardPrintingId(),
                         request.regularQuantity(),
                         request.foilQuantity()));
-    return CollectionCardResponse.from(collectionCardRepository.save(card));
+    return responseFor(collectionCardRepository.save(card));
   }
 
   public CollectionCardResponse updateCard(
@@ -109,7 +113,7 @@ public class CollectionService {
     CollectionCard card = ownedCard(collectionId, collectionCardId);
     card.setRegularQuantity(request.regularQuantity());
     card.setFoilQuantity(request.foilQuantity());
-    return CollectionCardResponse.from(collectionCardRepository.save(card));
+    return responseFor(collectionCardRepository.save(card));
   }
 
   public void removeCard(long collectionId, long collectionCardId) {
@@ -133,5 +137,10 @@ public class CollectionService {
     String subject =
         currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
     return profileService.getOrCreate(subject).getId();
+  }
+
+  private CollectionCardResponse responseFor(CollectionCard card) {
+    return CollectionCardResponse.from(
+        card, cardCatalogService.getSummaryByPrintingId(card.getCardPrintingId()));
   }
 }
