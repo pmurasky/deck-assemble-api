@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: deck-assemble-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:deckassemble}
+    username: ${DB_USERNAME:deckassemble}
+    password: ${DB_PASSWORD:deckassemble}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+server:
+  servlet:
+    context-path: /api/v1
+
+logging:
+  level:
+    com.deckassemble: INFO

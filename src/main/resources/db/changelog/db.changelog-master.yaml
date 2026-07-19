@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - includeAll:
+      path: db/changelog/releases/
+  - includeAll:
+      path: db/changelog/seed/
