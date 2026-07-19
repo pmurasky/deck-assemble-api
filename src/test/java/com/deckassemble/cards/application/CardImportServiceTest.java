@@ -16,6 +16,8 @@ import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
+import com.deckassemble.imports.application.ImportRunRecorder;
+import com.deckassemble.shared.security.CurrentUser;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,8 @@ class CardImportServiceTest {
   @Mock private CardRepository cardRepository;
   @Mock private MagicSetRepository magicSetRepository;
   @Mock private CardPrintingRepository cardPrintingRepository;
+  @Mock private ImportRunRecorder runRecorder;
+  @Mock private CurrentUser currentUser;
 
   @Test
   void shouldImportAValidScryfallCard() {
@@ -51,11 +55,14 @@ class CardImportServiceTest {
     when(magicSetRepository.save(any(MagicSet.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(cardPrintingRepository.findByScryfallCardId("printing-id")).thenReturn(Optional.empty());
     when(cardPrintingRepository.save(any(CardPrinting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(runRecorder.start("set:mar", "admin-sub")).thenReturn(7L);
+    when(currentUser.subject()).thenReturn(Optional.of("admin-sub"));
 
-    int importedCount = new CardImportService(scryfallClient, cardRepository, magicSetRepository,
-        cardPrintingRepository).importQuery("set:mar");
+    ImportResult result = new CardImportService(scryfallClient, cardRepository, magicSetRepository,
+        cardPrintingRepository, runRecorder, currentUser).importQuery("set:mar");
 
-    assertThat(importedCount).isEqualTo(2);
+    assertThat(result).isEqualTo(new ImportResult(7L, 2, 2, 0, 0));
+    verify(runRecorder).complete(7L, 2, 2, 0, 0);
     ArgumentCaptor<CardPrinting> printing = ArgumentCaptor.forClass(CardPrinting.class);
     verify(cardPrintingRepository, org.mockito.Mockito.times(2)).save(printing.capture());
     assertThat(printing.getAllValues()).allSatisfy(value ->

@@ -29,7 +29,8 @@ public class DevCardImportRunner implements ApplicationRunner {
   @Override
   public void run(ApplicationArguments args) {
     log.info("Starting dev card import for query '{}'", query);
-    int imported = cardImportService.importQuery(query);
-    log.info("Dev card import completed: {} printings processed", imported);
+    var result = cardImportService.importQuery(query);
+    log.info("Dev card import completed: read={}, created={}, updated={}, failed={}",
+        result.recordsRead(), result.recordsCreated(), result.recordsUpdated(), result.recordsFailed());
   }
 }

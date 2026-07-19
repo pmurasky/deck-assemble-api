@@ -9,6 +9,8 @@ import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
+import com.deckassemble.imports.application.ImportRunRecorder;
+import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
@@ -22,29 +24,41 @@ public class CardImportService {
   private final CardRepository cardRepository;
   private final MagicSetRepository magicSetRepository;
   private final CardPrintingRepository cardPrintingRepository;
+  private final ImportRunRecorder runRecorder;
+  private final CurrentUser currentUser;
 
   public CardImportService(ScryfallClient scryfallClient, CardRepository cardRepository,
-      MagicSetRepository magicSetRepository, CardPrintingRepository cardPrintingRepository) {
+      MagicSetRepository magicSetRepository, CardPrintingRepository cardPrintingRepository,
+      ImportRunRecorder runRecorder, CurrentUser currentUser) {
     this.scryfallClient = scryfallClient;
     this.cardRepository = cardRepository;
     this.magicSetRepository = magicSetRepository;
     this.cardPrintingRepository = cardPrintingRepository;
+    this.runRecorder = runRecorder;
+    this.currentUser = currentUser;
   }
 
   @Transactional
-  public int importQuery(String query) {
-    var page = scryfallClient.searchCards(query);
-    int importedCount = importPage(page.data());
-    while (page.hasMore()) {
-      page = scryfallClient.searchCards(nextPage(page.nextPage()));
-      importedCount += importPage(page.data());
+  public ImportResult importQuery(String query) {
+    long runId = runRecorder.start(query, currentUser.subject().orElse("system"));
+    var counters = new Counters();
+    try {
+      var page = scryfallClient.searchCards(query);
+      importPage(page.data(), counters);
+      while (page.hasMore()) {
+        page = scryfallClient.searchCards(nextPage(page.nextPage()));
+        importPage(page.data(), counters);
+      }
+      runRecorder.complete(runId, counters.read, counters.created, counters.updated, counters.skipped);
+      return counters.result(runId);
+    } catch (RuntimeException exception) {
+      runRecorder.fail(runId, exception.getMessage());
+      throw exception;
     }
-    return importedCount;
   }
 
-  private int importPage(List<ScryfallCard> cards) {
-    cards.forEach(this::importCard);
-    return cards.size();
+  private void importPage(List<ScryfallCard> cards, Counters counters) {
+    cards.forEach(card -> counters.add(importCard(card)));
   }
 
   private URI nextPage(URI nextPage) {
@@ -54,9 +68,9 @@ public class CardImportService {
     return nextPage;
   }
 
-  private void importCard(ScryfallCard source) {
+  private Outcome importCard(ScryfallCard source) {
     if (source.id() == null || source.oracleId() == null || source.setId() == null || source.set() == null) {
-      return;
+      return Outcome.SKIPPED;
     }
     Card card = cardRepository.findByScryfallOracleId(source.oracleId())
         .orElseGet(() -> new Card(source.oracleId(), source.name()));
@@ -65,7 +79,7 @@ public class CardImportService {
     MagicSet set = magicSetRepository.findBySetCode(source.set())
         .orElseGet(() -> magicSetRepository.save(
             new MagicSet(source.setId(), source.set(), source.setName())));
-    savePrinting(card, set, source);
+    return savePrinting(card, set, source);
   }
 
   private void applyCardDetails(Card card, ScryfallCard source) {
@@ -87,9 +101,9 @@ public class CardImportService {
     return values == null ? null : String.join(",", values);
   }
 
-  private void savePrinting(Card card, MagicSet set, ScryfallCard source) {
-    CardPrinting printing = cardPrintingRepository.findByScryfallCardId(source.id())
-        .orElseGet(() -> new CardPrinting(card, set, source.id()));
+  private Outcome savePrinting(Card card, MagicSet set, ScryfallCard source) {
+    var existing = cardPrintingRepository.findByScryfallCardId(source.id());
+    CardPrinting printing = existing.orElseGet(() -> new CardPrinting(card, set, source.id()));
     printing.setCollectorNumber(source.collectorNumber());
     printing.setRarity(source.rarity());
     printing.setArtist(source.artist());
@@ -107,6 +121,7 @@ public class CardImportService {
       printing.setImageUriLarge(imageUris.large());
     }
     cardPrintingRepository.save(printing);
+    return existing.isPresent() ? Outcome.UPDATED : Outcome.CREATED;
   }
 
   private ScryfallImageUris imageUris(ScryfallCard source) {
@@ -118,5 +133,29 @@ public class CardImportService {
     }
     return source.cardFaces().stream().map(face -> face.imageUris()).filter(uri -> uri != null)
         .findFirst().orElse(null);
+  }
+
+  private enum Outcome {
+    CREATED, UPDATED, SKIPPED
+  }
+
+  private static final class Counters {
+    private int read;
+    private int created;
+    private int updated;
+    private int skipped;
+
+    private void add(Outcome outcome) {
+      read++;
+      switch (outcome) {
+        case CREATED -> created++;
+        case UPDATED -> updated++;
+        case SKIPPED -> skipped++;
+      }
+    }
+
+    private ImportResult result(long runId) {
+      return new ImportResult(runId, read, created, updated, skipped);
+    }
   }
 }
