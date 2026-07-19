@@ -25,3 +25,11 @@ server:
 logging:
   level:
     com.deckassemble: INFO
+
+deckassemble:
+  scryfall:
+    base-url: ${SCRYFALL_BASE_URL:https://api.scryfall.com}
+    user-agent: ${SCRYFALL_USER_AGENT:DeckAssemble/0.0.1}
+    connect-timeout: 5s
+    read-timeout: 30s
+    request-delay: 100ms
