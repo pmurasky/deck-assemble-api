@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "standards-build",
+  "instructions": [
+    "docs/AGENT_BOOTSTRAP.md",
+    "docs/CODING_PRACTICES.md",
+    "docs/CODING_STANDARDS.md",
+    "docs/AI_AGENT_WORKFLOW.md",
+    "docs/PRE_COMMIT_CHECKLIST.md"
+  ],
+  "mcp": {
+    "context-mode": {
+      "type": "local",
+      "command": [
+        "context-mode"
+      ]
+    },
+    "gsd": {
+      "type": "local",
+      "command": [
+        "gsd",
+        "--mode",
+        "mcp"
+      ]
+    }
+  },
+  "plugin": [
+    "context-mode",
+    "@tarquinen/opencode-dcp@latest",
+    "opentmux"
+  ]
+}

@@ -1,0 +1,77 @@
+digraph PreCommitWorkflow {
+  rankdir=TB;
+  splines=ortho;
+  node [fontname="Arial", fontsize=10, shape=box, style="rounded"];
+  edge [fontname="Arial", fontsize=9];
+
+  start [label="Start pre-commit checks"];
+  unit [label="Run unit tests"];
+  unit_ok [shape=diamond, label="Unit tests pass?"];
+  fix_unit [label="Fix failures and\nre-run unit tests"];
+
+  build_cfg [shape=diamond, label="Build command\nconfigured?"];
+  build [label="Run build"];
+  build_ok [shape=diamond, label="Build succeeds?"];
+  fix_build [label="Fix build blockers and\nre-run build"];
+
+  lint_cfg [shape=diamond, label="Lint command\nconfigured?"];
+  lint [label="Run lint"];
+  lint_ok [shape=diamond, label="Lint passes?"];
+  fix_lint [label="Fix lint errors and\nre-run lint"];
+
+  static_cfg [shape=diamond, label="Static analysis\nconfigured?"];
+  static_run [label="Run static analysis"];
+  static_ok [shape=diamond, label="Static analysis\npasses?"];
+  fix_static [label="Fix violations and\nre-run static analysis"];
+
+  ready [shape=diamond, label="All required\ngates pass?"];
+  not_ready [label="NOT READY\nList blockers"];
+  commit [label="Commit one logical change\nwith conventional message"];
+
+  pre_push [label="Before push: run unit +\nintegration tests"];
+  integration_ok [shape=diamond, label="Integration tests\npass?"];
+  fix_integration [label="Fix integration issues\nand re-run tests"];
+  push [label="Push"];
+  ci [label="CI runs unit + integration + E2E"];
+  ci_ok [shape=diamond, label="CI passes?"];
+  fix_ci [label="Fix CI failures and\npush follow-up"];
+  done [label="Done"];
+
+  start -> unit -> unit_ok;
+  unit_ok -> fix_unit [label="No"];
+  fix_unit -> unit;
+  unit_ok -> build_cfg [label="Yes"];
+
+  build_cfg -> build [label="Yes"];
+  build -> build_ok;
+  build_ok -> fix_build [label="No"];
+  fix_build -> build;
+  build_ok -> lint_cfg [label="Yes"];
+  build_cfg -> lint_cfg [label="No"];
+
+  lint_cfg -> lint [label="Yes"];
+  lint -> lint_ok;
+  lint_ok -> fix_lint [label="No"];
+  fix_lint -> lint;
+  lint_ok -> static_cfg [label="Yes"];
+  lint_cfg -> static_cfg [label="No"];
+
+  static_cfg -> static_run [label="Yes"];
+  static_run -> static_ok;
+  static_ok -> fix_static [label="No"];
+  fix_static -> static_run;
+  static_ok -> ready [label="Yes"];
+  static_cfg -> ready [label="No"];
+
+  ready -> not_ready [label="No"];
+  not_ready -> unit;
+  ready -> commit [label="Yes"];
+  commit -> pre_push -> integration_ok;
+  integration_ok -> fix_integration [label="No"];
+  fix_integration -> pre_push;
+  integration_ok -> push [label="Yes"];
+  push -> ci -> ci_ok;
+  ci_ok -> fix_ci [label="No"];
+  fix_ci -> push;
+  ci_ok -> done [label="Yes"];
+}

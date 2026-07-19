@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "package_manifest": "distribution/standards-package.json",
+  "source_repo": "https://github.com/pmurasky/engineering-standards",
+  "source_revision": "782b7aebbd321708f180de9437c3ac5d206d0e89",
+  "source_version": "782b7ae",
+  "profiles": [
+    "core",
+    "opencode"
+  ],
+  "installed_at": "2026-07-19T14:00:13Z",
+  "updated_at": "2026-07-19T14:00:13Z",
+  "managed_files": [
+    {
+      "path": "docs/ADR_STANDARDS.md",
+      "sha256": "7f2d37f3c8c4efb195428e8fff2d2322468e4dc73f35dbb0ec9893ea98e16349"
+    },
+    {
+      "path": "docs/AGENT_BOOTSTRAP.md",
+      "sha256": "b7b19cf4ed4fac4492fa4b59c5bbbc67de1b5c21df20dea0b5053bf993f5779f"
+    },
+    {
+      "path": "docs/AI_AGENT_WORKFLOW.md",
+      "sha256": "4af6e9da38919c4525ed6d42a0cc8a09af8a04b4c53026a8dff954745e381432"
+    },
+    {
+      "path": "docs/ARCHUNIT_STANDARDS.md",
+      "sha256": "aa9036d2e85dbe80f5d95aa1ab68f929a2f74f7e1b68ceba6829b5c2c888e276"
+    },
+    {
+      "path": "docs/CHECKSTYLE_STANDARDS.md",
+      "sha256": "34c9f93fa5b185cab9f2405de4da1d1973d1c52e96b1a5518fb0777e0ef9cef4"
+    },
+    {
+      "path": "docs/CLAUDE_MEMORY_STRATEGY.md",
+      "sha256": "bc4c6ec60e49e71a2083f804a36007b0dc481b79e08d7c16926faf6511077f1e"
+    },
+    {
+      "path": "docs/CODING_PRACTICES.md",
+      "sha256": "d506ca797c2a504142c43aa8c87e246357d17d93ec3c19dd087a38801c13e413"
+    },
+    {
+      "path": "docs/CODING_STANDARDS.md",
+      "sha256": "a788bc075e9d81eaf04bdf077c7938b6ed558ef463f1a3fca8e63a7930ace55f"
+    },
+    {
+      "path": "docs/CONTEXT_BUDGET_STANDARDS.md",
+      "sha256": "43d45c7132a020cac1614c6ec4cf5cfdbdefc5a2ae4050c8677a87404636e4e7"
+    },
+    {
+      "path": "docs/CONTRIBUTING-SKILLS.md",
+      "sha256": "d651e2e43d5d7a338d472f373d8a5b272964d31aecbbd821f02c9816905f3d7d"
+    },
+    {
+      "path": "docs/CONVERSION_PLAN_TEMPLATE.md",
+      "sha256": "597809aef5615fb8bc87391d33317af2041a44573ee17c30b948fe1e315ba1e7"
+    },
+    {
+      "path": "docs/CONVERSION_PROMPT_TEMPLATE.md",
+      "sha256": "63dad5c4dc0ed644fd84f85541fd30dd563b0fbb4a98a14b19cce0f60ecb490f"
+    },
+    {
+      "path": "docs/DEBUGGING_STANDARDS.md",
+      "sha256": "665baeb237066e9f4fcd65cf84448016df2fa07c3ef6c6814b2ad4306f8e7240"
+    },
+    {
+      "path": "docs/DESIGN_DOC_STANDARDS.md",
+      "sha256": "bb76021022d8a434600801c2e2f6c8b9b871460d572797e034ed5b5dc1c7eaae"
+    },
+    {
+      "path": "docs/DESIGN_PATTERNS.md",
+      "sha256": "6efd81ce21e1ff4c64e46e09e7e86f9319fd6fa2e481efecad045f9a1a281778"
+    },
+    {
+      "path": "docs/DESIGN_WORKFLOW.md",
+      "sha256": "61f57e1460cef16d4a0278a769e6f7edbb2e966f2827978c40dd6a0b9440a0e5"
+    },
+    {
+      "path": "docs/DEVOPS_STANDARDS.md",
+      "sha256": "f86c89071a3d76ed779803399f8ebbb4e3be3b1e7d73dc93a3cd60109b8fc594"
+    },
+    {
+      "path": "docs/FRONTEND_STANDARDS.md",
+      "sha256": "19a4f227298e7112abc70e21172331a91d65ad8e6d13cf4943ca24e948cd57cd"
+    },
+    {
+      "path": "docs/GIT_SETUP_STANDARDS.md",
+      "sha256": "edb9096be44ca53da208a8d002edbb0a4752331271c82f2217ccae8bed358d44"
+    },
+    {
+      "path": "docs/GO_STANDARDS.md",
+      "sha256": "259aa26a8c96676bf6227ed6aa21ec23fcdc8b99fc53500fcb84ba8de53201e6"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_PLANNING.md",
+      "sha256": "4ec8c6ceba23166638cd2e8215e1cc646996d2bfd44b99553afd3cafda58ae2c"
+    },
+    {
+      "path": "docs/JAVA_STANDARDS.md",
+      "sha256": "675cdd6c9c35569349814f25ebc448233b6457c8307ef938097657f7f1acecfa"
+    },
+    {
+      "path": "docs/KOTLIN_STANDARDS.md",
+      "sha256": "e6a134541a73d3fc59514b987733428425862dea39e3392d98c99454623400b6"
+    },
+    {
+      "path": "docs/LOGGING_STANDARDS.md",
+      "sha256": "faff4189ddcc712b21e2850d0aece7676514d354d60f3c7a6e1a9decfe349b24"
+    },
+    {
+      "path": "docs/NEXTJS_STANDARDS.md",
+      "sha256": "a0ca953df18b735fee2be0189a0595d3f67d6e5cf0788ba787593c1855ad8850"
+    },
+    {
+      "path": "docs/PRE_COMMIT_CHECKLIST.md",
+      "sha256": "1a7fc93a523b02592ceeb28f5c55d1c066b6c9c4441d73761775c2523ce8045b"
+    },
+    {
+      "path": "docs/PYTHON_STANDARDS.md",
+      "sha256": "2fd36c6b6c1aba985aa1965f6837394474872a7ba4b9d17796339af5a6712470"
+    },
+    {
+      "path": "docs/SECURITY_STANDARDS.md",
+      "sha256": "aef7ac09bc750f01eb18ce647b369459415e35918da3d38385c22c942cb2299a"
+    },
+    {
+      "path": "docs/SKILL_AUTHORING_STANDARDS.md",
+      "sha256": "84ef10822a88a29d4ed3a5689c741c8f6f57bb13b6ea84c3a26ee47b151df5ef"
+    },
+    {
+      "path": "docs/SKILL_METADATA_GOVERNANCE.md",
+      "sha256": "b6c0e075e1c274b33b2ffb17e7ec713cb8fd8b8ffcdd22e0035fd9d76af40311"
+    },
+    {
+      "path": "docs/SOLID_PRINCIPLES.md",
+      "sha256": "fd7c742e05894317befd3838f9d92fe237110677fa675f5e63a432d2010d8542"
+    },
+    {
+      "path": "docs/SPOTBUGS_STANDARDS.md",
+      "sha256": "1b4f42fc473385777fed2efb9039b6df5bb0a3bdaa16b7d41ea707bd240f4130"
+    },
+    {
+      "path": "docs/STANDARDS_OWNERSHIP_MATRIX.md",
+      "sha256": "b985167f43423bfb66a128adddf7d7fcbf958017b3e3dcfbe203b07b83a49813"
+    },
+    {
+      "path": "docs/STATIC_ANALYSIS_STANDARDS.md",
+      "sha256": "87309d67740c55e2e027947c52e4ba2c5902035ebd3e379d9c0c475a29cdf536"
+    },
+    {
+      "path": "docs/TDD_STRATEGIES.md",
+      "sha256": "9aed6d5f62851f2003186fcfc2ea09b46136b5be74b345acabaf4c12530eb6a6"
+    },
+    {
+      "path": "docs/TELEMETRY.md",
+      "sha256": "ed79aaddc10de1bbb3e4528ecc6e215e8ed2b3aec02f52dccb9aef1505adad34"
+    },
+    {
+      "path": "docs/TESTING_STANDARDS.md",
+      "sha256": "4184ebeadd847b25fe913b48301b577d06f27c92f7903c4aea71d9115638a4e0"
+    },
+    {
+      "path": "docs/TYPESCRIPT_STANDARDS.md",
+      "sha256": "793fbbcc51d731f036f15e5bc0a1de92a059c332a3fce1c654091a1d098bec44"
+    },
+    {
+      "path": "docs/VERIFICATION_STANDARDS.md",
+      "sha256": "cc85864a92b6566003cf94da2621c178a322a658747bd400131690e8b55da884"
+    },
+    {
+      "path": "docs/adr/0001-superpowers-upstream-sync-model.md",
+      "sha256": "33fbaeaafd22bc183134b25c494914a4f7ecd4e2b5e9d16facd5224fa3cfdf24"
+    },
+    {
+      "path": "docs/adr/ADR-0002-distribution-modes.md",
+      "sha256": "fafd9f82d8e5a34855ac9e8fc77b384a5e879b14e16c856d67d414ad91c68c21"
+    },
+    {
+      "path": "docs/archived-workflows/CONTRIBUTING.md",
+      "sha256": "4c740c8083c829d97d93b32cf945ca297726ed42b8f07c8e8c280b5b4b621e9e"
+    },
+    {
+      "path": "docs/archived-workflows/README.md",
+      "sha256": "2add274df469cc2fb8eda97add83b23623f494b8583ffdb3a9799f4b3ec98133"
+    },
+    {
+      "path": "docs/archived-workflows/contracts.registry.json",
+      "sha256": "e9824a2122e26e4d5742c3a2b00be5b83084601765fe701b465ec38534cb00d9"
+    },
+    {
+      "path": "docs/archived-workflows/micro-commit.md",
+      "sha256": "a8d0d602024c080079b6f3bca21c4ae323d37be4d6858bb21612f3780ae7712b"
+    },
+    {
+      "path": "docs/archived-workflows/pre-commit.md",
+      "sha256": "493d19a69db9d4ecb49817def76822ab0262d47bf7b0344d0601beeea967e19f"
+    },
+    {
+      "path": "docs/archived-workflows/tdd-enforcement.md",
+      "sha256": "2d871275dc5f353110ce1310abc0bf41356d3a60c78fea6f4957f931ea293a62"
+    },
+    {
+      "path": "docs/diagrams/pre-commit-workflow.dot",
+      "sha256": "053a0b21895893a5a3eed2c0e07c2a0b43d370800a2e8b02d3bbfd06572a4b7b"
+    },
+    {
+      "path": "docs/diagrams/pre-commit-workflow.svg",
+      "sha256": "18c507c7e1bb3b690afafb46d7449223052b3004e054ed65aa1ca829dfebe8ec"
+    },
+    {
+      "path": "docs/diagrams/tdd-workflow.dot",
+      "sha256": "0023386b3e115e48d97dfa34ea2609a842f1516e24d9483453a9c5e1e3414f31"
+    },
+    {
+      "path": "docs/diagrams/tdd-workflow.svg",
+      "sha256": "433f96681e089a86a0851af533824eda99c886eed1d54f57fd9f4a01e60f67b2"
+    },
+    {
+      "path": "docs/distribution/init-workflow.md",
+      "sha256": "41b43f7ac0879a9affaf0a9236c674bdd81820d744831cc96b28cdeb3dabe0f5"
+    },
+    {
+      "path": "docs/distribution/installation-modes.md",
+      "sha256": "19f0a32c05f4c804d763295e05867cc9ec0517a5c87da8518abcfc29b007e1a0"
+    },
+    {
+      "path": "docs/specs/skill-test-invariants.md",
+      "sha256": "9e600a97fb4ee9ef9041b884636a06af6fc0294ca1c3271ae1324e04a8726b14"
+    },
+    {
+      "path": "docs/specs/skill-test-promotion-rubric.md",
+      "sha256": "04909b5996edfb2d5a9fe05c66a8c2dda6de92d246f93787a5660c17b3e7b51b"
+    },
+    {
+      "path": "docs/templates/DESIGN_TEMPLATE.md",
+      "sha256": "5532d728054cdf00e861824892c806baa1aa0245ae17900756265556473dcdd5"
+    },
+    {
+      "path": "docs/templates/PLAN_TEMPLATE.md",
+      "sha256": "8a351a513f44e974506332cbbd48e7f262b776de6d4c89be313b977b23561ffc"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "69b79dc9e8054e42ded3289f43e9694d05096e7f289731768a770f6860386d97"
+    },
+    {
+      "path": "opencode.json",
+      "sha256": "e88c63f706ae2e2d69b86fd90eabdb2c5befc4ff8cb19f16e316cf18810ac69c"
+    },
+    {
+      "path": ".opencode/.gitignore",
+      "sha256": "16d30e4462189fb14dd611bdb708c510630c576a1f35b9383e89a4352da36c97"
+    },
+    {
+      "path": ".opencode/agents/pre-commit-check.md",
+      "sha256": "43360d0913d533967d3793d06439587e1e04b6d719750b743415e729ac7687bb"
+    },
+    {
+      "path": ".opencode/agents/spec-compliance-review.md",
+      "sha256": "f97463d5fb2f511d2a7ce4dfdca25a9b2de056f21f0b026c12d788d133ce9bb4"
+    },
+    {
+      "path": ".opencode/agents/standards-build.md",
+      "sha256": "447da04acc25443679407ca5943afb3d63f09d8068ba2a4fe36ea8d4d620596f"
+    },
+    {
+      "path": ".opencode/agents/standards-review.md",
+      "sha256": "ed102552c9014be138b5cb11a4b84964bd4f306201ebf313d3717c3367e76401"
+    },
+    {
+      "path": ".opencode/bun.lock",
+      "sha256": "aa233340be80700ae31b25704a7d12df20bb15dd9aec0c2c6643cdfa9f828df9"
+    },
+    {
+      "path": ".opencode/commands/code-quality.md",
+      "sha256": "0a8514c1a82a7de1f5c6a839446cab6cf7c55c0dbffc82d349a77fe6433e0b43"
+    },
+    {
+      "path": ".opencode/commands/commit-review.md",
+      "sha256": "96585d265e6e4422df2cae3e2be46d4e6c2e94ecf8d0d2b6c3014c1759932960"
+    },
+    {
+      "path": ".opencode/commands/micro-commit.md",
+      "sha256": "5c3a3df2375559ca28fad0955ff2836b82f9c65057a403fe5c7ed32d7f424eae"
+    },
+    {
+      "path": ".opencode/commands/new-feature.md",
+      "sha256": "88987317c3bbc112a3d9660f14067f48f17239fa539b41dfc2147c8b7c0560eb"
+    },
+    {
+      "path": ".opencode/commands/pre-commit.md",
+      "sha256": "60c1752e64ea5ad1098dd2614f71add980581e26304952fa8db17a57094bae35"
+    },
+    {
+      "path": ".opencode/commands/refactor-check.md",
+      "sha256": "4a2c3e1fcc28bb8551ed21509c874df92876df2820cc51138fd74693bb35e01a"
+    },
+    {
+      "path": ".opencode/commands/review-solid.md",
+      "sha256": "d9d1b6485c5c99c67435d25712033d4805aa04d4bc7adb09215f27ee4349c774"
+    },
+    {
+      "path": ".opencode/commands/tdd-enforcement.md",
+      "sha256": "3c8e2a9caa88122f8fa75a283687424a2af8df8482cef3a6b9ac4b08de185be5"
+    },
+    {
+      "path": ".opencode/commands/test-coverage.md",
+      "sha256": "ea00e2f66c18b34a104e59a76ae7e0aa7d69d0ff863da1ac528011989c6a4fb0"
+    },
+    {
+      "path": ".opencode/commands/two-stage-review.md",
+      "sha256": "ba10edd807ee6d9b1f002991fc7bcb18c92d6fb0c256ac167a264d5841f0b5bd"
+    },
+    {
+      "path": ".opencode/package.json",
+      "sha256": "3748ceab383c545c54d4c37035e528df6290c5a84abcfe092122c3b6a8d6ce48"
+    },
+    {
+      "path": ".opencode/package-lock.json",
+      "sha256": "b628c764236019785a620deadc06373949236ce84fb38bc68a39f619411874e3"
+    },
+    {
+      "path": ".opencode/skills/code-quality/SKILL.md",
+      "sha256": "b23ad3e9f737ca2ef469cdcf7379ac654da37b84e3ed6ad13c3842838d1c2500"
+    },
+    {
+      "path": ".opencode/skills/commit-review/SKILL.md",
+      "sha256": "6a9147b8c95d4f1f6a8fdb92798caac945d1293d99269b8eb95615c0895a907e"
+    },
+    {
+      "path": ".opencode/skills/context-budget/SKILL.md",
+      "sha256": "f32129683026116b14dfa4a087a50e76050e692de295e91e3d0f12f5ff44673c"
+    },
+    {
+      "path": ".opencode/skills/design-patterns/REFERENCE.md",
+      "sha256": "6efd81ce21e1ff4c64e46e09e7e86f9319fd6fa2e481efecad045f9a1a281778"
+    },
+    {
+      "path": ".opencode/skills/design-patterns/SKILL.md",
+      "sha256": "3edf38793682346239331750d32fbc0d2fc82770ddbd9f79eb9042759b95fea2"
+    },
+    {
+      "path": ".opencode/skills/docusaurus-restructuring/SKILL.md",
+      "sha256": "bc215a53697f1282c7bfc9753f06757c9d989b68c5d8a82e38d5d1d630588c2f"
+    },
+    {
+      "path": ".opencode/skills/frontend-standards/REFERENCE.md",
+      "sha256": "19a4f227298e7112abc70e21172331a91d65ad8e6d13cf4943ca24e948cd57cd"
+    },
+    {
+      "path": ".opencode/skills/frontend-standards/SKILL.md",
+      "sha256": "99a7892b8c78510160a7f2a973929612dc9e1684222cd0d47375b9635aff3bd2"
+    },
+    {
+      "path": ".opencode/skills/github-pr-review-consumer/SKILL.md",
+      "sha256": "4f2ce6f432b229db829c15f4040d4c8f3519009de5b137d63563bc3fa61a47e3"
+    },
+    {
+      "path": ".opencode/skills/gitignore-bootstrap/SKILL.md",
+      "sha256": "3ccebf76839d00080e28c69a1994bfb880c9c52521994cecda8fc31fba59997e"
+    },
+    {
+      "path": ".opencode/skills/go-standards/REFERENCE.md",
+      "sha256": "f57395f7869207a9309938cde3448e9e4cca25b7e1a4cd8ec0d42070385cfb81"
+    },
+    {
+      "path": ".opencode/skills/go-standards/SKILL.md",
+      "sha256": "0cfdddab7fa6cd6a0fc3f122dd5f11cb56fa536deaa445cd6b1fe90d114d9a7a"
+    },
+    {
+      "path": ".opencode/skills/issue-workflow/SKILL.md",
+      "sha256": "6f07a8f612b5f93ee26a6de9f81a5db00541e1c2362db4b3a9d87bfef0553e85"
+    },
+    {
+      "path": ".opencode/skills/java-standards/REFERENCE.md",
+      "sha256": "9d0c1adbdb9002ac2adcd8ebd389ab16ae439139d0b723afa71ffa6e059ea3e7"
+    },
+    {
+      "path": ".opencode/skills/java-standards/SKILL.md",
+      "sha256": "7ece126ee56ebc98d246aed0280039ce7ddc35377b4f8b1b0489755b5e466076"
+    },
+    {
+      "path": ".opencode/skills/java-static-analysis/REFERENCE.md",
+      "sha256": "843649c669b7c8efdaf72ab5131c6ce3aecbdd56748097662cf86d9d292d49e5"
+    },
+    {
+      "path": ".opencode/skills/java-static-analysis/SKILL.md",
+      "sha256": "d77a37954f3966afb8a366f4be149aa265e4dbeafa038ae868e7e79809110214"
+    },
+    {
+      "path": ".opencode/skills/kotlin-standards/REFERENCE.md",
+      "sha256": "ce781f740e8ab45ae761cf9ac4624fa4b751925f13285b1ad48d71295cd448bc"
+    },
+    {
+      "path": ".opencode/skills/kotlin-standards/SKILL.md",
+      "sha256": "c3d21dc9a5242315a7c9339a7ba81463f9ab787873e4e07247de6e8558dac6bb"
+    },
+    {
+      "path": ".opencode/skills/logging-standards/REFERENCE.md",
+      "sha256": "d926270dd268974639037e1921545a1fc5bf57f9d7c345ce4485811a33217805"
+    },
+    {
+      "path": ".opencode/skills/logging-standards/SKILL.md",
+      "sha256": "71f0e37beb8733e1bb6ac45774bcba07ae7733fdfe93aeb26c2271cd082073e3"
+    },
+    {
+      "path": ".opencode/skills/micro-commit/SKILL.md",
+      "sha256": "0825c8a76a0eac758a1ee2eb26f1090a9e597cb4ba1438f76e601ee7d3b43822"
+    },
+    {
+      "path": ".opencode/skills/micro-commit/references/refactoring-guidelines.md",
+      "sha256": "5140431129666e2eef2d7facde2ebc3bd70498f20680555c2f0f8119239fda49"
+    },
+    {
+      "path": ".opencode/skills/micro-commit/references/workflow.md",
+      "sha256": "3d08bf8fd374ded923757abfc24cfb37aa34d114dc1a82aec28eea3eba9f7bb4"
+    },
+    {
+      "path": ".opencode/skills/multi-session-execution/SKILL.md",
+      "sha256": "1f4f9448328d93f8186b9e51e6168c61415cab5d74e2834cd0918d5b63ec0cb1"
+    },
+    {
+      "path": ".opencode/skills/pre-commit/SKILL.md",
+      "sha256": "90d4e856c8a9adc4c1753bc177163e2cd5fe6b71667a67ceb844a8ede2e5ebaf"
+    },
+    {
+      "path": ".opencode/skills/pre-commit/references/solid-patterns-reference.md",
+      "sha256": "6ffde467d35a96e851012706c88dbfb280170e42bce027f3b0def350ee08f775"
+    },
+    {
+      "path": ".opencode/skills/pre-commit/references/workflow.md",
+      "sha256": "3b197aa100aa630e6baaed5edd52fe2a431731ca0edc32d5ea2114fd2ea8ceb8"
+    },
+    {
+      "path": ".opencode/skills/progress-tracker/SKILL.md",
+      "sha256": "abfa38d9a50360115dbd89899c1d60ee72b1159ba5c753ff7ae43f22dd3de5ec"
+    },
+    {
+      "path": ".opencode/skills/prompt-engineering/SKILL.md",
+      "sha256": "5ca8017cdd876f145b3fd2897060c9fbdc0d9ab475f15f4f06cba6aa4f5b2b91"
+    },
+    {
+      "path": ".opencode/skills/python-standards/REFERENCE.md",
+      "sha256": "8cfd8be3882fbca844104008b564e677dfd5e6ac47bc21d3ede2dcd02e263981"
+    },
+    {
+      "path": ".opencode/skills/python-standards/SKILL.md",
+      "sha256": "3b464c4c982dc13164c9edf6d732e7a50d09e2142df89a822db14bdc7af9b630"
+    },
+    {
+      "path": ".opencode/skills/refactoring-gate/SKILL.md",
+      "sha256": "7973b90d9d137a1870d400b4b615087f67f762aeb9590e256f9390f9f99e0ca2"
+    },
+    {
+      "path": ".opencode/skills/security-standards/REFERENCE.md",
+      "sha256": "69dca372b76e8af8ac5ee17e730a9dd61a1a19f968f0462780841827ce35e92e"
+    },
+    {
+      "path": ".opencode/skills/security-standards/SKILL.md",
+      "sha256": "4f7cfcb24dc82617768a0abe01a91719dd923a1954da02a4f035cef150fb8838"
+    },
+    {
+      "path": ".opencode/skills/solid-principles/REFERENCE.md",
+      "sha256": "fd7c742e05894317befd3838f9d92fe237110677fa675f5e63a432d2010d8542"
+    },
+    {
+      "path": ".opencode/skills/solid-principles/SKILL.md",
+      "sha256": "1c0f4f042e24213f5e5017249c6189687ba8d62e2ec8315788a0ff3102bec308"
+    },
+    {
+      "path": ".opencode/skills/spec-compliance/SKILL.md",
+      "sha256": "3cac25e5fb1baed3e157da330155e25019c38f360f82c4b5bacebf0ed9b37b78"
+    },
+    {
+      "path": ".opencode/skills/static-analysis-gate/REFERENCE.md",
+      "sha256": "87309d67740c55e2e027947c52e4ba2c5902035ebd3e379d9c0c475a29cdf536"
+    },
+    {
+      "path": ".opencode/skills/static-analysis-gate/SKILL.md",
+      "sha256": "d2dc5d1b606d28ad3dd2fc34447474187927b58ce489b77a4683355b3f1adb91"
+    },
+    {
+      "path": ".opencode/skills/tdd-enforcement/REFERENCE.md",
+      "sha256": "9aed6d5f62851f2003186fcfc2ea09b46136b5be74b345acabaf4c12530eb6a6"
+    },
+    {
+      "path": ".opencode/skills/tdd-enforcement/SKILL.md",
+      "sha256": "28f5155c852d618ba0218a688792a9aec3551e53cf58a37bac76f1bda670fd5c"
+    },
+    {
+      "path": ".opencode/skills/tdd-enforcement/references/workflow.md",
+      "sha256": "0db56727c7374d3f2057da57bf2a07b281276f47f76a9a3ca8df76c3e7f02766"
+    },
+    {
+      "path": ".opencode/skills/test-coverage/REFERENCE.md",
+      "sha256": "4184ebeadd847b25fe913b48301b577d06f27c92f7903c4aea71d9115638a4e0"
+    },
+    {
+      "path": ".opencode/skills/test-coverage/SKILL.md",
+      "sha256": "8bce8efb9273d371a2489985064b0ea561ad2a2ace4c20c1a0e6cb4730ca424b"
+    },
+    {
+      "path": ".opencode/skills/typescript-standards/REFERENCE.md",
+      "sha256": "dd173862849d759dc7f2bfc8349e972de70c2b212f57aa9eefa7d93ac36ed74d"
+    },
+    {
+      "path": ".opencode/skills/typescript-standards/SKILL.md",
+      "sha256": "b10617fda028f8461960a0e280c5b54d567ee9ba0a6d03b45c28878c82295cbe"
+    }
+  ]
+}

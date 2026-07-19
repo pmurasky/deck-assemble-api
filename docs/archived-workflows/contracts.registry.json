@@ -1,0 +1,34 @@
+{
+  "contracts": [
+    {
+      "id": "pre-commit",
+      "contract_path": "docs/archived-workflows/pre-commit.md",
+      "adapter_paths": [
+        ".claude/skills/pre-commit/SKILL.md",
+        ".opencode/commands/pre-commit.md"
+      ],
+      "status": "legacy-archive",
+      "notes": "Historical canonical contract kept for parity checks."
+    },
+    {
+      "id": "micro-commit",
+      "contract_path": "docs/archived-workflows/micro-commit.md",
+      "adapter_paths": [
+        ".claude/skills/micro-commit/SKILL.md",
+        ".opencode/commands/micro-commit.md"
+      ],
+      "status": "legacy-archive",
+      "notes": "Historical canonical contract kept for parity checks."
+    },
+    {
+      "id": "tdd-enforcement",
+      "contract_path": "docs/archived-workflows/tdd-enforcement.md",
+      "adapter_paths": [
+        ".claude/skills/tdd-enforcement/SKILL.md",
+        ".opencode/commands/tdd-enforcement.md"
+      ],
+      "status": "legacy-archive",
+      "notes": "Historical canonical contract kept for parity checks."
+    }
+  ]
+}

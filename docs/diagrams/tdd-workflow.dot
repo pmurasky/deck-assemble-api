@@ -1,0 +1,46 @@
+digraph TDDWorkflow {
+  rankdir=TB;
+  splines=ortho;
+  node [fontname="Arial", fontsize=10, shape=box, style="rounded"];
+  edge [fontname="Arial", fontsize=9];
+
+  start [label="Start TDD cycle"];
+  scope [label="Select one behavior\nfor this cycle"];
+  write_test [label="Write exactly one\nfailing test"];
+  single_test [shape=diamond, label="Only one new\nfailing test?"];
+  split_tests [label="Split tests; keep one\nfailing test in cycle"];
+  run_red [label="Run targeted test\n(verify RED)"];
+  red_expected [shape=diamond, label="Fails for expected\nbehavior gap?"];
+  fix_test [label="Fix test setup, imports,\nor assertions"];
+  green_code [label="Implement minimal\nproduction code"];
+  run_green [label="Run unit tests\n(verify GREEN)"];
+  green_ok [shape=diamond, label="All unit tests pass?"];
+  fix_green [label="Fix code/test and\nre-run unit tests"];
+  refactor [label="Refactor one step\n(no behavior change)"];
+  run_refactor [label="Run unit tests\nafter refactor"];
+  refactor_ok [shape=diamond, label="Tests still pass?"];
+  fix_refactor [label="Fix or revert refactor\nand re-run tests"];
+  commit [label="Commit one logical change\n(production-ready)"];
+  next_cycle [shape=diamond, label="Another behavior\nneeded?"];
+  done [label="Done"];
+
+  start -> scope -> write_test -> single_test;
+  single_test -> split_tests [label="No"];
+  split_tests -> write_test;
+  single_test -> run_red [label="Yes"];
+  run_red -> red_expected;
+  red_expected -> fix_test [label="No"];
+  fix_test -> run_red;
+  red_expected -> green_code [label="Yes"];
+  green_code -> run_green -> green_ok;
+  green_ok -> fix_green [label="No"];
+  fix_green -> run_green;
+  green_ok -> refactor [label="Yes"];
+  refactor -> run_refactor -> refactor_ok;
+  refactor_ok -> fix_refactor [label="No"];
+  fix_refactor -> run_refactor;
+  refactor_ok -> commit [label="Yes"];
+  commit -> next_cycle;
+  next_cycle -> scope [label="Yes"];
+  next_cycle -> done [label="No"];
+}
