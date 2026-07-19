@@ -90,6 +90,33 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
+  void shouldAllowAnonymousCardBrowsing() throws Exception {
+    cardRepository.save(new Card("oracle-public", "Public Card"));
+
+    mockMvc
+        .perform(get("/cards").queryParam("query", "public"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].name").value("Public Card"));
+  }
+
+  @Test
+  void shouldIncludePrintingDataInCardSummary() throws Exception {
+    Card card = cardRepository.save(new Card("oracle-thor", "Thor"));
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel-summary", "msu", "Marvel Summary"));
+    CardPrinting printing = new CardPrinting(card, set, "printing-thor");
+    printing.setRarity("mythic");
+    printing.setImageUriNormal("https://img.example/thor.png");
+    cardPrintingRepository.save(printing);
+
+    mockMvc
+        .perform(get("/cards").queryParam("query", "thor").with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/thor.png"))
+        .andExpect(jsonPath("$.content[0].setCode").value("msu"))
+        .andExpect(jsonPath("$.content[0].rarity").value("mythic"));
+  }
+
+  @Test
   void shouldForbidCardImportsForNonAdministrators() throws Exception {
     mockMvc
         .perform(post("/admin/card-imports").queryParam("query", "set:mar").with(jwt()))
