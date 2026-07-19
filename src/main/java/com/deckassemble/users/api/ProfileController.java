@@ -1,6 +1,6 @@
 package com.deckassemble.users.api;
 
-import com.deckassemble.shared.security.CurrentProfile;
+import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileMapper;
 import com.deckassemble.users.application.ProfileService;
 import jakarta.validation.Valid;
@@ -15,24 +15,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/profile")
 public class ProfileController {
 
-  private final CurrentProfile currentProfile;
+  private final CurrentUser currentUser;
   private final ProfileService profileService;
 
-  public ProfileController(CurrentProfile currentProfile, ProfileService profileService) {
-    this.currentProfile = currentProfile;
+  public ProfileController(CurrentUser currentUser, ProfileService profileService) {
+    this.currentUser = currentUser;
     this.profileService = profileService;
   }
 
   @GetMapping
   public ResponseEntity<ProfileResponse> getCurrentProfile() {
-    return ResponseEntity.ok(
-        ProfileMapper.toResponse(profileService.getOrCreate(currentProfile.requireProfile().getAuthProviderSubject())));
+    String subject = currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
+    return ResponseEntity.ok(ProfileMapper.toResponse(profileService.getOrCreate(subject)));
   }
 
   @PatchMapping
   public ResponseEntity<ProfileResponse> updateCurrentProfile(
       @Valid @RequestBody ProfileUpdateRequest request) {
-    return ResponseEntity.ok(
-        ProfileMapper.toResponse(profileService.update(currentProfile.requireProfile().getAuthProviderSubject(), request)));
+    String subject = currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
+    return ResponseEntity.ok(ProfileMapper.toResponse(profileService.update(subject, request)));
   }
 }
