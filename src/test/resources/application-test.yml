@@ -5,3 +5,10 @@ spring:
         jwt:
           issuer-uri: https://test.deckassemble.app/
           audiences: test-audience
+  liquibase:
+    enabled: true
+
+logging:
+  level:
+    liquibase: DEBUG
+    org.springframework.jdbc: DEBUG
