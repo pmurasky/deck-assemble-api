@@ -111,6 +111,7 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     mockMvc
         .perform(get("/cards").queryParam("query", "thor").with(jwt()))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].printingId").value(printing.getId()))
         .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/thor.png"))
         .andExpect(jsonPath("$.content[0].setCode").value("msu"))
         .andExpect(jsonPath("$.content[0].rarity").value("mythic"));
