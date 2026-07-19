@@ -44,7 +44,11 @@ class RestClientScryfallClient implements ScryfallClient {
   @Override
   public ScryfallList<ScryfallCard> searchCards(String query) {
     return execute(() -> restClient.get().uri(uriBuilder -> uriBuilder.path("/cards/search")
-        .queryParam("q", query).build()).retrieve().body(CARD_LIST));
+        .queryParam("q", query)
+        .queryParam("include_extras", true)
+        .queryParam("include_variations", true)
+        .queryParam("unique", "prints")
+        .build()).retrieve().body(CARD_LIST));
   }
 
   @Override
