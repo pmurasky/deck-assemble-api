@@ -36,7 +36,6 @@ public class CollectionService {
     this.profileService = profileService;
   }
 
-  @Transactional(readOnly = true)
   public List<CollectionResponse> list() {
     return collectionRepository.findByProfileIdOrderByNameAsc(profileId()).stream()
         .map(CollectionResponse::from)
@@ -53,7 +52,6 @@ public class CollectionService {
     return CollectionResponse.from(collectionRepository.save(collection));
   }
 
-  @Transactional(readOnly = true)
   public CollectionResponse getById(long collectionId) {
     return CollectionResponse.from(owned(collectionId));
   }
@@ -76,7 +74,6 @@ public class CollectionService {
     collectionRepository.delete(owned(collectionId));
   }
 
-  @Transactional(readOnly = true)
   public List<CollectionCardResponse> listCards(long collectionId) {
     owned(collectionId);
     return collectionCardRepository.findByCollectionId(collectionId).stream()
