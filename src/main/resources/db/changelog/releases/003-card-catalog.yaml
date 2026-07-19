@@ -1,0 +1,428 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-card-catalog
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: magic_sets
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scryfall_set_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: set_code
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: set_type
+                  type: varchar(50)
+              - column:
+                  name: release_date
+                  type: date
+              - column:
+                  name: card_count
+                  type: int
+              - column:
+                  name: digital
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: foil_only
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: nonfoil_only
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: icon_svg_uri
+                  type: varchar(500)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - createTable:
+            tableName: cards
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scryfall_oracle_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mana_cost
+                  type: varchar(255)
+              - column:
+                  name: mana_value
+                  type: numeric(10,1)
+              - column:
+                  name: type_line
+                  type: varchar(255)
+              - column:
+                  name: oracle_text
+                  type: text
+              - column:
+                  name: power
+                  type: varchar(10)
+              - column:
+                  name: toughness
+                  type: varchar(10)
+              - column:
+                  name: loyalty
+                  type: varchar(10)
+              - column:
+                  name: colors
+                  type: varchar(50)
+              - column:
+                  name: color_identity
+                  type: varchar(50)
+              - column:
+                  name: keywords
+                  type: text
+              - column:
+                  name: layout
+                  type: varchar(50)
+              - column:
+                  name: reserved
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: commander_rank
+                  type: int
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - createTable:
+            tableName: card_faces
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: face_order
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mana_cost
+                  type: varchar(255)
+              - column:
+                  name: type_line
+                  type: varchar(255)
+              - column:
+                  name: oracle_text
+                  type: text
+              - column:
+                  name: power
+                  type: varchar(10)
+              - column:
+                  name: toughness
+                  type: varchar(10)
+              - column:
+                  name: loyalty
+                  type: varchar(10)
+              - column:
+                  name: colors
+                  type: varchar(50)
+              - column:
+                  name: image_uri
+                  type: varchar(500)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - createTable:
+            tableName: card_printings
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: magic_set_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scryfall_card_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collector_number
+                  type: varchar(50)
+              - column:
+                  name: rarity
+                  type: varchar(50)
+              - column:
+                  name: artist
+                  type: varchar(255)
+              - column:
+                  name: flavor_text
+                  type: text
+              - column:
+                  name: image_uri_small
+                  type: varchar(500)
+              - column:
+                  name: image_uri_normal
+                  type: varchar(500)
+              - column:
+                  name: image_uri_large
+                  type: varchar(500)
+              - column:
+                  name: released_at
+                  type: date
+              - column:
+                  name: foil_available
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: nonfoil_available
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: promo
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: digital
+                  type: boolean
+                  defaultValueBoolean: false
+              - column:
+                  name: language
+                  type: varchar(10)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - createTable:
+            tableName: card_legalities
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: format_code
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: legality_status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - addForeignKeyConstraint:
+            baseTableName: card_faces
+            baseColumnNames: card_id
+            constraintName: fk_card_faces_card
+            referencedTableName: cards
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: card_printings
+            baseColumnNames: card_id
+            constraintName: fk_card_printings_card
+            referencedTableName: cards
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: card_printings
+            baseColumnNames: magic_set_id
+            constraintName: fk_card_printings_magic_set
+            referencedTableName: magic_sets
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: card_legalities
+            baseColumnNames: card_id
+            constraintName: fk_card_legalities_card
+            referencedTableName: cards
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - createIndex:
+            tableName: cards
+            indexName: idx_cards_scryfall_oracle_id
+            columns:
+              - column:
+                  name: scryfall_oracle_id
+        - createIndex:
+            tableName: cards
+            indexName: idx_cards_name_lower
+            columns:
+              - column:
+                  name: lower(name)
+        - createIndex:
+            tableName: card_printings
+            indexName: idx_card_printings_scryfall_card_id
+            columns:
+              - column:
+                  name: scryfall_card_id
+        - createIndex:
+            tableName: card_legalities
+            indexName: idx_card_legalities_card_format
+            columns:
+              - column:
+                  name: card_id
+              - column:
+                  name: format_code
+
+        - rollback:
+            - dropTable:
+                tableName: card_legalities
+            - dropTable:
+                tableName: card_printings
+            - dropTable:
+                tableName: card_faces
+            - dropTable:
+                tableName: cards
+            - dropTable:
+                tableName: magic_sets
