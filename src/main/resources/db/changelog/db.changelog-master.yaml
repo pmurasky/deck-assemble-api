@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/releases/003-card-catalog.yaml
   - include:
       file: db/changelog/releases/004-collections.yaml
+  - include:
+      file: db/changelog/releases/005-card-import-runs.yaml

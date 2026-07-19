@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-card-import-runs
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: card_import_runs
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: provider
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamptz
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: records_read
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: records_created
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: records_updated
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: records_failed
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_summary
+                  type: varchar(2000)
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - createIndex:
+            indexName: idx_card_import_runs_started_at
+            tableName: card_import_runs
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
