@@ -24,6 +24,12 @@ We will maintain three distinct environments: local, dev, and prod.
 
 This strategy ensures local parity, safe integration testing, and production isolation.
 
+## Deferred Decision: Auth0 tenant split
+
+As of 2026-07-19, a single Auth0 tenant (`dev-r2faj2myn5cdw3yw.us.auth0.com`) serves all three environments. This is a deliberate simplification while the application has no external users.
+
+Auth0 does not migrate password users between tenants (password hashes cannot be exported), so splitting into a separate production tenant later requires forcing all existing users to reset their passwords. Revisit this decision and create a dedicated production tenant **before** real users accumulate in production.
+
 ## Alternatives Considered
 
 ### Alternative 1: Only local and production environments
