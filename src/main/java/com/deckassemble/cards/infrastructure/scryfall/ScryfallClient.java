@@ -14,6 +14,8 @@ public interface ScryfallClient {
 
   ScryfallList<ScryfallCard> searchCards(String query);
 
+  ScryfallList<ScryfallCard> searchCards(URI uri);
+
   ScryfallBulkData getBulkData(String type);
 
   InputStream download(URI uri);

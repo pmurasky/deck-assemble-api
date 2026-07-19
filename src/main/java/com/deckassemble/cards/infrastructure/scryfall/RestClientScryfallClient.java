@@ -48,6 +48,11 @@ class RestClientScryfallClient implements ScryfallClient {
   }
 
   @Override
+  public ScryfallList<ScryfallCard> searchCards(URI uri) {
+    return execute(() -> restClient.get().uri(uri).retrieve().body(CARD_LIST));
+  }
+
+  @Override
   public ScryfallBulkData getBulkData(String type) {
     return execute(() -> restClient.get().uri("/bulk-data/{type}", type).retrieve()
         .body(ScryfallBulkData.class));
