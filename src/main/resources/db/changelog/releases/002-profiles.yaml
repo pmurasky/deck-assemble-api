@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-profiles
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: profiles
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: auth_provider_subject
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: display_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+              - column:
+                  name: preferred_format
+                  type: varchar(50)
+              - column:
+                  name: experience_level
+                  type: varchar(50)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createIndex:
+            tableName: profiles
+            indexName: idx_profiles_auth_provider_subject
+            columns:
+              - column:
+                  name: auth_provider_subject
+        - rollback:
+            - dropTable:
+                tableName: profiles
