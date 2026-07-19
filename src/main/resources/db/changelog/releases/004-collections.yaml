@@ -1,0 +1,147 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-collections
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: collections
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+              - column:
+                  name: default_collection
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - createTable:
+            tableName: collection_cards
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_printing_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: regular_quantity
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: foil_quantity
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+
+        - addUniqueConstraint:
+            tableName: collection_cards
+            columnNames: collection_id, card_printing_id
+            constraintName: uq_collection_cards_collection_printing
+
+        - createIndex:
+            tableName: collections
+            indexName: idx_collections_profile
+            columns:
+              - column:
+                  name: profile_id
+
+        - createIndex:
+            tableName: collection_cards
+            indexName: idx_collection_cards_collection
+            columns:
+              - column:
+                  name: collection_id
+
+        - createIndex:
+            tableName: collection_cards
+            indexName: idx_collection_cards_printing
+            columns:
+              - column:
+                  name: card_printing_id
+
+        - addForeignKeyConstraint:
+            baseTableName: collections
+            baseColumnNames: profile_id
+            constraintName: fk_collections_profile
+            referencedTableName: profiles
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: collection_cards
+            baseColumnNames: collection_id
+            constraintName: fk_collection_cards_collection
+            referencedTableName: collections
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: collection_cards
+            baseColumnNames: card_printing_id
+            constraintName: fk_collection_cards_printing
+            referencedTableName: card_printings
+            referencedColumnNames: id
+            onDelete: CASCADE
