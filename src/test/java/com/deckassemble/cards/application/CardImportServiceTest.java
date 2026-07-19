@@ -13,6 +13,7 @@ import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,7 +35,10 @@ class CardImportServiceTest {
     ScryfallCard source = new ScryfallCard("printing-id", "oracle-id", "Spider-Man", null, null,
         null, null, null, null, null, List.of(), List.of(), List.of(), null, false, "set-id", "mar",
         "Marvel", "1", "rare", null, null, null, null, false, false, false, false, "en", List.of(), Map.of());
-    when(scryfallClient.searchCards("set:mar")).thenReturn(new ScryfallList<>(List.of(source), false, null));
+    URI nextPage = URI.create("https://api.scryfall.com/cards/search?page=2");
+    when(scryfallClient.searchCards("set:mar"))
+        .thenReturn(new ScryfallList<>(List.of(source), true, nextPage));
+    when(scryfallClient.searchCards(nextPage)).thenReturn(new ScryfallList<>(List.of(source), false, null));
     when(cardRepository.findByScryfallOracleId("oracle-id")).thenReturn(Optional.empty());
     when(cardRepository.save(any(Card.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(magicSetRepository.findBySetCode("mar")).thenReturn(Optional.empty());
@@ -45,6 +49,6 @@ class CardImportServiceTest {
     int importedCount = new CardImportService(scryfallClient, cardRepository, magicSetRepository,
         cardPrintingRepository).importQuery("set:mar");
 
-    assertThat(importedCount).isEqualTo(1);
+    assertThat(importedCount).isEqualTo(2);
   }
 }

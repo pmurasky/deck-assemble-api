@@ -9,6 +9,7 @@ import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,9 +32,25 @@ public class CardImportService {
 
   @Transactional
   public int importQuery(String query) {
-    List<ScryfallCard> cards = scryfallClient.searchCards(query).data();
+    var page = scryfallClient.searchCards(query);
+    int importedCount = importPage(page.data());
+    while (page.hasMore()) {
+      page = scryfallClient.searchCards(nextPage(page.nextPage()));
+      importedCount += importPage(page.data());
+    }
+    return importedCount;
+  }
+
+  private int importPage(List<ScryfallCard> cards) {
     cards.forEach(this::importCard);
     return cards.size();
+  }
+
+  private URI nextPage(URI nextPage) {
+    if (nextPage == null) {
+      throw new IllegalStateException("Scryfall response marked additional pages without a next page URL");
+    }
+    return nextPage;
   }
 
   private void importCard(ScryfallCard source) {
