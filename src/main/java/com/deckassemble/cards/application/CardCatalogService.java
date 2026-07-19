@@ -27,7 +27,13 @@ public class CardCatalogService {
   public Page<CardSummaryResponse> search(String query, String setCode, String colorIdentity,
       Pageable pageable) {
     return cardRepository.findAll(specification(query, setCode, colorIdentity), pageable)
-        .map(CardSummaryResponse::from);
+        .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+  }
+
+  // ponytail: one printing lookup per card (N+1 at page size); batch fetch if pages get slow
+  private CardPrinting latestPrinting(long cardId) {
+    return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
+        .findFirst().orElse(null);
   }
 
   private Specification<Card> specification(String query, String setCode, String colorIdentity) {
@@ -52,7 +58,8 @@ public class CardCatalogService {
 
   public CardDetailResponse getById(long cardId) {
     return cardRepository.findById(cardId).filter(card -> card.getActive())
-        .map(CardDetailResponse::from).orElseThrow(CardNotFoundException::new);
+        .map(card -> CardDetailResponse.from(card, latestPrinting(card.getId())))
+        .orElseThrow(CardNotFoundException::new);
   }
 
   public List<CardPrintingResponse> getPrintings(long cardId) {
