@@ -3,6 +3,7 @@ package com.deckassemble.cards.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
@@ -12,6 +13,8 @@ import com.deckassemble.cards.infrastructure.CardRepository;
 import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
 import java.net.URI;
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,7 +38,9 @@ class CardImportServiceTest {
   void shouldImportAValidScryfallCard() {
     ScryfallCard source = new ScryfallCard("printing-id", "oracle-id", "Spider-Man", null, null,
         null, null, null, null, null, List.of(), List.of(), List.of(), null, false, "set-id", "mar",
-        "Marvel", "1", "rare", null, null, null, null, false, false, false, false, "en", List.of(), Map.of());
+        "Marvel", "1", "rare", null, null, null, null, false, false, false, false, "en",
+        List.of(new ScryfallCardFace("Spider-Man", null, null, null, null, null, null, List.of(),
+            new ScryfallImageUris("small", "normal", "large"))), Map.of());
     URI nextPage = URI.create("https://api.scryfall.com/cards/search?page=2");
     when(scryfallClient.searchCards("set:mar"))
         .thenReturn(new ScryfallList<>(List.of(source), true, nextPage));
@@ -50,5 +56,9 @@ class CardImportServiceTest {
         cardPrintingRepository).importQuery("set:mar");
 
     assertThat(importedCount).isEqualTo(2);
+    ArgumentCaptor<CardPrinting> printing = ArgumentCaptor.forClass(CardPrinting.class);
+    verify(cardPrintingRepository, org.mockito.Mockito.times(2)).save(printing.capture());
+    assertThat(printing.getAllValues()).allSatisfy(value ->
+        assertThat(value.getImageUriNormal()).isEqualTo("normal"));
   }
 }

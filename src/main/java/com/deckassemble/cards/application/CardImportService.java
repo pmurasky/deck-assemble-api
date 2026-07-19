@@ -8,6 +8,7 @@ import com.deckassemble.cards.infrastructure.CardRepository;
 import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
@@ -64,9 +65,7 @@ public class CardImportService {
     MagicSet set = magicSetRepository.findBySetCode(source.set())
         .orElseGet(() -> magicSetRepository.save(
             new MagicSet(source.setId(), source.set(), source.setName())));
-    if (cardPrintingRepository.findByScryfallCardId(source.id()).isEmpty()) {
-      createPrinting(card, set, source);
-    }
+    savePrinting(card, set, source);
   }
 
   private void applyCardDetails(Card card, ScryfallCard source) {
@@ -88,8 +87,9 @@ public class CardImportService {
     return values == null ? null : String.join(",", values);
   }
 
-  private CardPrinting createPrinting(Card card, MagicSet set, ScryfallCard source) {
-    CardPrinting printing = new CardPrinting(card, set, source.id());
+  private void savePrinting(Card card, MagicSet set, ScryfallCard source) {
+    CardPrinting printing = cardPrintingRepository.findByScryfallCardId(source.id())
+        .orElseGet(() -> new CardPrinting(card, set, source.id()));
     printing.setCollectorNumber(source.collectorNumber());
     printing.setRarity(source.rarity());
     printing.setArtist(source.artist());
@@ -100,11 +100,23 @@ public class CardImportService {
     printing.setPromo(source.promo());
     printing.setDigital(source.digital());
     printing.setLanguage(source.lang());
-    if (source.imageUris() != null) {
-      printing.setImageUriSmall(source.imageUris().small());
-      printing.setImageUriNormal(source.imageUris().normal());
-      printing.setImageUriLarge(source.imageUris().large());
+    ScryfallImageUris imageUris = imageUris(source);
+    if (imageUris != null) {
+      printing.setImageUriSmall(imageUris.small());
+      printing.setImageUriNormal(imageUris.normal());
+      printing.setImageUriLarge(imageUris.large());
     }
-    return cardPrintingRepository.save(printing);
+    cardPrintingRepository.save(printing);
+  }
+
+  private ScryfallImageUris imageUris(ScryfallCard source) {
+    if (source.imageUris() != null) {
+      return source.imageUris();
+    }
+    if (source.cardFaces() == null) {
+      return null;
+    }
+    return source.cardFaces().stream().map(face -> face.imageUris()).filter(uri -> uri != null)
+        .findFirst().orElse(null);
   }
 }
