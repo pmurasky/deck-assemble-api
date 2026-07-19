@@ -62,7 +62,7 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
   @Test
   void shouldReturnCardPrintings() throws Exception {
     Card card = cardRepository.save(new Card("oracle-captain-america", "Captain America"));
-    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel", "mar", "Marvel Super Heroes"));
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel-printings", "mpr", "Marvel Super Heroes"));
     CardPrinting printing = new CardPrinting(card, set, "printing-captain-america");
     printing.setCollectorNumber("12");
     printing.setRarity("rare");
@@ -71,8 +71,22 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     mockMvc
         .perform(get("/cards/{cardId}/printings", card.getId()).with(jwt()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].setCode").value("mar"))
+        .andExpect(jsonPath("$[0].setCode").value("mpr"))
         .andExpect(jsonPath("$[0].collectorNumber").value("12"));
+  }
+
+  @Test
+  void shouldFilterCardsBySetAndColorIdentity() throws Exception {
+    Card card = cardRepository.save(new Card("oracle-storm", "Storm"));
+    card.setColorIdentity("U,R");
+    cardRepository.save(card);
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel-filter", "mar", "Marvel"));
+    cardPrintingRepository.save(new CardPrinting(card, set, "printing-storm"));
+
+    mockMvc
+        .perform(get("/cards").queryParam("setCode", "mar").queryParam("colorIdentity", "U").with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].name").value("Storm"));
   }
 
   @Test

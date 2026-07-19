@@ -2,6 +2,8 @@ package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.api.CardDetailResponse;
 import com.deckassemble.cards.api.CardSummaryResponse;
+import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.infrastructure.CardRepository;
 import com.deckassemble.cards.api.CardPrintingResponse;
 import com.deckassemble.cards.infrastructure.CardPrintingRepository;
@@ -9,6 +11,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.data.jpa.domain.Specification;
 
 @Service
 public class CardCatalogService {
@@ -21,9 +24,30 @@ public class CardCatalogService {
     this.cardPrintingRepository = cardPrintingRepository;
   }
 
-  public Page<CardSummaryResponse> search(String query, Pageable pageable) {
-    return cardRepository.findByNameContainingIgnoreCaseAndActiveTrue(query, pageable)
+  public Page<CardSummaryResponse> search(String query, String setCode, String colorIdentity,
+      Pageable pageable) {
+    return cardRepository.findAll(specification(query, setCode, colorIdentity), pageable)
         .map(CardSummaryResponse::from);
+  }
+
+  private Specification<Card> specification(String query, String setCode, String colorIdentity) {
+    Specification<Card> result = (root, criteria, builder) -> builder.isTrue(root.get("active"));
+    result = result.and((root, criteria, builder) -> builder.like(builder.lower(root.get("name")),
+        "%" + query.toLowerCase() + "%"));
+    if (colorIdentity != null) {
+      result = result.and((root, criteria, builder) -> builder.like(root.get("colorIdentity"),
+          "%" + colorIdentity + "%"));
+    }
+    if (setCode != null) {
+      result = result.and((root, criteria, builder) -> {
+        var subquery = criteria.subquery(Long.class);
+        var printings = subquery.from(CardPrinting.class);
+        return builder.exists(subquery.select(printings.get("id"))
+            .where(builder.equal(printings.get("card").get("id"), root.get("id")),
+                builder.equal(printings.get("magicSet").get("setCode"), setCode)));
+      });
+    }
+    return result;
   }
 
   public CardDetailResponse getById(long cardId) {
