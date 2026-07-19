@@ -7,7 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.MagicSet;
+import com.deckassemble.cards.infrastructure.CardPrintingRepository;
 import com.deckassemble.cards.infrastructure.CardRepository;
+import com.deckassemble.cards.infrastructure.MagicSetRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +20,8 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private CardRepository cardRepository;
+  @Autowired private CardPrintingRepository cardPrintingRepository;
+  @Autowired private MagicSetRepository magicSetRepository;
 
   @Test
   void shouldReturnActiveCardsMatchingTheNameQuery() throws Exception {
@@ -50,5 +56,21 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
         .perform(get("/cards/{cardId}", 999_999L).with(jwt()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("CARD_NOT_FOUND"));
+  }
+
+  @Test
+  void shouldReturnCardPrintings() throws Exception {
+    Card card = cardRepository.save(new Card("oracle-captain-america", "Captain America"));
+    MagicSet set = magicSetRepository.save(new MagicSet("set-marvel", "mar", "Marvel Super Heroes"));
+    CardPrinting printing = new CardPrinting(card, set, "printing-captain-america");
+    printing.setCollectorNumber("12");
+    printing.setRarity("rare");
+    cardPrintingRepository.save(printing);
+
+    mockMvc
+        .perform(get("/cards/{cardId}/printings", card.getId()).with(jwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].setCode").value("mar"))
+        .andExpect(jsonPath("$[0].collectorNumber").value("12"));
   }
 }

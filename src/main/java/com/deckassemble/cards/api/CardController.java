@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/cards")
@@ -30,5 +31,10 @@ public class CardController {
   @GetMapping("/{cardId}")
   public CardDetailResponse getById(@PathVariable long cardId) {
     return cardCatalogService.getById(cardId);
+  }
+
+  @GetMapping("/{cardId}/printings")
+  public List<CardPrintingResponse> getPrintings(@PathVariable long cardId) {
+    return cardCatalogService.getPrintings(cardId);
   }
 }
