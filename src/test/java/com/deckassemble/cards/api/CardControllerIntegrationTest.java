@@ -2,6 +2,7 @@ package com.deckassemble.cards.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -72,5 +73,12 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].setCode").value("mar"))
         .andExpect(jsonPath("$[0].collectorNumber").value("12"));
+  }
+
+  @Test
+  void shouldForbidCardImportsForNonAdministrators() throws Exception {
+    mockMvc
+        .perform(post("/admin/card-imports").queryParam("query", "set:mar").with(jwt()))
+        .andExpect(status().isForbidden());
   }
 }
