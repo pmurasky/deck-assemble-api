@@ -1,0 +1,180 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-decks
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: decks
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_decks
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: format_code
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+              - column:
+                  name: commander_card_id
+                  type: bigint
+              - column:
+                  name: secondary_commander_card_id
+                  type: bigint
+              - column:
+                  name: use_owned_cards_only
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: budget_limit
+                  type: numeric(10, 2)
+              - column:
+                  name: desired_power_level
+                  type: integer
+              - column:
+                  name: play_style
+                  type: varchar(50)
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: DRAFT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: deck_cards
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_cards
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_printing_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: integer
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deck_section
+                  type: varchar(20)
+                  defaultValue: MAIN_DECK
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: decks
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_decks_profile
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: decks
+            baseColumnNames: commander_card_id
+            referencedTableName: cards
+            referencedColumnNames: id
+            constraintName: fk_decks_commander_card
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: decks
+            baseColumnNames: secondary_commander_card_id
+            referencedTableName: cards
+            referencedColumnNames: id
+            constraintName: fk_decks_secondary_commander_card
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: deck_cards
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_cards_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_cards
+            baseColumnNames: card_printing_id
+            referencedTableName: card_printings
+            referencedColumnNames: id
+            constraintName: fk_deck_cards_printing
+        - addUniqueConstraint:
+            tableName: deck_cards
+            columnNames: deck_id, card_printing_id, deck_section
+            constraintName: uq_deck_cards_deck_printing_section
+        - createIndex:
+            tableName: decks
+            indexName: idx_decks_profile_id
+            columns:
+              - column:
+                  name: profile_id
+        - createIndex:
+            tableName: deck_cards
+            indexName: idx_deck_cards_deck_id
+            columns:
+              - column:
+                  name: deck_id
+        - createIndex:
+            tableName: deck_cards
+            indexName: idx_deck_cards_card_printing_id
+            columns:
+              - column:
+                  name: card_printing_id
