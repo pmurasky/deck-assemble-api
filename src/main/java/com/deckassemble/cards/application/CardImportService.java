@@ -1,6 +1,7 @@
 package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.infrastructure.CardPrintingRepository;
@@ -95,6 +96,16 @@ public class CardImportService {
     card.setKeywords(join(source.keywords()));
     card.setLayout(source.layout());
     card.setReserved(source.reserved());
+    replaceLegalities(card, source);
+  }
+
+  private void replaceLegalities(Card card, ScryfallCard source) {
+    card.getLegalities().clear();
+    if (source.legalities() == null) {
+      return;
+    }
+    source.legalities().forEach((format, status) ->
+        card.getLegalities().add(new CardLegality(card, format, status)));
   }
 
   private String join(List<String> values) {

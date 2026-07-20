@@ -44,7 +44,7 @@ class CardImportServiceTest {
         null, null, null, null, null, List.of(), List.of(), List.of(), null, false, "set-id", "mar",
         "Marvel", "1", "rare", null, null, null, null, false, false, false, false, "en",
         List.of(new ScryfallCardFace("Spider-Man", null, null, null, null, null, null, List.of(),
-            new ScryfallImageUris("small", "normal", "large"))), Map.of());
+             new ScryfallImageUris("small", "normal", "large"))), Map.of("commander", "legal"));
     URI nextPage = URI.create("https://api.scryfall.com/cards/search?page=2");
     when(scryfallClient.searchCards("set:mar"))
         .thenReturn(new ScryfallList<>(List.of(source), true, nextPage));
@@ -67,5 +67,12 @@ class CardImportServiceTest {
     verify(cardPrintingRepository, org.mockito.Mockito.times(2)).save(printing.capture());
     assertThat(printing.getAllValues()).allSatisfy(value ->
         assertThat(value.getImageUriNormal()).isEqualTo("normal"));
+    ArgumentCaptor<Card> cards = ArgumentCaptor.forClass(Card.class);
+    verify(cardRepository, org.mockito.Mockito.times(2)).save(cards.capture());
+    assertThat(cards.getAllValues()).allSatisfy(card ->
+        assertThat(card.getLegalities()).singleElement().satisfies(legality -> {
+          assertThat(legality.getFormatCode()).isEqualTo("commander");
+          assertThat(legality.getLegalityStatus()).isEqualTo("legal");
+        }));
   }
 }
