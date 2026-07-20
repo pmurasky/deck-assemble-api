@@ -42,7 +42,7 @@ public class DeckService {
 
   public List<DeckResponse> list() {
     return deckRepository.findByProfileIdOrderByNameAsc(profileId()).stream()
-        .map(DeckResponse::from)
+        .map(this::responseFor)
         .toList();
   }
 
@@ -55,11 +55,11 @@ public class DeckService {
     deck.setBudgetLimit(request.budgetLimit());
     deck.setDesiredPowerLevel(request.desiredPowerLevel());
     deck.setPlayStyle(request.playStyle());
-    return DeckResponse.from(deckRepository.save(deck));
+    return responseFor(deckRepository.save(deck));
   }
 
   public DeckResponse getById(long deckId) {
-    return DeckResponse.from(owned(deckId));
+    return responseFor(owned(deckId));
   }
 
   public DeckResponse update(long deckId, DeckUpdateRequest request) {
@@ -91,7 +91,7 @@ public class DeckService {
     if (request.playStyle() != null) {
       deck.setPlayStyle(request.playStyle());
     }
-    return DeckResponse.from(deckRepository.save(deck));
+    return responseFor(deckRepository.save(deck));
   }
 
   public void delete(long deckId) {
@@ -101,7 +101,7 @@ public class DeckService {
   public DeckResponse archive(long deckId) {
     Deck deck = owned(deckId);
     deck.setStatus(Deck.Status.ARCHIVED);
-    return DeckResponse.from(deckRepository.save(deck));
+    return responseFor(deckRepository.save(deck));
   }
 
   public DeckResponse duplicate(long deckId) {
@@ -119,7 +119,7 @@ public class DeckService {
         .map(card -> new DeckCard(saved.getId(), card.getCardPrintingId(), card.getQuantity(),
             card.getDeckSection()))
         .forEach(deckCardRepository::save);
-    return DeckResponse.from(saved);
+    return responseFor(saved);
   }
 
   public List<DeckCardResponse> listCards(long deckId) {
@@ -180,5 +180,13 @@ public class DeckService {
   private DeckCardResponse responseFor(DeckCard card) {
     return DeckCardResponse.from(
         card, cardCatalogService.getSummaryByPrintingId(card.getCardPrintingId()));
+  }
+
+  private DeckResponse responseFor(Deck deck) {
+    int cardCount = deckCardRepository.findByDeckId(deck.getId()).stream()
+        .mapToInt(DeckCard::getQuantity).sum();
+    String commanderName = deck.getCommanderCardId() == null ? null
+        : cardCatalogService.getNameById(deck.getCommanderCardId());
+    return DeckResponse.from(deck, cardCount, commanderName);
   }
 }

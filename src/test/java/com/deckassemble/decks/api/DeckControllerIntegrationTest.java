@@ -39,6 +39,8 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                 + "\"commanderCardId\":" + commanderCardId + ",\"desiredPowerLevel\":5}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.name").value("Spider-Verse Commander"))
+        .andExpect(jsonPath("$.commanderName").value("Commander"))
+        .andExpect(jsonPath("$.cardCount").value(0))
         .andExpect(jsonPath("$.status").value("DRAFT"))
         .andReturn();
     long deckId = idFrom(result);
@@ -79,6 +81,9 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
         .andExpect(status().isOk()).andExpect(jsonPath("$[0].quantity").value(2))
         .andExpect(jsonPath("$[0].deckSection").value("MAIN_DECK"))
         .andExpect(jsonPath("$[0].card.name").value("Deck Card"));
+
+    mockMvc.perform(get("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.cardCount").value(2));
   }
 
   @Test

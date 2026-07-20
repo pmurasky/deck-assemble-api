@@ -16,9 +16,11 @@ public record DeckResponse(
     Integer desiredPowerLevel,
     String playStyle,
     String status,
+    int cardCount,
+    String commanderName,
     Instant createdAt) {
 
-  public static DeckResponse from(Deck deck) {
+  public static DeckResponse from(Deck deck, int cardCount, String commanderName) {
     return new DeckResponse(
         deck.getId(),
         deck.getName(),
@@ -31,6 +33,8 @@ public record DeckResponse(
         deck.getDesiredPowerLevel(),
         deck.getPlayStyle(),
         deck.getStatus().name(),
+        cardCount,
+        commanderName,
         deck.getCreatedAt());
   }
 }

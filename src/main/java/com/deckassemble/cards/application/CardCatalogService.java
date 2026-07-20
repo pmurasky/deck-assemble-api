@@ -69,6 +69,10 @@ public class CardCatalogService {
         .orElseThrow(CardNotFoundException::new);
   }
 
+  public String getNameById(long cardId) {
+    return cardRepository.findById(cardId).map(Card::getName).orElse(null);
+  }
+
   public Page<CardSummaryResponse> getSetPrintings(String setCode, Pageable pageable) {
     return getSetPrintings(setCode, "", pageable);
   }
