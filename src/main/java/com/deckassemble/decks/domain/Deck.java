@@ -10,7 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -70,7 +70,7 @@ public class Deck {
 
   @CreatedDate
   @Column(name = "created_at", nullable = false, updatable = false)
-  private OffsetDateTime createdAt;
+  private Instant createdAt;
 
   @CreatedBy
   @Column(name = "created_by", updatable = false)
@@ -78,7 +78,7 @@ public class Deck {
 
   @LastModifiedDate
   @Column(name = "updated_at", nullable = false)
-  private OffsetDateTime updatedAt;
+  private Instant updatedAt;
 
   @LastModifiedBy
   @Column(name = "updated_by")
@@ -181,7 +181,7 @@ public class Deck {
     this.status = status;
   }
 
-  public OffsetDateTime getCreatedAt() {
+  public Instant getCreatedAt() {
     return createdAt;
   }
 }
