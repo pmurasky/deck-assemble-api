@@ -1,0 +1,112 @@
+package com.deckassemble.decks.api;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.deckassemble.AbstractIntegrationTest;
+import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.MagicSet;
+import com.deckassemble.cards.infrastructure.CardPrintingRepository;
+import com.deckassemble.cards.infrastructure.CardRepository;
+import com.deckassemble.cards.infrastructure.MagicSetRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+class DeckControllerIntegrationTest extends AbstractIntegrationTest {
+
+  @Autowired private MockMvc mockMvc;
+  @Autowired private CardRepository cardRepository;
+  @Autowired private MagicSetRepository magicSetRepository;
+  @Autowired private CardPrintingRepository cardPrintingRepository;
+
+  @Test
+  void shouldCreateUpdateDuplicateArchiveAndDeleteDeck() throws Exception {
+    String subject = "auth0|deck-owner";
+    long commanderCardId = cardRepository.save(new Card("oracle-commander", "Commander")).getId();
+    MvcResult result = mockMvc
+        .perform(post("/decks").with(jwt().jwt(jwt -> jwt.subject(subject)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"Spider-Verse Commander\",\"formatCode\":\"COMMANDER\","
+                + "\"commanderCardId\":" + commanderCardId + ",\"desiredPowerLevel\":5}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value("Spider-Verse Commander"))
+        .andExpect(jsonPath("$.status").value("DRAFT"))
+        .andReturn();
+    long deckId = idFrom(result);
+
+    mockMvc.perform(patch("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject)))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Updated Commander\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Updated Commander"));
+
+    mockMvc.perform(post("/decks/{deckId}/duplicate", deckId)
+            .with(jwt().jwt(jwt -> jwt.subject(subject))))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value("Updated Commander (Copy)"));
+
+    mockMvc.perform(post("/decks/{deckId}/archive", deckId)
+            .with(jwt().jwt(jwt -> jwt.subject(subject))))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ARCHIVED"));
+
+    mockMvc.perform(delete("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void shouldManageDeckCardsWithSectionsAndMerging() throws Exception {
+    String subject = "auth0|deck-cards";
+    long deckId = createDeck(subject);
+    long printingId = createPrinting("deckprint");
+
+    String request =
+        "{\"cardPrintingId\":%d,\"quantity\":1,\"deckSection\":\"MAIN_DECK\"}".formatted(printingId);
+    mockMvc.perform(post("/decks/{deckId}/cards", deckId).with(jwt().jwt(jwt -> jwt.subject(subject)))
+            .contentType(MediaType.APPLICATION_JSON).content(request))
+        .andExpect(status().isCreated());
+    mockMvc.perform(post("/decks/{deckId}/cards", deckId).with(jwt().jwt(jwt -> jwt.subject(subject)))
+            .contentType(MediaType.APPLICATION_JSON).content(request))
+        .andExpect(status().isCreated());
+
+    mockMvc.perform(get("/decks/{deckId}/cards", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
+        .andExpect(status().isOk()).andExpect(jsonPath("$[0].quantity").value(2))
+        .andExpect(jsonPath("$[0].deckSection").value("MAIN_DECK"))
+        .andExpect(jsonPath("$[0].card.name").value("Deck Card"));
+  }
+
+  @Test
+  void shouldHideAnotherUsersDeck() throws Exception {
+    long deckId = createDeck("auth0|deck-private");
+
+    mockMvc.perform(get("/decks/{deckId}", deckId)
+            .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-other"))))
+        .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+  }
+
+  private long createDeck(String subject) throws Exception {
+    MvcResult result = mockMvc
+        .perform(post("/decks").with(jwt().jwt(jwt -> jwt.subject(subject)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"Deck\",\"formatCode\":\"COMMANDER\"}"))
+        .andExpect(status().isCreated()).andReturn();
+    return idFrom(result);
+  }
+
+  private long idFrom(MvcResult result) {
+    String location = result.getResponse().getHeader("Location");
+    return Long.parseLong(location.substring(location.lastIndexOf('/') + 1));
+  }
+
+  private long createPrinting(String identifier) {
+    Card card = cardRepository.save(new Card("oracle-" + identifier, "Deck Card"));
+    MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, identifier, "Deck Set"));
+    return cardPrintingRepository.save(new CardPrinting(card, set, "printing-" + identifier)).getId();
+  }
+}

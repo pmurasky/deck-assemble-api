@@ -3,6 +3,8 @@ package com.deckassemble.shared.exception;
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.CollectionNotFoundException;
+import com.deckassemble.decks.application.DeckCardNotFoundException;
+import com.deckassemble.decks.application.DeckNotFoundException;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -29,6 +31,16 @@ public class ApiExceptionHandler {
   @ExceptionHandler(CollectionCardNotFoundException.class)
   ProblemDetail handleCollectionCardNotFound() {
     return notFound("collection-card", "Collection card");
+  }
+
+  @ExceptionHandler(DeckNotFoundException.class)
+  ProblemDetail handleDeckNotFound() {
+    return notFound("deck", "Deck");
+  }
+
+  @ExceptionHandler(DeckCardNotFoundException.class)
+  ProblemDetail handleDeckCardNotFound() {
+    return notFound("deck-card", "Deck card");
   }
 
   private ProblemDetail notFound(String resource, String title) {
