@@ -30,3 +30,14 @@ jobs:
         run: ./gradlew check --no-daemon
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=--enable-native-access=ALL-UNNAMED"
+
+  fossa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run FOSSA scan
+        uses: fossas/fossa-action@v1
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
