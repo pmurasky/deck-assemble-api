@@ -40,6 +40,11 @@ public class DeckController {
     return deckService.getById(deckId);
   }
 
+  @GetMapping("/{deckId}/legality")
+  public DeckLegalityResponse legality(@PathVariable long deckId) {
+    return deckService.legality(deckId);
+  }
+
   @PatchMapping("/{deckId}")
   public DeckResponse update(@PathVariable long deckId,
       @Valid @RequestBody DeckUpdateRequest request) {

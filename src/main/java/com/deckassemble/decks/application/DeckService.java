@@ -5,6 +5,7 @@ import com.deckassemble.decks.api.DeckCardAddRequest;
 import com.deckassemble.decks.api.DeckCardResponse;
 import com.deckassemble.decks.api.DeckCardUpdateRequest;
 import com.deckassemble.decks.api.DeckCreateRequest;
+import com.deckassemble.decks.api.DeckLegalityResponse;
 import com.deckassemble.decks.api.DeckResponse;
 import com.deckassemble.decks.api.DeckUpdateRequest;
 import com.deckassemble.decks.domain.Deck;
@@ -26,18 +27,21 @@ public class DeckService {
   private final CurrentUser currentUser;
   private final ProfileService profileService;
   private final CardCatalogService cardCatalogService;
+  private final CommanderLegalityEvaluator commanderLegalityEvaluator;
 
   public DeckService(
       DeckRepository deckRepository,
       DeckCardRepository deckCardRepository,
       CurrentUser currentUser,
       ProfileService profileService,
-      CardCatalogService cardCatalogService) {
+      CardCatalogService cardCatalogService,
+      CommanderLegalityEvaluator commanderLegalityEvaluator) {
     this.deckRepository = deckRepository;
     this.deckCardRepository = deckCardRepository;
     this.currentUser = currentUser;
     this.profileService = profileService;
     this.cardCatalogService = cardCatalogService;
+    this.commanderLegalityEvaluator = commanderLegalityEvaluator;
   }
 
   public List<DeckResponse> list() {
@@ -60,6 +64,11 @@ public class DeckService {
 
   public DeckResponse getById(long deckId) {
     return responseFor(owned(deckId));
+  }
+
+  public DeckLegalityResponse legality(long deckId) {
+    Deck deck = owned(deckId);
+    return commanderLegalityEvaluator.evaluate(deck, deckCardRepository.findByDeckId(deckId));
   }
 
   public DeckResponse update(long deckId, DeckUpdateRequest request) {
