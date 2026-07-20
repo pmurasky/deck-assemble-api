@@ -24,10 +24,7 @@ public class ImportRunRecorder {
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void complete(long runId, int read, int created, int updated, int skipped) {
-    find(runId).ifPresent(run -> {
-      run.finish(read, created, updated, skipped, OffsetDateTime.now());
-      repository.save(run);
-    });
+    find(runId).ifPresent(run -> finish(run, read, created, updated, skipped));
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -40,5 +37,20 @@ public class ImportRunRecorder {
 
   private Optional<CardImportRun> find(long runId) {
     return repository.findById(runId);
+  }
+
+  private void finish(CardImportRun run, int read, int created, int updated, int skipped) {
+    for (int index = 0; index < created; index++) {
+      run.recordCreated();
+    }
+    for (int index = 0; index < updated; index++) {
+      run.recordUpdated();
+    }
+    int failed = Math.max(skipped, read - created - updated);
+    for (int index = 0; index < failed; index++) {
+      run.recordSkipped();
+    }
+    run.complete(OffsetDateTime.now());
+    repository.save(run);
   }
 }

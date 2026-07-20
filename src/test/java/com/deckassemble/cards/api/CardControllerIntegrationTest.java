@@ -158,7 +158,13 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
   @Test
   void shouldReturnLatestImportRun() throws Exception {
     var run = new CardImportRun("scryfall", "set:msh", OffsetDateTime.parse("2026-07-19T20:00:00Z"), "admin-sub");
-    run.finish(453, 300, 153, 0, OffsetDateTime.parse("2026-07-19T20:05:00Z"));
+    for (int index = 0; index < 300; index++) {
+      run.recordCreated();
+    }
+    for (int index = 0; index < 153; index++) {
+      run.recordUpdated();
+    }
+    run.complete(OffsetDateTime.parse("2026-07-19T20:05:00Z"));
     cardImportRunRepository.save(run);
 
     mockMvc
