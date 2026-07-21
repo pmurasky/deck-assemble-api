@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Suppressions per docs/STATIC_ANALYSIS_STANDARDS.md (justification required).
+  EI_EXPOSE_REP / EI_EXPOSE_REP2 are excluded project-wide: every finding is one of
+  (1) constructor-injected Spring collaborators, (2) JPA entity associations, or
+  (3) record components holding collections. In all cases exposing the
+  reference is the intended design and defensive copying would break ORM identity
+  or record semantics. Reconsider if mutable hand-rolled value objects appear.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

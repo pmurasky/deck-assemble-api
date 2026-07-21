@@ -2,6 +2,7 @@ plugins {
     java
     id("org.springframework.boot") version "4.1.0"
     id("com.diffplug.spotless") version "7.2.1"
+    id("com.github.spotbugs") version "6.4.2"
     pmd
     checkstyle
 }
@@ -108,4 +109,22 @@ tasks.withType<Test> {
 
 tasks.named("check") {
     dependsOn("spotlessCheck", "cpdCheck")
+}
+
+spotbugs {
+    toolVersion.set("4.9.8")
+    ignoreFailures.set(false)
+    excludeFilter.set(file("config/spotbugs/exclude.xml"))
+}
+
+tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
+    reports {
+        create("xml") { required.set(true) }
+        create("html") { required.set(true) }
+    }
+}
+
+// Standards run SpotBugs on main sources only.
+tasks.named("spotbugsTest") {
+    enabled = false
 }
