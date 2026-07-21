@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!-- Trimmed config: formatting rules (indentation, braces placement, whitespace,
+     import order, unused imports) are owned by Spotless + google-java-format AOSP.
+     Javadoc checks deferred per incremental adoption in CHECKSTYLE_STANDARDS.md. -->
+<module name="Checker">
+
+    <module name="SuppressWarningsFilter"/>
+    <module name="FileTabCharacter"/>
+    <module name="NewlineAtEndOfFile"/>
+    <module name="FileLength">
+        <property name="max" value="500"/>
+    </module>
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package .*|^import .*|^ *\* *https?://"/>
+    </module>
+
+    <module name="TreeWalker">
+        <module name="SuppressWarningsHolder"/>
+
+        <!-- Naming conventions -->
+        <module name="PackageName"/>
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="MemberName"/>
+        <module name="ConstantName"/>
+        <module name="StaticVariableName"/>
+        <module name="ParameterName"/>
+        <module name="LocalVariableName"/>
+        <module name="LambdaParameterName"/>
+        <module name="PatternVariableName"/>
+        <module name="RecordComponentName"/>
+        <module name="ClassTypeParameterName"/>
+        <module name="InterfaceTypeParameterName"/>
+        <module name="MethodTypeParameterName"/>
+        <module name="AbbreviationAsWordInName">
+            <property name="allowedAbbreviationLength" value="2"/>
+        </module>
+
+        <!-- Imports (order/unused owned by Spotless) -->
+        <module name="AvoidStarImport"/>
+        <module name="RedundantImport"/>
+
+        <!-- Size limits (thresholds from STATIC_ANALYSIS_STANDARDS.md) -->
+        <module name="MethodLength">
+            <property name="max" value="20"/>
+            <property name="countEmpty" value="false"/>
+        </module>
+        <module name="ParameterNumber">
+            <property name="max" value="5"/>
+            <property name="ignoreOverriddenMethods" value="true"/>
+        </module>
+        <module name="BooleanExpressionComplexity">
+            <property name="max" value="4"/>
+        </module>
+        <module name="NestedIfDepth">
+            <property name="max" value="3"/>
+        </module>
+        <module name="NestedForDepth">
+            <property name="max" value="2"/>
+        </module>
+        <module name="NestedTryDepth">
+            <property name="max" value="1"/>
+        </module>
+
+        <!-- Coding practices -->
+        <module name="EqualsHashCode"/>
+        <module name="EqualsAvoidNull"/>
+        <module name="FallThrough"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="DefaultComesLast"/>
+        <module name="MagicNumber">
+            <property name="ignoreHashCodeMethod" value="true"/>
+            <property name="ignoreAnnotation" value="true"/>
+        </module>
+        <module name="StringLiteralEquality"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="NoFinalizer"/>
+        <module name="OverloadMethodsDeclarationOrder"/>
+        <module name="VariableDeclarationUsageDistance">
+            <property name="allowedDistance" value="5"/>
+        </module>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="NeedBraces"/>
+        <module name="EmptyStatement"/>
+        <module name="ArrayTypeStyle"/>
+
+        <!-- Class design -->
+        <module name="OneTopLevelClass"/>
+        <module name="HideUtilityClassConstructor"/>
+        <module name="DeclarationOrder"/>
+        <module name="VisibilityModifier">
+            <property name="allowPublicFinalFields" value="true"/>
+        </module>
+        <module name="FinalClass"/>
+
+        <!-- Misc -->
+        <module name="MissingOverride"/>
+        <module name="OuterTypeFilename"/>
+    </module>
+</module>

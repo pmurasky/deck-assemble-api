@@ -3,6 +3,7 @@ plugins {
     id("org.springframework.boot") version "4.1.0"
     id("com.diffplug.spotless") version "7.2.1"
     pmd
+    checkstyle
 }
 
 group = "com.deckassemble"
@@ -69,6 +70,25 @@ tasks.withType<org.gradle.api.plugins.quality.Pmd> {
         xml.required.set(true)
         html.required.set(true)
     }
+}
+
+checkstyle {
+    toolVersion = "10.21.1"
+    configFile = file("config/checkstyle/checkstyle.xml")
+    isIgnoreFailures = false
+    maxWarnings = 0
+}
+
+tasks.withType<Checkstyle> {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+// Standards apply Checkstyle to main sources only (tests excluded).
+tasks.named("checkstyleTest") {
+    enabled = false
 }
 
 // Gradle 9 removed the built-in Cpd task; run PMD's CPD CLI directly.
