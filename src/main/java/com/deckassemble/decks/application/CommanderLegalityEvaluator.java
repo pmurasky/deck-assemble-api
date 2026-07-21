@@ -76,18 +76,25 @@ class CommanderLegalityEvaluator {
         }
         boolean paired = partner != null && validPair(commander, partner);
         validateCommander(commander, "COMMANDER", violations);
-        if (partner != null && !eligible(partner) && !paired) {
+        if (partner != null) {
+            validatePartner(partner, paired, violations);
+        }
+    }
+
+    private void validatePartner(
+            Card partner, boolean paired, List<DeckLegalityResponse.Violation> violations) {
+        if (paired) {
+            validateLegality(partner, violations);
+            return;
+        }
+        if (!eligible(partner)) {
             add(
                     violations,
                     "SECONDARY_COMMANDER_INELIGIBLE",
                     partner.getName() + " cannot be a commander.");
         }
-        if (partner != null && !paired) {
-            add(violations, "COMMANDER_PAIR_INVALID", "The selected commanders cannot be paired.");
-        }
-        if (partner != null) {
-            validateCommander(partner, "SECONDARY_COMMANDER", violations);
-        }
+        add(violations, "COMMANDER_PAIR_INVALID", "The selected commanders cannot be paired.");
+        validateCommander(partner, "SECONDARY_COMMANDER", violations);
     }
 
     private void validateCommander(
