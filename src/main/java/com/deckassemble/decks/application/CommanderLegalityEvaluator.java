@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -46,7 +47,7 @@ class CommanderLegalityEvaluator {
         return new DeckLegalityResponse(violations.isEmpty(), violations);
     }
 
-    private Card commander(
+    private @Nullable Card commander(
             Long cardId, String role, List<DeckLegalityResponse.Violation> violations) {
         if (cardId == null) {
             if ("COMMANDER".equals(role)) {
@@ -67,7 +68,9 @@ class CommanderLegalityEvaluator {
     }
 
     private void validateCommanders(
-            Card commander, Card partner, List<DeckLegalityResponse.Violation> violations) {
+            @Nullable Card commander,
+            @Nullable Card partner,
+            List<DeckLegalityResponse.Violation> violations) {
         if (commander == null) {
             return;
         }
@@ -121,8 +124,8 @@ class CommanderLegalityEvaluator {
 
     private void validateCards(
             List<Card> cards,
-            Card commander,
-            Card partner,
+            @Nullable Card commander,
+            @Nullable Card partner,
             List<DeckLegalityResponse.Violation> violations) {
         Set<String> colorIdentity = colors(commander, partner);
         cards.forEach(card -> validateCard(card, colorIdentity, violations));
@@ -253,14 +256,14 @@ class CommanderLegalityEvaluator {
         return text(card.getTypeLine()).contains("basic land");
     }
 
-    private Set<String> colors(Card... cards) {
+    private Set<String> colors(@Nullable Card... cards) {
         return java.util.Arrays.stream(cards)
                 .filter(card -> card != null)
                 .flatMap(card -> colors(card).stream())
                 .collect(java.util.stream.Collectors.toSet());
     }
 
-    private Set<String> colors(Card card) {
+    private Set<String> colors(@Nullable Card card) {
         if (card == null || card.getColorIdentity() == null || card.getColorIdentity().isBlank()) {
             return Set.of();
         }
@@ -271,7 +274,7 @@ class CommanderLegalityEvaluator {
         return text(card.getOracleText()).contains(text);
     }
 
-    private String text(String value) {
+    private String text(@Nullable String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 

@@ -5,6 +5,7 @@ import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,7 +31,7 @@ public class CardCatalogService {
     }
 
     // ponytail: one printing lookup per card (N+1 at page size); batch fetch if pages get slow
-    private CardPrinting latestPrinting(long cardId) {
+    private @Nullable CardPrinting latestPrinting(long cardId) {
         return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
                 .findFirst()
                 .orElse(null);
@@ -90,7 +91,7 @@ public class CardCatalogService {
                 .orElseThrow(CardNotFoundException::new);
     }
 
-    public String getNameById(long cardId) {
+    public @Nullable String getNameById(long cardId) {
         return cardRepository.findById(cardId).map(Card::getName).orElse(null);
     }
 

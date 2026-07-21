@@ -14,6 +14,7 @@ import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,7 +60,7 @@ public class CardImportService {
                     runId, counters.read, counters.created, counters.updated, counters.skipped);
             return counters.result(runId);
         } catch (RuntimeException exception) {
-            runRecorder.fail(runId, exception.getMessage());
+            runRecorder.fail(runId, String.valueOf(exception.getMessage()));
             throw exception;
         }
     }
@@ -129,7 +130,7 @@ public class CardImportService {
                                 card.getLegalities().add(new CardLegality(card, format, status)));
     }
 
-    private String join(List<String> values) {
+    private @Nullable String join(@Nullable List<String> values) {
         return values == null ? null : String.join(",", values);
     }
 

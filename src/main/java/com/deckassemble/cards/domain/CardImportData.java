@@ -3,6 +3,7 @@ package com.deckassemble.cards.domain;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public record CardImportData(
         String id,
@@ -27,7 +28,7 @@ public record CardImportData(
         String rarity,
         String artist,
         String flavorText,
-        CardImportImages images,
+        @Nullable CardImportImages images,
         LocalDate releasedAt,
         Boolean foil,
         Boolean nonfoil,

@@ -3,6 +3,7 @@ package com.deckassemble.cards.application;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
+import org.jspecify.annotations.Nullable;
 
 public record CardSummaryResponse(
         Long id,
@@ -15,13 +16,13 @@ public record CardSummaryResponse(
         String typeLine,
         String power,
         String toughness,
-        Long printingId,
-        String imageUrl,
-        String setCode,
-        String setName,
-        String rarity) {
+        @Nullable Long printingId,
+        @Nullable String imageUrl,
+        @Nullable String setCode,
+        @Nullable String setName,
+        @Nullable String rarity) {
 
-    public static CardSummaryResponse from(Card card, CardPrinting latestPrinting) {
+    public static CardSummaryResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardSummaryResponse(
                 card.getId(),
                 card.getScryfallOracleId(),

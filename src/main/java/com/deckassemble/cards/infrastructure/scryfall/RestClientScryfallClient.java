@@ -9,6 +9,7 @@ import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
 import java.net.URI;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -108,14 +109,14 @@ class RestClientScryfallClient implements ScryfallClient {
                 source.legalities());
     }
 
-    private CardImportImages toImages(ScryfallImageUris imageUris) {
+    private @Nullable CardImportImages toImages(@Nullable ScryfallImageUris imageUris) {
         if (imageUris == null) {
             return null;
         }
         return new CardImportImages(imageUris.small(), imageUris.normal(), imageUris.large());
     }
 
-    private ScryfallImageUris imageUris(ScryfallCard source) {
+    private @Nullable ScryfallImageUris imageUris(ScryfallCard source) {
         if (source.imageUris() != null) {
             return source.imageUris();
         }

@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -103,7 +104,7 @@ public class Card extends CardAttributes {
         return manaValue;
     }
 
-    public void setManaValue(BigDecimal manaValue) {
+    public void setManaValue(@Nullable BigDecimal manaValue) {
         this.manaValue = manaValue;
     }
 
@@ -111,7 +112,7 @@ public class Card extends CardAttributes {
         return colorIdentity;
     }
 
-    public void setColorIdentity(String colorIdentity) {
+    public void setColorIdentity(@Nullable String colorIdentity) {
         this.colorIdentity = colorIdentity;
     }
 
@@ -119,7 +120,7 @@ public class Card extends CardAttributes {
         return keywords;
     }
 
-    public void setKeywords(String keywords) {
+    public void setKeywords(@Nullable String keywords) {
         this.keywords = keywords;
     }
 

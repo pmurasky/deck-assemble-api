@@ -3,6 +3,7 @@ package com.deckassemble.cards.application;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
+import org.jspecify.annotations.Nullable;
 
 public record CardDetailResponse(
         Long id,
@@ -18,16 +19,16 @@ public record CardDetailResponse(
         String toughness,
         String loyalty,
         String keywords,
-        Long printingId,
-        String imageUrl,
-        String setCode,
-        String setName,
-        String rarity,
-        String flavorText) {
+        @Nullable Long printingId,
+        @Nullable String imageUrl,
+        @Nullable String setCode,
+        @Nullable String setName,
+        @Nullable String rarity,
+        @Nullable String flavorText) {
 
     // Suppressed: a 19-field record factory is one mapping per line; splitting harms readability.
     @SuppressWarnings("checkstyle:MethodLength")
-    public static CardDetailResponse from(Card card, CardPrinting latestPrinting) {
+    public static CardDetailResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardDetailResponse(
                 card.getId(),
                 card.getScryfallOracleId(),

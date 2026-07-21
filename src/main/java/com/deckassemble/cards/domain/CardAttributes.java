@@ -2,6 +2,7 @@ package com.deckassemble.cards.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Shared card attribute columns; subclasses keep identical column definitions, schema unchanged.
@@ -83,7 +84,7 @@ public abstract class CardAttributes {
         return colors;
     }
 
-    public void setColors(String colors) {
+    public void setColors(@Nullable String colors) {
         this.colors = colors;
     }
 }

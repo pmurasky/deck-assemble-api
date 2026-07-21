@@ -1,8 +1,12 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     java
     id("org.springframework.boot") version "4.1.0"
     id("com.diffplug.spotless") version "7.2.1"
     id("com.github.spotbugs") version "6.4.2"
+    id("net.ltgt.errorprone") version "4.3.0"
     pmd
     checkstyle
 }
@@ -27,6 +31,11 @@ val pmdCpd by configurations.creating
 dependencies {
     pmdCpd("net.sourceforge.pmd:pmd-cli:7.14.0")
     pmdCpd("net.sourceforge.pmd:pmd-java:7.14.0")
+
+    errorprone("com.google.errorprone:error_prone_core:2.41.0")
+    errorprone("com.uber.nullaway:nullaway:0.12.10")
+
+    compileOnly("org.jspecify:jspecify:1.0.0")
 
     implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -107,9 +116,40 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-tasks.named("check") {
-    dependsOn("spotlessCheck", "cpdCheck")
+// ErrorProne needs jdk.compiler internals on JDK 16+.
+val errorProneJvmArgs =
+    listOf(
+        "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+        "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
+        "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED",
+        "--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED",
+    )
+
+tasks.withType<JavaCompile>().configureEach {
+    options.forkOptions.jvmArgs?.addAll(errorProneJvmArgs)
+    options.errorprone {
+        option("NullAway:AnnotatedPackages", "com.deckassemble")
+        // JPA populates entity fields reflectively; NullAway's documented exclusion.
+        option(
+                "NullAway:ExcludedClassAnnotations",
+                "jakarta.persistence.Entity,jakarta.persistence.MappedSuperclass")
+        check("NullAway", CheckSeverity.ERROR)
+    }
 }
+
+// NullAway guards production code; tests build fixtures with nulls and reflection on purpose.
+tasks.named<JavaCompile>("compileTestJava") {
+    options.errorprone.isEnabled.set(false)
+}
+
+tasks.named("check") {
+    dependsOn("spotlessCheck", "cpdCheck")}
 
 spotbugs {
     toolVersion.set("4.9.8")

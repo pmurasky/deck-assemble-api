@@ -3,6 +3,7 @@ package com.deckassemble.decks.application;
 import com.deckassemble.decks.domain.Deck;
 import java.math.BigDecimal;
 import java.time.Instant;
+import org.jspecify.annotations.Nullable;
 
 public record DeckResponse(
         Long id,
@@ -17,10 +18,10 @@ public record DeckResponse(
         String playStyle,
         String status,
         int cardCount,
-        String commanderName,
+        @Nullable String commanderName,
         Instant createdAt) {
 
-    public static DeckResponse from(Deck deck, int cardCount, String commanderName) {
+    public static DeckResponse from(Deck deck, int cardCount, @Nullable String commanderName) {
         return new DeckResponse(
                 deck.getId(),
                 deck.getName(),
