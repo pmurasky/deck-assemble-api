@@ -18,7 +18,7 @@ See [AI_AGENT_WORKFLOW.md](./AI_AGENT_WORKFLOW.md) for the full workflow.
 - [ ] **Tests pass**: Run your project's test suite - all tests **PASS**
 - [ ] **Build succeeds**: Run your project's build - **SUCCEEDS**
 - [ ] **No lint errors**
-- [ ] **Static analysis passes**: No PMD, detekt, or Checkstyle violations (see [STATIC_ANALYSIS_STANDARDS.md](./STATIC_ANALYSIS_STANDARDS.md))
+- [ ] **Static analysis passes**: Run `./gradlew check` — it enforces Spotless formatting, PMD, CPD (duplication), Checkstyle, SpotBugs, and ArchUnit layer rules. All violations fail the build (see [STATIC_ANALYSIS_STANDARDS.md](./STATIC_ANALYSIS_STANDARDS.md))
 - [ ] **Commit is focused**: One logical change per commit
 - [ ] **Commit message**: Follows conventional commits format
 - [ ] **Production-ready**: Code is deployable to production
@@ -112,7 +112,7 @@ Before running `git commit`, verify:
 - [ ] **Production-ready: All unit tests pass** (run your project's unit test suite)
 - [ ] **Production-ready: Code compiles** (run your project's build)
 - [ ] **Production-ready: No lint errors**
-- [ ] **Production-ready: Static analysis passes** (PMD/detekt/Checkstyle -- see [STATIC_ANALYSIS_STANDARDS.md](./STATIC_ANALYSIS_STANDARDS.md))
+- [ ] **Production-ready: Static analysis passes** (`./gradlew check` enforces Spotless, PMD, CPD, Checkstyle, SpotBugs, ArchUnit — see [STATIC_ANALYSIS_STANDARDS.md](./STATIC_ANALYSIS_STANDARDS.md))
 - [ ] **Followed TDD micro-commit workflow** (RED → GREEN → COMMIT or REFACTOR → COMMIT)
 - [ ] **No SOLID violations** (see detailed checklist below)
 - [ ] **No design pattern anti-patterns** (see detailed checklist below)
