@@ -2,8 +2,8 @@ package com.deckassemble.administration.api;
 
 import com.deckassemble.cards.application.CardImportService;
 import com.deckassemble.cards.application.ImportResult;
+import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
-import com.deckassemble.imports.infrastructure.CardImportRunRepository;
 import jakarta.validation.constraints.NotBlank;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -19,12 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CardImportController {
 
     private final CardImportService cardImportService;
-    private final CardImportRunRepository cardImportRunRepository;
+    private final ImportRunRecorder importRunRecorder;
 
     public CardImportController(
-            CardImportService cardImportService, CardImportRunRepository cardImportRunRepository) {
+            CardImportService cardImportService, ImportRunRecorder importRunRecorder) {
         this.cardImportService = cardImportService;
-        this.cardImportRunRepository = cardImportRunRepository;
+        this.importRunRecorder = importRunRecorder;
     }
 
     @PostMapping
@@ -36,9 +36,7 @@ public class CardImportController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<ImportRunHistoryResponse> history() {
-        return cardImportRunRepository.findTop20ByOrderByStartedAtDesc().stream()
-                .map(ImportRunHistoryResponse::from)
-                .toList();
+        return importRunRecorder.history().stream().map(ImportRunHistoryResponse::from).toList();
     }
 
     public record ImportRunHistoryResponse(

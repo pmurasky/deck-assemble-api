@@ -3,6 +3,7 @@ package com.deckassemble.imports.application;
 import com.deckassemble.imports.domain.CardImportRun;
 import com.deckassemble.imports.infrastructure.CardImportRunRepository;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -37,6 +38,16 @@ public class ImportRunRecorder {
                             run.fail(OffsetDateTime.now(), errorSummary);
                             repository.save(run);
                         });
+    }
+
+    @Transactional(readOnly = true)
+    public List<CardImportRun> history() {
+        return repository.findTop20ByOrderByStartedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<CardImportRun> latestCompleted() {
+        return repository.findTopByStatusOrderByCompletedAtDesc(CardImportRun.Status.COMPLETED);
     }
 
     private Optional<CardImportRun> find(long runId) {

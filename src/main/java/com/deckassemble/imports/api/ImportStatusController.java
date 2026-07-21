@@ -1,7 +1,7 @@
 package com.deckassemble.imports.api;
 
+import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
-import com.deckassemble.imports.infrastructure.CardImportRunRepository;
 import java.time.OffsetDateTime;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/card-imports")
 public class ImportStatusController {
 
-    private final CardImportRunRepository cardImportRunRepository;
+    private final ImportRunRecorder importRunRecorder;
 
-    public ImportStatusController(CardImportRunRepository cardImportRunRepository) {
-        this.cardImportRunRepository = cardImportRunRepository;
+    public ImportStatusController(ImportRunRecorder importRunRecorder) {
+        this.importRunRecorder = importRunRecorder;
     }
 
     @GetMapping("/latest")
     public ResponseEntity<ImportRunResponse> latest() {
-        return cardImportRunRepository
-                .findTopByStatusOrderByCompletedAtDesc(CardImportRun.Status.COMPLETED)
+        return importRunRecorder
+                .latestCompleted()
                 .map(ImportRunResponse::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
