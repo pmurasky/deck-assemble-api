@@ -1,4 +1,4 @@
-package com.deckassemble.cards.api;
+package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.domain.CardPrinting;
 import java.time.LocalDate;

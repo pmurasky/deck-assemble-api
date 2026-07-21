@@ -1,4 +1,4 @@
-package com.deckassemble.collections.api;
+package com.deckassemble.collections.application;
 
 import com.deckassemble.collections.domain.CardCollection;
 import java.time.Instant;

@@ -4,9 +4,9 @@ Cycle detected: Slice cards -> \
   1. Dependencies of Slice cards\
     - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.runRecorder> has type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.start(java.lang.String, java.lang.String)> in (CardImportService.java:51)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.complete(long, int, int, int, int)> in (CardImportService.java:60)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.fail(long, java.lang.String)> in (CardImportService.java:64)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.start(java.lang.String, java.lang.String)> in (CardImportService.java:50)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.complete(long, int, int, int, int)> in (CardImportService.java:59)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.fail(long, java.lang.String)> in (CardImportService.java:63)\
   2. Dependencies of Slice imports\
     - Constructor <com.deckassemble.imports.application.DevCardImportRunner.<init>(com.deckassemble.cards.application.CardImportService, java.lang.String)> has parameter of type <com.deckassemble.cards.application.CardImportService> in (DevCardImportRunner.java:0)\
     - Field <com.deckassemble.imports.application.DevCardImportRunner.cardImportService> has type <com.deckassemble.cards.application.CardImportService> in (DevCardImportRunner.java:0)\
@@ -21,7 +21,7 @@ Cycle detected: Slice cards -> \
   1. Dependencies of Slice cards\
     - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCardNotFound()> has annotation member of type <com.deckassemble.cards.application.CardNotFoundException> in (ApiExceptionHandler.java:0)
 Cycle detected: Slice cards -> \
@@ -31,18 +31,18 @@ Cycle detected: Slice cards -> \
   1. Dependencies of Slice cards\
     - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionCardNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionNotFoundException> in (ApiExceptionHandler.java:0)\
   3. Dependencies of Slice collections\
-    - Constructor <com.deckassemble.collections.api.CollectionCardResponse.<init>(java.lang.Long, java.lang.Long, int, int, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (CollectionCardResponse.java:0)\
+    - Constructor <com.deckassemble.collections.application.CollectionCardResponse.<init>(java.lang.Long, java.lang.Long, int, int, com.deckassemble.cards.application.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.application.CardSummaryResponse> in (CollectionCardResponse.java:0)\
     - Constructor <com.deckassemble.collections.application.CollectionService.<init>(com.deckassemble.collections.infrastructure.CardCollectionRepository, com.deckassemble.collections.infrastructure.CollectionCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService)> has parameter of type <com.deckassemble.cards.application.CardCatalogService> in (CollectionService.java:0)\
-    - Field <com.deckassemble.collections.api.CollectionCardResponse.card> has type <com.deckassemble.cards.api.CardSummaryResponse> in (CollectionCardResponse.java:0)\
+    - Field <com.deckassemble.collections.application.CollectionCardResponse.card> has type <com.deckassemble.cards.application.CardSummaryResponse> in (CollectionCardResponse.java:0)\
     - Field <com.deckassemble.collections.application.CollectionService.cardCatalogService> has type <com.deckassemble.cards.application.CardCatalogService> in (CollectionService.java:0)\
-    - Method <com.deckassemble.collections.api.CollectionCardResponse.card()> has return type <com.deckassemble.cards.api.CardSummaryResponse> in (CollectionCardResponse.java:0)\
-    - Method <com.deckassemble.collections.api.CollectionCardResponse.from(com.deckassemble.collections.domain.CollectionCard, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (CollectionCardResponse.java:0)\
-    - Method <com.deckassemble.collections.application.CollectionService.responseFor(com.deckassemble.collections.domain.CollectionCard)> calls method <com.deckassemble.cards.application.CardCatalogService.getSummaryByPrintingId(long)> in (CollectionService.java:149)
+    - Method <com.deckassemble.collections.application.CollectionCardResponse.card()> has return type <com.deckassemble.cards.application.CardSummaryResponse> in (CollectionCardResponse.java:0)\
+    - Method <com.deckassemble.collections.application.CollectionCardResponse.from(com.deckassemble.collections.domain.CollectionCard, com.deckassemble.cards.application.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.application.CardSummaryResponse> in (CollectionCardResponse.java:0)\
+    - Method <com.deckassemble.collections.application.CollectionService.responseFor(com.deckassemble.collections.domain.CollectionCard)> calls method <com.deckassemble.cards.application.CardCatalogService.getSummaryByPrintingId(long)> in (CollectionService.java:143)
 Cycle detected: Slice cards -> \
                 Slice shared -> \
                 Slice decks -> \
@@ -50,21 +50,21 @@ Cycle detected: Slice cards -> \
   1. Dependencies of Slice cards\
     - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckCardNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckNotFoundException> in (ApiExceptionHandler.java:0)\
   3. Dependencies of Slice decks\
-    - Constructor <com.deckassemble.decks.api.DeckCardResponse.<init>(java.lang.Long, java.lang.Long, int, java.lang.String, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
     - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.domain.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
     - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.domain.CardRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Constructor <com.deckassemble.decks.application.DeckCardResponse.<init>(java.lang.Long, java.lang.Long, int, java.lang.String, com.deckassemble.cards.application.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.application.CardSummaryResponse> in (DeckCardResponse.java:0)\
     - Constructor <com.deckassemble.decks.application.DeckService.<init>(com.deckassemble.decks.infrastructure.DeckRepository, com.deckassemble.decks.infrastructure.DeckCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService, com.deckassemble.decks.application.CommanderLegalityEvaluator)> has parameter of type <com.deckassemble.cards.application.CardCatalogService> in (DeckService.java:0)\
-    - Field <com.deckassemble.decks.api.DeckCardResponse.card> has type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
     - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardPrintingRepository> has type <com.deckassemble.cards.domain.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
     - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardRepository> has type <com.deckassemble.cards.domain.CardRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Field <com.deckassemble.decks.application.DeckCardResponse.card> has type <com.deckassemble.cards.application.CardSummaryResponse> in (DeckCardResponse.java:0)\
     - Field <com.deckassemble.decks.application.DeckService.cardCatalogService> has type <com.deckassemble.cards.application.CardCatalogService> in (DeckService.java:0)\
-    - Method <com.deckassemble.decks.api.DeckCardResponse.card()> has return type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
-    - Method <com.deckassemble.decks.api.DeckCardResponse.from(com.deckassemble.decks.domain.DeckCard, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
+    - Method <com.deckassemble.decks.application.CommanderLegalityEvaluator.background(com.deckassemble.cards.domain.Card)> has parameter of type <com.deckassemble.cards.domain.Card> in (CommanderLegalityEvaluator.java:0)\
+    - Method <com.deckassemble.decks.application.CommanderLegalityEvaluator.basicLand(com.deckassemble.cards.domain.Card)> has parameter of type <com.deckassemble.cards.domain.Card> in (CommanderLegalityEvaluator.java:0)\
     (53 further dependencies have been omitted...)
 Cycle detected: Slice collections -> \
                 Slice shared -> \
@@ -72,7 +72,7 @@ Cycle detected: Slice collections -> \
   1. Dependencies of Slice collections\
     - Constructor <com.deckassemble.collections.application.CollectionService.<init>(com.deckassemble.collections.infrastructure.CardCollectionRepository, com.deckassemble.collections.infrastructure.CollectionCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CollectionService.java:0)\
     - Field <com.deckassemble.collections.application.CollectionService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CollectionService.java:0)\
-    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CollectionService.java:142)\
+    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CollectionService.java:136)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionCardNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionNotFoundException> in (ApiExceptionHandler.java:0)
@@ -83,13 +83,13 @@ Cycle detected: Slice collections -> \
   1. Dependencies of Slice collections\
     - Constructor <com.deckassemble.collections.application.CollectionService.<init>(com.deckassemble.collections.infrastructure.CardCollectionRepository, com.deckassemble.collections.infrastructure.CollectionCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService)> has parameter of type <com.deckassemble.users.application.ProfileService> in (CollectionService.java:0)\
     - Field <com.deckassemble.collections.application.CollectionService.profileService> has type <com.deckassemble.users.application.ProfileService> in (CollectionService.java:0)\
-    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.users.application.ProfileService.getOrCreate(java.lang.String)> in (CollectionService.java:144)\
-    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.users.domain.Profile.getId()> in (CollectionService.java:144)\
+    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.users.application.ProfileService.getOrCreate(java.lang.String)> in (CollectionService.java:138)\
+    - Method <com.deckassemble.collections.application.CollectionService.profileId()> calls method <com.deckassemble.users.domain.Profile.getId()> in (CollectionService.java:138)\
   2. Dependencies of Slice users\
     - Constructor <com.deckassemble.users.api.ProfileController.<init>(com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
     - Field <com.deckassemble.users.api.ProfileController.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
-    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:30)\
-    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.api.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:40)\
+    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:32)\
+    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.application.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:42)\
   3. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionCardNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionNotFoundException> in (ApiExceptionHandler.java:0)
@@ -99,7 +99,7 @@ Cycle detected: Slice decks -> \
   1. Dependencies of Slice decks\
     - Constructor <com.deckassemble.decks.application.DeckService.<init>(com.deckassemble.decks.infrastructure.DeckRepository, com.deckassemble.decks.infrastructure.DeckCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService, com.deckassemble.decks.application.CommanderLegalityEvaluator)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (DeckService.java:0)\
     - Field <com.deckassemble.decks.application.DeckService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (DeckService.java:0)\
-    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (DeckService.java:216)\
+    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (DeckService.java:209)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckCardNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckNotFoundException> in (ApiExceptionHandler.java:0)
@@ -110,13 +110,13 @@ Cycle detected: Slice decks -> \
   1. Dependencies of Slice decks\
     - Constructor <com.deckassemble.decks.application.DeckService.<init>(com.deckassemble.decks.infrastructure.DeckRepository, com.deckassemble.decks.infrastructure.DeckCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService, com.deckassemble.decks.application.CommanderLegalityEvaluator)> has parameter of type <com.deckassemble.users.application.ProfileService> in (DeckService.java:0)\
     - Field <com.deckassemble.decks.application.DeckService.profileService> has type <com.deckassemble.users.application.ProfileService> in (DeckService.java:0)\
-    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.users.application.ProfileService.getOrCreate(java.lang.String)> in (DeckService.java:218)\
-    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.users.domain.Profile.getId()> in (DeckService.java:218)\
+    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.users.application.ProfileService.getOrCreate(java.lang.String)> in (DeckService.java:211)\
+    - Method <com.deckassemble.decks.application.DeckService.profileId()> calls method <com.deckassemble.users.domain.Profile.getId()> in (DeckService.java:211)\
   2. Dependencies of Slice users\
     - Constructor <com.deckassemble.users.api.ProfileController.<init>(com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
     - Field <com.deckassemble.users.api.ProfileController.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
-    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:30)\
-    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.api.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:40)\
+    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:32)\
+    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.application.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:42)\
   3. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckCardNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckNotFoundException> in (ApiExceptionHandler.java:0)
@@ -135,5 +135,5 @@ Cycle detected: Slice shared -> \
   2. Dependencies of Slice users\
     - Constructor <com.deckassemble.users.api.ProfileController.<init>(com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
     - Field <com.deckassemble.users.api.ProfileController.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (ProfileController.java:0)\
-    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:30)\
-    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.api.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:40)
+    - Method <com.deckassemble.users.api.ProfileController.getCurrentProfile()> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:32)\
+    - Method <com.deckassemble.users.api.ProfileController.updateCurrentProfile(com.deckassemble.users.application.ProfileUpdateRequest)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (ProfileController.java:42)

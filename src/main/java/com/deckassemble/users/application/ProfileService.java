@@ -1,6 +1,5 @@
 package com.deckassemble.users.application;
 
-import com.deckassemble.users.api.ProfileUpdateRequest;
 import com.deckassemble.users.domain.Profile;
 import com.deckassemble.users.infrastructure.ProfileRepository;
 import java.util.Optional;

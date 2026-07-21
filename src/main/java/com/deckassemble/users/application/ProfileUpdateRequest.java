@@ -1,4 +1,4 @@
-package com.deckassemble.users.api;
+package com.deckassemble.users.application;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;

@@ -1,6 +1,9 @@
 package com.deckassemble.cards.api;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.CardDetailResponse;
+import com.deckassemble.cards.application.CardPrintingResponse;
+import com.deckassemble.cards.application.CardSummaryResponse;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.data.domain.Page;

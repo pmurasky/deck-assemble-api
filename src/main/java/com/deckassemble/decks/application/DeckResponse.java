@@ -1,4 +1,4 @@
-package com.deckassemble.decks.api;
+package com.deckassemble.decks.application;
 
 import com.deckassemble.decks.domain.Deck;
 import java.math.BigDecimal;

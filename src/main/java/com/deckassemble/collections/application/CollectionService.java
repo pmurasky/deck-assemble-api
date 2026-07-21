@@ -1,12 +1,6 @@
 package com.deckassemble.collections.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
-import com.deckassemble.collections.api.CollectionCardAddRequest;
-import com.deckassemble.collections.api.CollectionCardResponse;
-import com.deckassemble.collections.api.CollectionCardUpdateRequest;
-import com.deckassemble.collections.api.CollectionCreateRequest;
-import com.deckassemble.collections.api.CollectionResponse;
-import com.deckassemble.collections.api.CollectionUpdateRequest;
 import com.deckassemble.collections.domain.CardCollection;
 import com.deckassemble.collections.domain.CollectionCard;
 import com.deckassemble.collections.infrastructure.CardCollectionRepository;

@@ -1,6 +1,13 @@
 package com.deckassemble.decks.api;
 
+import com.deckassemble.decks.application.DeckCardAddRequest;
+import com.deckassemble.decks.application.DeckCardResponse;
+import com.deckassemble.decks.application.DeckCardUpdateRequest;
+import com.deckassemble.decks.application.DeckCreateRequest;
+import com.deckassemble.decks.application.DeckLegalityResponse;
+import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.DeckUpdateRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;

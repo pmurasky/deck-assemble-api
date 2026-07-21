@@ -1,13 +1,6 @@
 package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
-import com.deckassemble.decks.api.DeckCardAddRequest;
-import com.deckassemble.decks.api.DeckCardResponse;
-import com.deckassemble.decks.api.DeckCardUpdateRequest;
-import com.deckassemble.decks.api.DeckCreateRequest;
-import com.deckassemble.decks.api.DeckLegalityResponse;
-import com.deckassemble.decks.api.DeckResponse;
-import com.deckassemble.decks.api.DeckUpdateRequest;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.infrastructure.DeckCardRepository;

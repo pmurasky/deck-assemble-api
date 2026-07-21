@@ -1,4 +1,4 @@
-package com.deckassemble.collections.api;
+package com.deckassemble.collections.application;
 
 import jakarta.validation.constraints.Size;
 

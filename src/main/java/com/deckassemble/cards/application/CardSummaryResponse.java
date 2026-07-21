@@ -1,10 +1,10 @@
-package com.deckassemble.cards.api;
+package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
 
-public record CardDetailResponse(
+public record CardSummaryResponse(
         Long id,
         String oracleId,
         String name,
@@ -13,22 +13,16 @@ public record CardDetailResponse(
         String colors,
         String colorIdentity,
         String typeLine,
-        String oracleText,
         String power,
         String toughness,
-        String loyalty,
-        String keywords,
         Long printingId,
         String imageUrl,
         String setCode,
         String setName,
-        String rarity,
-        String flavorText) {
+        String rarity) {
 
-    // Suppressed: a 19-field record factory is one mapping per line; splitting harms readability.
-    @SuppressWarnings("checkstyle:MethodLength")
-    public static CardDetailResponse from(Card card, CardPrinting latestPrinting) {
-        return new CardDetailResponse(
+    public static CardSummaryResponse from(Card card, CardPrinting latestPrinting) {
+        return new CardSummaryResponse(
                 card.getId(),
                 card.getScryfallOracleId(),
                 card.getName(),
@@ -37,16 +31,12 @@ public record CardDetailResponse(
                 card.getColors(),
                 card.getColorIdentity(),
                 card.getTypeLine(),
-                card.getOracleText(),
                 card.getPower(),
                 card.getToughness(),
-                card.getLoyalty(),
-                card.getKeywords(),
                 latestPrinting != null ? latestPrinting.getId() : null,
                 latestPrinting != null ? latestPrinting.getImageUriNormal() : null,
                 latestPrinting != null ? latestPrinting.getMagicSet().getSetCode() : null,
                 latestPrinting != null ? latestPrinting.getMagicSet().getName() : null,
-                latestPrinting != null ? latestPrinting.getRarity() : null,
-                latestPrinting != null ? latestPrinting.getFlavorText() : null);
+                latestPrinting != null ? latestPrinting.getRarity() : null);
     }
 }

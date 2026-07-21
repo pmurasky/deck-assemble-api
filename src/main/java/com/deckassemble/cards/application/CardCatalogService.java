@@ -1,8 +1,5 @@
 package com.deckassemble.cards.application;
 
-import com.deckassemble.cards.api.CardDetailResponse;
-import com.deckassemble.cards.api.CardPrintingResponse;
-import com.deckassemble.cards.api.CardSummaryResponse;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;

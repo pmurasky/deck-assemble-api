@@ -1,6 +1,5 @@
 package com.deckassemble.users.application;
 
-import com.deckassemble.users.api.ProfileResponse;
 import com.deckassemble.users.domain.Profile;
 
 public final class ProfileMapper {

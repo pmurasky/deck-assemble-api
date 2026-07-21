@@ -1,6 +1,6 @@
-package com.deckassemble.collections.api;
+package com.deckassemble.collections.application;
 
-import com.deckassemble.cards.api.CardSummaryResponse;
+import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.collections.domain.CollectionCard;
 
 public record CollectionCardResponse(

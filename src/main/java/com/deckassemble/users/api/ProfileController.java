@@ -2,7 +2,9 @@ package com.deckassemble.users.api;
 
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileMapper;
+import com.deckassemble.users.application.ProfileResponse;
 import com.deckassemble.users.application.ProfileService;
+import com.deckassemble.users.application.ProfileUpdateRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
