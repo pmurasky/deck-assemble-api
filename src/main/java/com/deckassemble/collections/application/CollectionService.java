@@ -87,26 +87,27 @@ public class CollectionService {
 
     public CollectionCardResponse addCard(long collectionId, CollectionCardAddRequest request) {
         owned(collectionId);
-        CollectionCard card =
-                collectionCardRepository
-                        .findByCollectionIdAndCardPrintingId(collectionId, request.cardPrintingId())
-                        .map(
-                                existing -> {
-                                    existing.setRegularQuantity(
-                                            existing.getRegularQuantity()
-                                                    + request.regularQuantity());
-                                    existing.setFoilQuantity(
-                                            existing.getFoilQuantity() + request.foilQuantity());
-                                    return existing;
-                                })
-                        .orElseGet(
-                                () ->
-                                        new CollectionCard(
-                                                collectionId,
-                                                request.cardPrintingId(),
-                                                request.regularQuantity(),
-                                                request.foilQuantity()));
-        return responseFor(collectionCardRepository.save(card));
+        return responseFor(collectionCardRepository.save(mergeOrNew(collectionId, request)));
+    }
+
+    private CollectionCard mergeOrNew(long collectionId, CollectionCardAddRequest request) {
+        return collectionCardRepository
+                .findByCollectionIdAndCardPrintingId(collectionId, request.cardPrintingId())
+                .map(
+                        existing -> {
+                            existing.setRegularQuantity(
+                                    existing.getRegularQuantity() + request.regularQuantity());
+                            existing.setFoilQuantity(
+                                    existing.getFoilQuantity() + request.foilQuantity());
+                            return existing;
+                        })
+                .orElseGet(
+                        () ->
+                                new CollectionCard(
+                                        collectionId,
+                                        request.cardPrintingId(),
+                                        request.regularQuantity(),
+                                        request.foilQuantity()));
     }
 
     public CollectionCardResponse updateCard(

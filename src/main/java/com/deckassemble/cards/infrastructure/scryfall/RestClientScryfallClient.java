@@ -22,6 +22,8 @@ class RestClientScryfallClient implements ScryfallClient {
             new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
             new ParameterizedTypeReference<>() {};
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long BASE_BACKOFF_MILLIS = 500L;
 
     private final RestClient restClient;
     private final ScryfallRateLimiter rateLimiter;
@@ -95,7 +97,7 @@ class RestClientScryfallClient implements ScryfallClient {
             try {
                 return request.get();
             } catch (RestClientException exception) {
-                if (attempt == 3) {
+                if (attempt == MAX_ATTEMPTS) {
                     throw exception;
                 }
                 pauseBeforeRetry(attempt);
@@ -105,7 +107,7 @@ class RestClientScryfallClient implements ScryfallClient {
 
     private void pauseBeforeRetry(int attempt) {
         try {
-            Thread.sleep(500L << (attempt - 1));
+            Thread.sleep(BASE_BACKOFF_MILLIS << (attempt - 1));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(

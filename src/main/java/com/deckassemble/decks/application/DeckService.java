@@ -29,6 +29,8 @@ public class DeckService {
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
 
+    // Suppressed: six collaborators is what this orchestration service needs; Spring injects them.
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public DeckService(
             DeckRepository deckRepository,
             DeckCardRepository deckCardRepository,
@@ -73,6 +75,12 @@ public class DeckService {
 
     public DeckResponse update(long deckId, DeckUpdateRequest request) {
         Deck deck = owned(deckId);
+        applyCoreFields(deck, request);
+        applyOptionFields(deck, request);
+        return responseFor(deckRepository.save(deck));
+    }
+
+    private void applyCoreFields(Deck deck, DeckUpdateRequest request) {
         if (request.name() != null) {
             deck.setName(request.name());
         }
@@ -88,6 +96,9 @@ public class DeckService {
         if (request.secondaryCommanderCardId() != null) {
             deck.setSecondaryCommanderCardId(request.secondaryCommanderCardId());
         }
+    }
+
+    private void applyOptionFields(Deck deck, DeckUpdateRequest request) {
         if (request.useOwnedCardsOnly() != null) {
             deck.setUseOwnedCardsOnly(request.useOwnedCardsOnly());
         }
@@ -100,7 +111,6 @@ public class DeckService {
         if (request.playStyle() != null) {
             deck.setPlayStyle(request.playStyle());
         }
-        return responseFor(deckRepository.save(deck));
     }
 
     public void delete(long deckId) {
@@ -116,6 +126,13 @@ public class DeckService {
     public DeckResponse duplicate(long deckId) {
         Deck source = owned(deckId);
         Deck copy = new Deck(profileId(), source.getName() + " (Copy)", source.getFormatCode());
+        copyDetails(source, copy);
+        Deck saved = deckRepository.save(copy);
+        copyCards(deckId, saved);
+        return responseFor(saved);
+    }
+
+    private void copyDetails(Deck source, Deck copy) {
         copy.setDescription(source.getDescription());
         copy.setCommanderCardId(source.getCommanderCardId());
         copy.setSecondaryCommanderCardId(source.getSecondaryCommanderCardId());
@@ -123,17 +140,18 @@ public class DeckService {
         copy.setBudgetLimit(source.getBudgetLimit());
         copy.setDesiredPowerLevel(source.getDesiredPowerLevel());
         copy.setPlayStyle(source.getPlayStyle());
-        Deck saved = deckRepository.save(copy);
-        deckCardRepository.findByDeckId(deckId).stream()
+    }
+
+    private void copyCards(long sourceDeckId, Deck copy) {
+        deckCardRepository.findByDeckId(sourceDeckId).stream()
                 .map(
                         card ->
                                 new DeckCard(
-                                        saved.getId(),
+                                        copy.getId(),
                                         card.getCardPrintingId(),
                                         card.getQuantity(),
                                         card.getDeckSection()))
                 .forEach(deckCardRepository::save);
-        return responseFor(saved);
     }
 
     public List<DeckCardResponse> listCards(long deckId) {
@@ -146,23 +164,20 @@ public class DeckService {
         DeckCard.Section section =
                 request.deckSection() == null ? DeckCard.Section.MAIN_DECK : request.deckSection();
         int quantity = request.quantity() == null ? 1 : request.quantity();
-        DeckCard card =
-                deckCardRepository
-                        .findByDeckIdAndCardPrintingIdAndDeckSection(
-                                deckId, request.cardPrintingId(), section)
-                        .map(
-                                existing -> {
-                                    existing.setQuantity(existing.getQuantity() + quantity);
-                                    return existing;
-                                })
-                        .orElseGet(
-                                () ->
-                                        new DeckCard(
-                                                deckId,
-                                                request.cardPrintingId(),
-                                                quantity,
-                                                section));
-        return responseFor(deckCardRepository.save(card));
+        return responseFor(deckCardRepository.save(mergeOrNew(deckId, request, section, quantity)));
+    }
+
+    private DeckCard mergeOrNew(
+            long deckId, DeckCardAddRequest request, DeckCard.Section section, int quantity) {
+        return deckCardRepository
+                .findByDeckIdAndCardPrintingIdAndDeckSection(
+                        deckId, request.cardPrintingId(), section)
+                .map(
+                        existing -> {
+                            existing.setQuantity(existing.getQuantity() + quantity);
+                            return existing;
+                        })
+                .orElseGet(() -> new DeckCard(deckId, request.cardPrintingId(), quantity, section));
     }
 
     public DeckCardResponse updateCard(

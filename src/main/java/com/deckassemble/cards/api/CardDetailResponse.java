@@ -25,6 +25,8 @@ public record CardDetailResponse(
         String rarity,
         String flavorText) {
 
+    // Suppressed: a 19-field record factory is one mapping per line; splitting harms readability.
+    @SuppressWarnings("checkstyle:MethodLength")
     public static CardDetailResponse from(Card card, CardPrinting latestPrinting) {
         return new CardDetailResponse(
                 card.getId(),

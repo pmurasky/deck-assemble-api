@@ -14,6 +14,8 @@ import java.time.OffsetDateTime;
 @Table(name = "card_import_runs")
 public class CardImportRun {
 
+    private static final int ERROR_SUMMARY_MAX_LENGTH = 2000;
+
     public enum Status {
         STARTED,
         COMPLETED,
@@ -142,6 +144,7 @@ public class CardImportRun {
         this.errorSummary =
                 errorSummary == null
                         ? null
-                        : errorSummary.substring(0, Math.min(errorSummary.length(), 2000));
+                        : errorSummary.substring(
+                                0, Math.min(errorSummary.length(), ERROR_SUMMARY_MAX_LENGTH));
     }
 }

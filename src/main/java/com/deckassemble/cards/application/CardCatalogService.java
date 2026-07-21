@@ -40,41 +40,41 @@ public class CardCatalogService {
     }
 
     private Specification<Card> specification(String query, String setCode, String colorIdentity) {
-        Specification<Card> result =
-                (root, criteria, builder) -> builder.isTrue(root.get("active"));
-        result =
-                result.and(
-                        (root, criteria, builder) ->
-                                builder.like(
-                                        builder.lower(root.get("name")),
-                                        "%" + query.toLowerCase() + "%"));
+        Specification<Card> result = activeSpec().and(nameSpec(query));
         if (colorIdentity != null) {
-            result =
-                    result.and(
-                            (root, criteria, builder) ->
-                                    builder.like(
-                                            root.get("colorIdentity"), "%" + colorIdentity + "%"));
+            result = result.and(colorIdentitySpec(colorIdentity));
         }
         if (setCode != null) {
-            result =
-                    result.and(
-                            (root, criteria, builder) -> {
-                                var subquery = criteria.subquery(Long.class);
-                                var printings = subquery.from(CardPrinting.class);
-                                return builder.exists(
-                                        subquery.select(printings.get("id"))
-                                                .where(
-                                                        builder.equal(
-                                                                printings.get("card").get("id"),
-                                                                root.get("id")),
-                                                        builder.equal(
-                                                                printings
-                                                                        .get("magicSet")
-                                                                        .get("setCode"),
-                                                                setCode)));
-                            });
+            result = result.and(setCodeSpec(setCode));
         }
         return result;
+    }
+
+    private Specification<Card> activeSpec() {
+        return (root, criteria, builder) -> builder.isTrue(root.get("active"));
+    }
+
+    private Specification<Card> nameSpec(String query) {
+        return (root, criteria, builder) ->
+                builder.like(builder.lower(root.get("name")), "%" + query.toLowerCase() + "%");
+    }
+
+    private Specification<Card> colorIdentitySpec(String colorIdentity) {
+        return (root, criteria, builder) ->
+                builder.like(root.get("colorIdentity"), "%" + colorIdentity + "%");
+    }
+
+    private Specification<Card> setCodeSpec(String setCode) {
+        return (root, criteria, builder) -> {
+            var subquery = criteria.subquery(Long.class);
+            var printings = subquery.from(CardPrinting.class);
+            return builder.exists(
+                    subquery.select(printings.get("id"))
+                            .where(
+                                    builder.equal(printings.get("card").get("id"), root.get("id")),
+                                    builder.equal(
+                                            printings.get("magicSet").get("setCode"), setCode)));
+        };
     }
 
     public CardDetailResponse getById(long cardId) {

@@ -6,6 +6,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
+// checkstyle:HideUtilityClassConstructor suppressed: Spring Boot requires a non-final class
+// with an implicit public constructor for the application entry point.
+@SuppressWarnings("checkstyle:HideUtilityClassConstructor")
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableConfigurationProperties(ScryfallProperties.class)

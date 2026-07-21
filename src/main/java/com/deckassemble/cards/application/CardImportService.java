@@ -28,6 +28,8 @@ public class CardImportService {
     private final ImportRunRecorder runRecorder;
     private final CurrentUser currentUser;
 
+    // Suppressed: six collaborators is what this orchestration service needs; Spring injects them.
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public CardImportService(
             ScryfallClient scryfallClient,
             CardRepository cardRepository,
@@ -88,17 +90,17 @@ public class CardImportService {
                         .orElseGet(() -> new Card(source.oracleId(), source.name()));
         applyCardDetails(card, source);
         card = cardRepository.save(card);
-        MagicSet set =
-                magicSetRepository
-                        .findBySetCode(source.set())
-                        .orElseGet(
-                                () ->
-                                        magicSetRepository.save(
-                                                new MagicSet(
-                                                        source.setId(),
-                                                        source.set(),
-                                                        source.setName())));
-        return savePrinting(card, set, source);
+        return savePrinting(card, resolveSet(source), source);
+    }
+
+    private MagicSet resolveSet(ScryfallCard source) {
+        return magicSetRepository
+                .findBySetCode(source.set())
+                .orElseGet(
+                        () ->
+                                magicSetRepository.save(
+                                        new MagicSet(
+                                                source.setId(), source.set(), source.setName())));
     }
 
     private void applyCardDetails(Card card, ScryfallCard source) {
@@ -145,14 +147,19 @@ public class CardImportService {
         printing.setPromo(source.promo());
         printing.setDigital(source.digital());
         printing.setLanguage(source.lang());
-        ScryfallImageUris imageUris = imageUris(source);
-        if (imageUris != null) {
-            printing.setImageUriSmall(imageUris.small());
-            printing.setImageUriNormal(imageUris.normal());
-            printing.setImageUriLarge(imageUris.large());
-        }
+        applyImageUris(printing, source);
         cardPrintingRepository.save(printing);
         return existing.isPresent() ? Outcome.UPDATED : Outcome.CREATED;
+    }
+
+    private void applyImageUris(CardPrinting printing, ScryfallCard source) {
+        ScryfallImageUris imageUris = imageUris(source);
+        if (imageUris == null) {
+            return;
+        }
+        printing.setImageUriSmall(imageUris.small());
+        printing.setImageUriNormal(imageUris.normal());
+        printing.setImageUriLarge(imageUris.large());
     }
 
     private ScryfallImageUris imageUris(ScryfallCard source) {
@@ -187,6 +194,7 @@ public class CardImportService {
                 case CREATED -> created++;
                 case UPDATED -> updated++;
                 case SKIPPED -> skipped++;
+                default -> throw new IllegalStateException("Unexpected outcome: " + outcome);
             }
         }
 

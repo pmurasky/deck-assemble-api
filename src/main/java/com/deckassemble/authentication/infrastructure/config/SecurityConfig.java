@@ -27,26 +27,34 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(
-                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(
-                        auth ->
-                                auth.requestMatchers("/actuator/health", "/error")
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.GET, "/cards", "/cards/**")
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
-                                        .permitAll()
-                                        .requestMatchers(HttpMethod.GET, "/card-imports/latest")
-                                        .permitAll()
-                                        .anyRequest()
-                                        .authenticated())
-                .oauth2ResourceServer(
-                        oauth2 ->
-                                oauth2.jwt(
-                                        jwt ->
-                                                jwt.jwtAuthenticationConverter(
-                                                        jwtAuthenticationConverter())));
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        configureAuthorization(http);
+        configureResourceServer(http);
         return http.build();
+    }
+
+    private void configureAuthorization(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(
+                auth ->
+                        auth.requestMatchers("/actuator/health", "/error")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/cards", "/cards/**")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/card-imports/latest")
+                                .permitAll()
+                                .anyRequest()
+                                .authenticated());
+    }
+
+    private void configureResourceServer(HttpSecurity http) throws Exception {
+        http.oauth2ResourceServer(
+                oauth2 ->
+                        oauth2.jwt(
+                                jwt ->
+                                        jwt.jwtAuthenticationConverter(
+                                                jwtAuthenticationConverter())));
     }
 
     @Bean

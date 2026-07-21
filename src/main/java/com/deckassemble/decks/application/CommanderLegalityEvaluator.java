@@ -11,10 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.springframework.stereotype.Component;
 
 @Component
 class CommanderLegalityEvaluator {
+
+    private static final int COMMANDER_DECK_SIZE = 100;
 
     private final CardRepository cardRepository;
     private final CardPrintingRepository cardPrintingRepository;
@@ -177,7 +180,7 @@ class CommanderLegalityEvaluator {
             Long partner,
             List<DeckLegalityResponse.Violation> violations) {
         int commanderCount = (commander == null ? 0 : 1) + (partner == null ? 0 : 1);
-        if (cards.size() + commanderCount != 100) {
+        if (cards.size() + commanderCount != COMMANDER_DECK_SIZE) {
             add(
                     violations,
                     "DECK_SIZE_INVALID",
@@ -192,14 +195,29 @@ class CommanderLegalityEvaluator {
     }
 
     private boolean validPair(Card first, Card second) {
-        return genericPartner(first) && genericPartner(second)
-                || has(first, "friends forever") && has(second, "friends forever")
-                || partnerWith(first, second)
-                || partnerWith(second, first)
-                || chooseBackground(first) && background(second)
-                || chooseBackground(second) && background(first)
-                || doctorsCompanion(first) && timeLordDoctor(second)
-                || doctorsCompanion(second) && timeLordDoctor(first);
+        return genericPartnerPair(first, second)
+                || keywordPair(first, second, "friends forever")
+                || namedPartnerPair(first, second)
+                || rolePair(first, second, this::chooseBackground, this::background)
+                || rolePair(first, second, this::doctorsCompanion, this::timeLordDoctor);
+    }
+
+    private boolean genericPartnerPair(Card first, Card second) {
+        return genericPartner(first) && genericPartner(second);
+    }
+
+    private boolean keywordPair(Card first, Card second, String keyword) {
+        return has(first, keyword) && has(second, keyword);
+    }
+
+    private boolean namedPartnerPair(Card first, Card second) {
+        return partnerWith(first, second) || partnerWith(second, first);
+    }
+
+    private boolean rolePair(
+            Card first, Card second, Predicate<Card> firstRole, Predicate<Card> secondRole) {
+        return firstRole.test(first) && secondRole.test(second)
+                || firstRole.test(second) && secondRole.test(first);
     }
 
     private boolean partnerWith(Card first, Card second) {
