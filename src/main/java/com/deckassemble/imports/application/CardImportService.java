@@ -1,4 +1,4 @@
-package com.deckassemble.cards.application;
+package com.deckassemble.imports.application;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardImportData;
@@ -10,7 +10,6 @@ import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.cards.domain.ScryfallClient;
-import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
 import java.net.URI;

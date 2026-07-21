@@ -8,7 +8,6 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.GeneralCodingRules;
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
 @AnalyzeClasses(packages = "com.deckassemble", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
@@ -23,19 +22,15 @@ class ArchitectureTest {
                     .resideInAnyPackage("..api..", "..application..", "..infrastructure..")
                     .because("domain is the innermost layer and must not depend outward");
 
-    // ponytail: frozen legacy baseline — services currently inject Spring Data repos and consume
-    // API/Scryfall DTOs directly. New violations still fail; unfreeze by extracting ports (#1).
     @ArchTest
     static final ArchRule application_does_not_depend_outward =
-            FreezingArchRule.freeze(
-                    noClasses()
-                            .that()
-                            .resideInAPackage("..application..")
-                            .should()
-                            .dependOnClassesThat()
-                            .resideInAnyPackage("..api..", "..infrastructure..")
-                            .because(
-                                    "application services define ports; adapters live in infrastructure"));
+            noClasses()
+                    .that()
+                    .resideInAPackage("..application..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("..api..", "..infrastructure..")
+                    .because("application services define ports; adapters live in infrastructure");
 
     @ArchTest
     static final ArchRule infrastructure_does_not_depend_on_api =
@@ -58,17 +53,17 @@ class ArchitectureTest {
                     .because(
                             "controllers go through application services, never adapters directly");
 
-    // ponytail: frozen — cycles route through the shared kernel (ApiExceptionHandler references
-    // every context's exceptions; all contexts use shared CurrentUser) plus cards↔imports.
+    // shared is the DDD shared kernel (ApiExceptionHandler, CurrentUser) — every context may
+    // depend on it and it may reference contexts, so it is excluded from cycle detection.
     @ArchTest
     static final ArchRule bounded_contexts_are_cycle_free =
-            FreezingArchRule.freeze(
-                    SlicesRuleDefinition.slices()
-                            .matching("com.deckassemble.(*)..")
-                            .should()
-                            .beFreeOfCycles()
-                            .because(
-                                    "cyclic dependencies between bounded contexts block independent change"));
+            SlicesRuleDefinition.slices()
+                    .matching(
+                            "com.deckassemble.(cards|decks|collections|imports|users|administration|authentication)..")
+                    .should()
+                    .beFreeOfCycles()
+                    .because(
+                            "cyclic dependencies between bounded contexts block independent change");
 
     @ArchTest
     static final ArchRule no_standard_streams =

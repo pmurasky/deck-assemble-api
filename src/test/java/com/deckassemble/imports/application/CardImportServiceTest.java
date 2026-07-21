@@ -1,4 +1,4 @@
-package com.deckassemble.cards.application;
+package com.deckassemble.imports.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,7 +15,6 @@ import com.deckassemble.cards.domain.CardSearchPage;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.cards.domain.ScryfallClient;
-import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.shared.security.CurrentUser;
 import java.net.URI;
 import java.util.List;

@@ -1,7 +1,7 @@
 package com.deckassemble.administration.api;
 
-import com.deckassemble.cards.application.CardImportService;
-import com.deckassemble.cards.application.ImportResult;
+import com.deckassemble.imports.application.CardImportService;
+import com.deckassemble.imports.application.ImportResult;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
 import jakarta.validation.constraints.NotBlank;
