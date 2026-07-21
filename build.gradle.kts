@@ -7,6 +7,7 @@ plugins {
     id("com.diffplug.spotless") version "7.2.1"
     id("com.github.spotbugs") version "6.4.2"
     id("net.ltgt.errorprone") version "4.3.0"
+    jacoco
     pmd
     checkstyle
 }
@@ -149,7 +150,42 @@ tasks.named<JavaCompile>("compileTestJava") {
 }
 
 tasks.named("check") {
-    dependsOn("spotlessCheck", "cpdCheck")}
+    dependsOn("spotlessCheck", "cpdCheck", "jacocoTestCoverageVerification")}
+
+// 0.8.14+ required for Java 25 bytecode.
+jacoco { toolVersion = "0.8.14" }
+
+// Dev-only import runner and the Spring entry point carry no testable logic.
+val jacocoExcludedClasses = listOf("**/DeckAssembleApplication.*", "**/DevCardImportRunner.*")
+
+val mainClassTrees =
+        sourceSets.named("main").map { main ->
+            main.output.classesDirs.files.map { dir -> fileTree(dir) { exclude(jacocoExcludedClasses) } }
+        }
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    classDirectories.setFrom(files(mainClassTrees))
+}
+
+// Standards: >=80% line coverage (docs/TESTING_STANDARDS.md).
+// ponytail: gate measures unit+integration together; split test tasks if unit-only number needed.
+tasks.jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+    classDirectories.setFrom(files(mainClassTrees))
+}
 
 spotbugs {
     toolVersion.set("4.9.8")
