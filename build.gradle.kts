@@ -1,6 +1,7 @@
 plugins {
     java
     id("org.springframework.boot") version "4.1.0"
+    id("com.diffplug.spotless") version "7.2.1"
 }
 
 group = "com.deckassemble"
@@ -39,6 +40,19 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+spotless {
+    java {
+        googleJavaFormat("1.28.0").aosp()
+        importOrder()
+        removeUnusedImports()
+        formatAnnotations()
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.named("check") {
+    dependsOn("spotlessCheck")
 }
