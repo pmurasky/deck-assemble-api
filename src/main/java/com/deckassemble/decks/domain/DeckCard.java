@@ -21,82 +21,81 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "deck_cards")
 public class DeckCard {
 
-  public enum Section {
-    COMMANDER,
-    MAIN_DECK,
-    SIDEBOARD,
-    COMPANION,
-    MAYBE_BOARD
-  }
+    public enum Section {
+        COMMANDER,
+        MAIN_DECK,
+        SIDEBOARD,
+        COMPANION,
+        MAYBE_BOARD
+    }
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Column(name = "deck_id", nullable = false)
-  private Long deckId;
+    @Column(name = "deck_id", nullable = false)
+    private Long deckId;
 
-  @Column(name = "card_printing_id", nullable = false)
-  private Long cardPrintingId;
+    @Column(name = "card_printing_id", nullable = false)
+    private Long cardPrintingId;
 
-  @Column(nullable = false)
-  private int quantity = 1;
+    @Column(nullable = false)
+    private int quantity = 1;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "deck_section", nullable = false, length = 20)
-  private Section deckSection = Section.MAIN_DECK;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deck_section", nullable = false, length = 20)
+    private Section deckSection = Section.MAIN_DECK;
 
-  @CreatedDate
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 
-  @CreatedBy
-  @Column(name = "created_by", updatable = false)
-  private String createdBy;
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private String createdBy;
 
-  @LastModifiedDate
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
-  @LastModifiedBy
-  @Column(name = "updated_by")
-  private String updatedBy;
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private String updatedBy;
 
-  protected DeckCard() {
-  }
+    protected DeckCard() {}
 
-  public DeckCard(Long deckId, Long cardPrintingId, int quantity, Section deckSection) {
-    this.deckId = deckId;
-    this.cardPrintingId = cardPrintingId;
-    this.quantity = quantity;
-    this.deckSection = deckSection;
-  }
+    public DeckCard(Long deckId, Long cardPrintingId, int quantity, Section deckSection) {
+        this.deckId = deckId;
+        this.cardPrintingId = cardPrintingId;
+        this.quantity = quantity;
+        this.deckSection = deckSection;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public Long getDeckId() {
-    return deckId;
-  }
+    public Long getDeckId() {
+        return deckId;
+    }
 
-  public Long getCardPrintingId() {
-    return cardPrintingId;
-  }
+    public Long getCardPrintingId() {
+        return cardPrintingId;
+    }
 
-  public int getQuantity() {
-    return quantity;
-  }
+    public int getQuantity() {
+        return quantity;
+    }
 
-  public void setQuantity(int quantity) {
-    this.quantity = quantity;
-  }
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
 
-  public Section getDeckSection() {
-    return deckSection;
-  }
+    public Section getDeckSection() {
+        return deckSection;
+    }
 
-  public void setDeckSection(Section deckSection) {
-    this.deckSection = deckSection;
-  }
+    public void setDeckSection(Section deckSection) {
+        this.deckSection = deckSection;
+    }
 }

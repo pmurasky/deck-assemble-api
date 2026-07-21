@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardImportRunRepository extends JpaRepository<CardImportRun, Long> {
 
-  Optional<CardImportRun> findTopByStatusOrderByCompletedAtDesc(CardImportRun.Status status);
+    Optional<CardImportRun> findTopByStatusOrderByCompletedAtDesc(CardImportRun.Status status);
 
-  List<CardImportRun> findTop20ByOrderByStartedAtDesc();
+    List<CardImportRun> findTop20ByOrderByStartedAtDesc();
 }

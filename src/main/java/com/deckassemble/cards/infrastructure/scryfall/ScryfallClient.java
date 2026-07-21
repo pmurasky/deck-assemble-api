@@ -10,13 +10,13 @@ import java.util.List;
 
 public interface ScryfallClient {
 
-  List<ScryfallSet> getSets();
+    List<ScryfallSet> getSets();
 
-  ScryfallList<ScryfallCard> searchCards(String query);
+    ScryfallList<ScryfallCard> searchCards(String query);
 
-  ScryfallList<ScryfallCard> searchCards(URI uri);
+    ScryfallList<ScryfallCard> searchCards(URI uri);
 
-  ScryfallBulkData getBulkData(String type);
+    ScryfallBulkData getBulkData(String type);
 
-  InputStream download(URI uri);
+    InputStream download(URI uri);
 }

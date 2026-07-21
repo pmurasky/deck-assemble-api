@@ -18,53 +18,53 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/card-imports")
 public class CardImportController {
 
-  private final CardImportService cardImportService;
-  private final CardImportRunRepository cardImportRunRepository;
+    private final CardImportService cardImportService;
+    private final CardImportRunRepository cardImportRunRepository;
 
-  public CardImportController(
-      CardImportService cardImportService, CardImportRunRepository cardImportRunRepository) {
-    this.cardImportService = cardImportService;
-    this.cardImportRunRepository = cardImportRunRepository;
-  }
-
-  @PostMapping
-  @PreAuthorize("hasRole('ADMIN')")
-  public ImportResult importCards(@RequestParam @NotBlank String query) {
-    return cardImportService.importQuery(query);
-  }
-
-  @GetMapping
-  @PreAuthorize("hasRole('ADMIN')")
-  public List<ImportRunHistoryResponse> history() {
-    return cardImportRunRepository.findTop20ByOrderByStartedAtDesc().stream()
-        .map(ImportRunHistoryResponse::from)
-        .toList();
-  }
-
-  public record ImportRunHistoryResponse(
-      long id,
-      String provider,
-      String query,
-      String status,
-      int recordsRead,
-      int recordsCreated,
-      int recordsUpdated,
-      int recordsFailed,
-      OffsetDateTime startedAt,
-      OffsetDateTime completedAt) {
-
-    static ImportRunHistoryResponse from(CardImportRun run) {
-      return new ImportRunHistoryResponse(
-          run.getId(),
-          run.getProvider(),
-          run.getQuery(),
-          run.getStatus().name(),
-          run.getRecordsRead(),
-          run.getRecordsCreated(),
-          run.getRecordsUpdated(),
-          run.getRecordsFailed(),
-          run.getStartedAt(),
-          run.getCompletedAt());
+    public CardImportController(
+            CardImportService cardImportService, CardImportRunRepository cardImportRunRepository) {
+        this.cardImportService = cardImportService;
+        this.cardImportRunRepository = cardImportRunRepository;
     }
-  }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ImportResult importCards(@RequestParam @NotBlank String query) {
+        return cardImportService.importQuery(query);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<ImportRunHistoryResponse> history() {
+        return cardImportRunRepository.findTop20ByOrderByStartedAtDesc().stream()
+                .map(ImportRunHistoryResponse::from)
+                .toList();
+    }
+
+    public record ImportRunHistoryResponse(
+            long id,
+            String provider,
+            String query,
+            String status,
+            int recordsRead,
+            int recordsCreated,
+            int recordsUpdated,
+            int recordsFailed,
+            OffsetDateTime startedAt,
+            OffsetDateTime completedAt) {
+
+        static ImportRunHistoryResponse from(CardImportRun run) {
+            return new ImportRunHistoryResponse(
+                    run.getId(),
+                    run.getProvider(),
+                    run.getQuery(),
+                    run.getStatus().name(),
+                    run.getRecordsRead(),
+                    run.getRecordsCreated(),
+                    run.getRecordsUpdated(),
+                    run.getRecordsFailed(),
+                    run.getStartedAt(),
+                    run.getCompletedAt());
+        }
+    }
 }

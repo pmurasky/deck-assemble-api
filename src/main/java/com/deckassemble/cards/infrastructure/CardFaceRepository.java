@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardFaceRepository extends JpaRepository<CardFace, Long> {
 
-  List<CardFace> findByCardIdOrderByFaceOrderAsc(Long cardId);
+    List<CardFace> findByCardIdOrderByFaceOrderAsc(Long cardId);
 }

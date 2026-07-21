@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardLegalityRepository extends JpaRepository<CardLegality, Long> {
 
-  List<CardLegality> findByCardId(Long cardId);
+    List<CardLegality> findByCardId(Long cardId);
 }

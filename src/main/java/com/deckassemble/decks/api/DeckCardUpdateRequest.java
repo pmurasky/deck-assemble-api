@@ -5,6 +5,4 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
 public record DeckCardUpdateRequest(
-    @Min(1) @Max(9999) Integer quantity,
-    DeckCard.Section deckSection) {
-}
+        @Min(1) @Max(9999) Integer quantity, DeckCard.Section deckSection) {}

@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @EnableConfigurationProperties(ScryfallProperties.class)
 public class DeckAssembleApplication {
 
-  public static void main(String[] args) {
-    SpringApplication.run(DeckAssembleApplication.class, args);
-  }
+    public static void main(String[] args) {
+        SpringApplication.run(DeckAssembleApplication.class, args);
+    }
 }

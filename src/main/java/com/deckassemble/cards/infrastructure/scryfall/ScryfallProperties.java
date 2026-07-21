@@ -9,13 +9,13 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "deckassemble.scryfall")
 public record ScryfallProperties(
-    @NotBlank String baseUrl,
-    @NotBlank String userAgent,
-    @NotNull Duration connectTimeout,
-    @NotNull Duration readTimeout,
-    @NotNull Duration requestDelay) {
+        @NotBlank String baseUrl,
+        @NotBlank String userAgent,
+        @NotNull Duration connectTimeout,
+        @NotNull Duration readTimeout,
+        @NotNull Duration requestDelay) {
 
-  public ScryfallProperties {
-    baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-  }
+    public ScryfallProperties {
+        baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    }
 }

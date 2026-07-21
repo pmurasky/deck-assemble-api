@@ -1,4 +1,3 @@
 package com.deckassemble.decks.application;
 
-public class DeckCardNotFoundException extends RuntimeException {
-}
+public class DeckCardNotFoundException extends RuntimeException {}

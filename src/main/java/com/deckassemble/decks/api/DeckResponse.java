@@ -5,36 +5,36 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record DeckResponse(
-    Long id,
-    String name,
-    String formatCode,
-    String description,
-    Long commanderCardId,
-    Long secondaryCommanderCardId,
-    boolean useOwnedCardsOnly,
-    BigDecimal budgetLimit,
-    Integer desiredPowerLevel,
-    String playStyle,
-    String status,
-    int cardCount,
-    String commanderName,
-    Instant createdAt) {
+        Long id,
+        String name,
+        String formatCode,
+        String description,
+        Long commanderCardId,
+        Long secondaryCommanderCardId,
+        boolean useOwnedCardsOnly,
+        BigDecimal budgetLimit,
+        Integer desiredPowerLevel,
+        String playStyle,
+        String status,
+        int cardCount,
+        String commanderName,
+        Instant createdAt) {
 
-  public static DeckResponse from(Deck deck, int cardCount, String commanderName) {
-    return new DeckResponse(
-        deck.getId(),
-        deck.getName(),
-        deck.getFormatCode(),
-        deck.getDescription(),
-        deck.getCommanderCardId(),
-        deck.getSecondaryCommanderCardId(),
-        deck.isUseOwnedCardsOnly(),
-        deck.getBudgetLimit(),
-        deck.getDesiredPowerLevel(),
-        deck.getPlayStyle(),
-        deck.getStatus().name(),
-        cardCount,
-        commanderName,
-        deck.getCreatedAt());
-  }
+    public static DeckResponse from(Deck deck, int cardCount, String commanderName) {
+        return new DeckResponse(
+                deck.getId(),
+                deck.getName(),
+                deck.getFormatCode(),
+                deck.getDescription(),
+                deck.getCommanderCardId(),
+                deck.getSecondaryCommanderCardId(),
+                deck.isUseOwnedCardsOnly(),
+                deck.getBudgetLimit(),
+                deck.getDesiredPowerLevel(),
+                deck.getPlayStyle(),
+                deck.getStatus().name(),
+                cardCount,
+                commanderName,
+                deck.getCreatedAt());
+    }
 }

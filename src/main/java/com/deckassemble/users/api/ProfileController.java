@@ -15,24 +15,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/profile")
 public class ProfileController {
 
-  private final CurrentUser currentUser;
-  private final ProfileService profileService;
+    private final CurrentUser currentUser;
+    private final ProfileService profileService;
 
-  public ProfileController(CurrentUser currentUser, ProfileService profileService) {
-    this.currentUser = currentUser;
-    this.profileService = profileService;
-  }
+    public ProfileController(CurrentUser currentUser, ProfileService profileService) {
+        this.currentUser = currentUser;
+        this.profileService = profileService;
+    }
 
-  @GetMapping
-  public ResponseEntity<ProfileResponse> getCurrentProfile() {
-    String subject = currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
-    return ResponseEntity.ok(ProfileMapper.toResponse(profileService.getOrCreate(subject)));
-  }
+    @GetMapping
+    public ResponseEntity<ProfileResponse> getCurrentProfile() {
+        String subject =
+                currentUser
+                        .subject()
+                        .orElseThrow(() -> new IllegalStateException("No authenticated user"));
+        return ResponseEntity.ok(ProfileMapper.toResponse(profileService.getOrCreate(subject)));
+    }
 
-  @PatchMapping
-  public ResponseEntity<ProfileResponse> updateCurrentProfile(
-      @Valid @RequestBody ProfileUpdateRequest request) {
-    String subject = currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
-    return ResponseEntity.ok(ProfileMapper.toResponse(profileService.update(subject, request)));
-  }
+    @PatchMapping
+    public ResponseEntity<ProfileResponse> updateCurrentProfile(
+            @Valid @RequestBody ProfileUpdateRequest request) {
+        String subject =
+                currentUser
+                        .subject()
+                        .orElseThrow(() -> new IllegalStateException("No authenticated user"));
+        return ResponseEntity.ok(ProfileMapper.toResponse(profileService.update(subject, request)));
+    }
 }

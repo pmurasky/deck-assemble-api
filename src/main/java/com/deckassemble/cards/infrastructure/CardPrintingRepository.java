@@ -9,15 +9,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardPrintingRepository extends JpaRepository<CardPrinting, Long> {
 
-  List<CardPrinting> findByCardIdOrderByReleasedAtDesc(Long cardId);
+    List<CardPrinting> findByCardIdOrderByReleasedAtDesc(Long cardId);
 
-  List<CardPrinting> findByMagicSetIdOrderByCollectorNumberAsc(Long magicSetId);
+    List<CardPrinting> findByMagicSetIdOrderByCollectorNumberAsc(Long magicSetId);
 
-  Page<CardPrinting> findByMagicSetSetCodeAndActiveTrueAndCardActiveTrue(String setCode,
-      Pageable pageable);
+    Page<CardPrinting> findByMagicSetSetCodeAndActiveTrueAndCardActiveTrue(
+            String setCode, Pageable pageable);
 
-  Page<CardPrinting> findByMagicSetSetCodeAndActiveTrueAndCardActiveTrueAndCardNameContainingIgnoreCase(
-      String setCode, String query, Pageable pageable);
+    Page<CardPrinting>
+            findByMagicSetSetCodeAndActiveTrueAndCardActiveTrueAndCardNameContainingIgnoreCase(
+                    String setCode, String query, Pageable pageable);
 
-  Optional<CardPrinting> findByScryfallCardId(String scryfallCardId);
+    Optional<CardPrinting> findByScryfallCardId(String scryfallCardId);
 }

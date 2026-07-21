@@ -8,14 +8,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class SecurityAuditorAware implements AuditorAware<String> {
 
-  private final CurrentUser currentUser;
+    private final CurrentUser currentUser;
 
-  public SecurityAuditorAware(CurrentUser currentUser) {
-    this.currentUser = currentUser;
-  }
+    public SecurityAuditorAware(CurrentUser currentUser) {
+        this.currentUser = currentUser;
+    }
 
-  @Override
-  public Optional<String> getCurrentAuditor() {
-    return currentUser.subject().or(() -> Optional.of("system"));
-  }
+    @Override
+    public Optional<String> getCurrentAuditor() {
+        return currentUser.subject().or(() -> Optional.of("system"));
+    }
 }

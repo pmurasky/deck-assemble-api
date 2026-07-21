@@ -14,40 +14,42 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-  @ExceptionHandler(CardNotFoundException.class)
-  ProblemDetail handleCardNotFound() {
-    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Card not found.");
-    problem.setType(URI.create("https://deckassemble.app/problems/card-not-found"));
-    problem.setTitle("Card not found");
-    problem.setProperty("code", "CARD_NOT_FOUND");
-    return problem;
-  }
+    @ExceptionHandler(CardNotFoundException.class)
+    ProblemDetail handleCardNotFound() {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "Card not found.");
+        problem.setType(URI.create("https://deckassemble.app/problems/card-not-found"));
+        problem.setTitle("Card not found");
+        problem.setProperty("code", "CARD_NOT_FOUND");
+        return problem;
+    }
 
-  @ExceptionHandler(CollectionNotFoundException.class)
-  ProblemDetail handleCollectionNotFound() {
-    return notFound("collection", "Collection");
-  }
+    @ExceptionHandler(CollectionNotFoundException.class)
+    ProblemDetail handleCollectionNotFound() {
+        return notFound("collection", "Collection");
+    }
 
-  @ExceptionHandler(CollectionCardNotFoundException.class)
-  ProblemDetail handleCollectionCardNotFound() {
-    return notFound("collection-card", "Collection card");
-  }
+    @ExceptionHandler(CollectionCardNotFoundException.class)
+    ProblemDetail handleCollectionCardNotFound() {
+        return notFound("collection-card", "Collection card");
+    }
 
-  @ExceptionHandler(DeckNotFoundException.class)
-  ProblemDetail handleDeckNotFound() {
-    return notFound("deck", "Deck");
-  }
+    @ExceptionHandler(DeckNotFoundException.class)
+    ProblemDetail handleDeckNotFound() {
+        return notFound("deck", "Deck");
+    }
 
-  @ExceptionHandler(DeckCardNotFoundException.class)
-  ProblemDetail handleDeckCardNotFound() {
-    return notFound("deck-card", "Deck card");
-  }
+    @ExceptionHandler(DeckCardNotFoundException.class)
+    ProblemDetail handleDeckCardNotFound() {
+        return notFound("deck-card", "Deck card");
+    }
 
-  private ProblemDetail notFound(String resource, String title) {
-    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, title + " not found.");
-    problem.setType(URI.create("https://deckassemble.app/problems/" + resource + "-not-found"));
-    problem.setTitle(title + " not found");
-    problem.setProperty("code", resource.toUpperCase().replace('-', '_') + "_NOT_FOUND");
-    return problem;
-  }
+    private ProblemDetail notFound(String resource, String title) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, title + " not found.");
+        problem.setType(URI.create("https://deckassemble.app/problems/" + resource + "-not-found"));
+        problem.setTitle(title + " not found");
+        problem.setProperty("code", resource.toUpperCase().replace('-', '_') + "_NOT_FOUND");
+        return problem;
+    }
 }

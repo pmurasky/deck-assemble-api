@@ -1,4 +1,3 @@
 package com.deckassemble.collections.application;
 
-public class CollectionCardNotFoundException extends RuntimeException {
-}
+public class CollectionCardNotFoundException extends RuntimeException {}

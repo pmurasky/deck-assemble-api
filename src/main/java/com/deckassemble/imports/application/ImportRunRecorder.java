@@ -11,46 +11,50 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ImportRunRecorder {
 
-  private final CardImportRunRepository repository;
+    private final CardImportRunRepository repository;
 
-  public ImportRunRecorder(CardImportRunRepository repository) {
-    this.repository = repository;
-  }
-
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public long start(String query, String createdBy) {
-    return repository.save(new CardImportRun("SCRYFALL", query, OffsetDateTime.now(), createdBy)).getId();
-  }
-
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void complete(long runId, int read, int created, int updated, int skipped) {
-    find(runId).ifPresent(run -> finish(run, read, created, updated, skipped));
-  }
-
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void fail(long runId, String errorSummary) {
-    find(runId).ifPresent(run -> {
-      run.fail(OffsetDateTime.now(), errorSummary);
-      repository.save(run);
-    });
-  }
-
-  private Optional<CardImportRun> find(long runId) {
-    return repository.findById(runId);
-  }
-
-  private void finish(CardImportRun run, int read, int created, int updated, int skipped) {
-    for (int index = 0; index < created; index++) {
-      run.recordCreated();
+    public ImportRunRecorder(CardImportRunRepository repository) {
+        this.repository = repository;
     }
-    for (int index = 0; index < updated; index++) {
-      run.recordUpdated();
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public long start(String query, String createdBy) {
+        return repository
+                .save(new CardImportRun("SCRYFALL", query, OffsetDateTime.now(), createdBy))
+                .getId();
     }
-    int failed = Math.max(skipped, read - created - updated);
-    for (int index = 0; index < failed; index++) {
-      run.recordSkipped();
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void complete(long runId, int read, int created, int updated, int skipped) {
+        find(runId).ifPresent(run -> finish(run, read, created, updated, skipped));
     }
-    run.complete(OffsetDateTime.now());
-    repository.save(run);
-  }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void fail(long runId, String errorSummary) {
+        find(runId)
+                .ifPresent(
+                        run -> {
+                            run.fail(OffsetDateTime.now(), errorSummary);
+                            repository.save(run);
+                        });
+    }
+
+    private Optional<CardImportRun> find(long runId) {
+        return repository.findById(runId);
+    }
+
+    private void finish(CardImportRun run, int read, int created, int updated, int skipped) {
+        for (int index = 0; index < created; index++) {
+            run.recordCreated();
+        }
+        for (int index = 0; index < updated; index++) {
+            run.recordUpdated();
+        }
+        int failed = Math.max(skipped, read - created - updated);
+        for (int index = 0; index < failed; index++) {
+            run.recordSkipped();
+        }
+        run.complete(OffsetDateTime.now());
+        repository.save(run);
+    }
 }

@@ -21,73 +21,73 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 public class CardLegality {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @ManyToOne(optional = false)
-  @JoinColumn(name = "card_id", nullable = false)
-  private Card card;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "card_id", nullable = false)
+    private Card card;
 
-  @Column(name = "format_code", nullable = false, length = 50)
-  private String formatCode;
+    @Column(name = "format_code", nullable = false, length = 50)
+    private String formatCode;
 
-  @Column(name = "legality_status", nullable = false, length = 50)
-  private String legalityStatus;
+    @Column(name = "legality_status", nullable = false, length = 50)
+    private String legalityStatus;
 
-  @CreatedDate
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 
-  @CreatedBy
-  @Column(name = "created_by", updatable = false)
-  private String createdBy;
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private String createdBy;
 
-  @LastModifiedDate
-  @Column(name = "updated_at")
-  private Instant updatedAt;
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
-  @LastModifiedBy
-  @Column(name = "updated_by")
-  private String updatedBy;
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    private String updatedBy;
 
-  protected CardLegality() {}
+    protected CardLegality() {}
 
-  public CardLegality(Card card, String formatCode, String legalityStatus) {
-    this.card = card;
-    this.formatCode = formatCode;
-    this.legalityStatus = legalityStatus;
-  }
+    public CardLegality(Card card, String formatCode, String legalityStatus) {
+        this.card = card;
+        this.formatCode = formatCode;
+        this.legalityStatus = legalityStatus;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 
-  public Card getCard() {
-    return card;
-  }
+    public Card getCard() {
+        return card;
+    }
 
-  public String getFormatCode() {
-    return formatCode;
-  }
+    public String getFormatCode() {
+        return formatCode;
+    }
 
-  public String getLegalityStatus() {
-    return legalityStatus;
-  }
+    public String getLegalityStatus() {
+        return legalityStatus;
+    }
 
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 
-  public String getCreatedBy() {
-    return createdBy;
-  }
+    public String getCreatedBy() {
+        return createdBy;
+    }
 
-  public Instant getUpdatedAt() {
-    return updatedAt;
-  }
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 
-  public String getUpdatedBy() {
-    return updatedBy;
-  }
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
 }

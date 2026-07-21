@@ -18,82 +18,98 @@ import org.springframework.web.client.RestClientException;
 @Component
 class RestClientScryfallClient implements ScryfallClient {
 
-  private static final ParameterizedTypeReference<ScryfallList<ScryfallSet>> SET_LIST =
-      new ParameterizedTypeReference<>() {};
-  private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
-      new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ScryfallList<ScryfallSet>> SET_LIST =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
+            new ParameterizedTypeReference<>() {};
 
-  private final RestClient restClient;
-  private final ScryfallRateLimiter rateLimiter;
+    private final RestClient restClient;
+    private final ScryfallRateLimiter rateLimiter;
 
-  RestClientScryfallClient(ScryfallProperties properties, ScryfallRateLimiter rateLimiter) {
-    restClient = RestClient.builder()
-        .baseUrl(properties.baseUrl())
-        .defaultHeader("User-Agent", properties.userAgent())
-        .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
-        .requestFactory(requestFactory(properties))
-        .build();
-    this.rateLimiter = rateLimiter;
-  }
+    RestClientScryfallClient(ScryfallProperties properties, ScryfallRateLimiter rateLimiter) {
+        restClient =
+                RestClient.builder()
+                        .baseUrl(properties.baseUrl())
+                        .defaultHeader("User-Agent", properties.userAgent())
+                        .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
+                        .requestFactory(requestFactory(properties))
+                        .build();
+        this.rateLimiter = rateLimiter;
+    }
 
-  @Override
-  public List<ScryfallSet> getSets() {
-    return execute(() -> restClient.get().uri("/sets").retrieve().body(SET_LIST).data());
-  }
+    @Override
+    public List<ScryfallSet> getSets() {
+        return execute(() -> restClient.get().uri("/sets").retrieve().body(SET_LIST).data());
+    }
 
-  @Override
-  public ScryfallList<ScryfallCard> searchCards(String query) {
-    return execute(() -> restClient.get().uri(uriBuilder -> uriBuilder.path("/cards/search")
-        .queryParam("q", query)
-        .queryParam("include_extras", true)
-        .queryParam("include_variations", true)
-        .queryParam("unique", "prints")
-        .build()).retrieve().body(CARD_LIST));
-  }
+    @Override
+    public ScryfallList<ScryfallCard> searchCards(String query) {
+        return execute(
+                () ->
+                        restClient
+                                .get()
+                                .uri(
+                                        uriBuilder ->
+                                                uriBuilder
+                                                        .path("/cards/search")
+                                                        .queryParam("q", query)
+                                                        .queryParam("include_extras", true)
+                                                        .queryParam("include_variations", true)
+                                                        .queryParam("unique", "prints")
+                                                        .build())
+                                .retrieve()
+                                .body(CARD_LIST));
+    }
 
-  @Override
-  public ScryfallList<ScryfallCard> searchCards(URI uri) {
-    return execute(() -> restClient.get().uri(uri).retrieve().body(CARD_LIST));
-  }
+    @Override
+    public ScryfallList<ScryfallCard> searchCards(URI uri) {
+        return execute(() -> restClient.get().uri(uri).retrieve().body(CARD_LIST));
+    }
 
-  @Override
-  public ScryfallBulkData getBulkData(String type) {
-    return execute(() -> restClient.get().uri("/bulk-data/{type}", type).retrieve()
-        .body(ScryfallBulkData.class));
-  }
+    @Override
+    public ScryfallBulkData getBulkData(String type) {
+        return execute(
+                () ->
+                        restClient
+                                .get()
+                                .uri("/bulk-data/{type}", type)
+                                .retrieve()
+                                .body(ScryfallBulkData.class));
+    }
 
-  @Override
-  public InputStream download(URI uri) {
-    return execute(() -> restClient.get().uri(uri).retrieve().body(InputStream.class));
-  }
+    @Override
+    public InputStream download(URI uri) {
+        return execute(() -> restClient.get().uri(uri).retrieve().body(InputStream.class));
+    }
 
-  private SimpleClientHttpRequestFactory requestFactory(ScryfallProperties properties) {
-    var factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(properties.connectTimeout());
-    factory.setReadTimeout(properties.readTimeout());
-    return factory;
-  }
+    private SimpleClientHttpRequestFactory requestFactory(ScryfallProperties properties) {
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(properties.connectTimeout());
+        factory.setReadTimeout(properties.readTimeout());
+        return factory;
+    }
 
-  private <T> T execute(Supplier<T> request) {
-    for (var attempt = 1; ; attempt++) {
-      rateLimiter.awaitPermit();
-      try {
-        return request.get();
-      } catch (RestClientException exception) {
-        if (attempt == 3) {
-          throw exception;
+    private <T> T execute(Supplier<T> request) {
+        for (var attempt = 1; ; attempt++) {
+            rateLimiter.awaitPermit();
+            try {
+                return request.get();
+            } catch (RestClientException exception) {
+                if (attempt == 3) {
+                    throw exception;
+                }
+                pauseBeforeRetry(attempt);
+            }
         }
-        pauseBeforeRetry(attempt);
-      }
     }
-  }
 
-  private void pauseBeforeRetry(int attempt) {
-    try {
-      Thread.sleep(500L << (attempt - 1));
-    } catch (InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while retrying Scryfall request", exception);
+    private void pauseBeforeRetry(int attempt) {
+        try {
+            Thread.sleep(500L << (attempt - 1));
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Interrupted while retrying Scryfall request", exception);
+        }
     }
-  }
 }

@@ -15,16 +15,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/sets")
 public class SetPrintingController {
 
-  private final CardCatalogService cardCatalogService;
+    private final CardCatalogService cardCatalogService;
 
-  public SetPrintingController(CardCatalogService cardCatalogService) {
-    this.cardCatalogService = cardCatalogService;
-  }
+    public SetPrintingController(CardCatalogService cardCatalogService) {
+        this.cardCatalogService = cardCatalogService;
+    }
 
-  @GetMapping("/{setCode}/printings")
-  public Page<CardSummaryResponse> getPrintings(@PathVariable String setCode,
-      @RequestParam(defaultValue = "") @Size(max = 100) String query,
-      @PageableDefault(size = 24, sort = "collectorNumber") Pageable pageable) {
-    return cardCatalogService.getSetPrintings(setCode, query, pageable);
-  }
+    @GetMapping("/{setCode}/printings")
+    public Page<CardSummaryResponse> getPrintings(
+            @PathVariable String setCode,
+            @RequestParam(defaultValue = "") @Size(max = 100) String query,
+            @PageableDefault(size = 24, sort = "collectorNumber") Pageable pageable) {
+        return cardCatalogService.getSetPrintings(setCode, query, pageable);
+    }
 }

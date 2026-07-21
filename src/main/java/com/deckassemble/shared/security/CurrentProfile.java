@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface CurrentProfile {
 
-  Optional<Profile> profile();
+    Optional<Profile> profile();
 
-  Profile requireProfile();
+    Profile requireProfile();
 }

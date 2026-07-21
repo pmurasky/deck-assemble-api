@@ -11,15 +11,15 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 public class Auth0RoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
 
-  @Override
-  public Collection<GrantedAuthority> convert(Jwt jwt) {
-    List<String> permissions = jwt.getClaimAsStringList("permissions");
-    if (permissions == null) {
-      return Collections.emptyList();
+    @Override
+    public Collection<GrantedAuthority> convert(Jwt jwt) {
+        List<String> permissions = jwt.getClaimAsStringList("permissions");
+        if (permissions == null) {
+            return Collections.emptyList();
+        }
+        return permissions.stream()
+                .map(permission -> "ROLE_" + permission.toUpperCase())
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
     }
-    return permissions.stream()
-        .map(permission -> "ROLE_" + permission.toUpperCase())
-        .map(SimpleGrantedAuthority::new)
-        .collect(Collectors.toList());
-  }
 }

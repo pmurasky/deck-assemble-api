@@ -4,7 +4,7 @@ import java.util.Optional;
 
 public interface CurrentUser {
 
-  Optional<String> subject();
+    Optional<String> subject();
 
-  boolean isAuthenticated();
+    boolean isAuthenticated();
 }

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MagicSetRepository extends JpaRepository<MagicSet, Long> {
 
-  Optional<MagicSet> findBySetCode(String setCode);
+    Optional<MagicSet> findBySetCode(String setCode);
 
-  Optional<MagicSet> findByScryfallSetId(String scryfallSetId);
+    Optional<MagicSet> findByScryfallSetId(String scryfallSetId);
 }

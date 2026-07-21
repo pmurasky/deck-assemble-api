@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CardCollectionRepository extends JpaRepository<CardCollection, Long> {
 
-  List<CardCollection> findByProfileIdOrderByNameAsc(Long profileId);
+    List<CardCollection> findByProfileIdOrderByNameAsc(Long profileId);
 
-  Optional<CardCollection> findByIdAndProfileId(Long id, Long profileId);
+    Optional<CardCollection> findByIdAndProfileId(Long id, Long profileId);
 }

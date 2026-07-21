@@ -15,22 +15,27 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty("deckassemble.dev-import.query")
 public class DevCardImportRunner implements ApplicationRunner {
 
-  private static final Logger log = LoggerFactory.getLogger(DevCardImportRunner.class);
+    private static final Logger log = LoggerFactory.getLogger(DevCardImportRunner.class);
 
-  private final CardImportService cardImportService;
-  private final String query;
+    private final CardImportService cardImportService;
+    private final String query;
 
-  public DevCardImportRunner(CardImportService cardImportService,
-      @Value("${deckassemble.dev-import.query}") String query) {
-    this.cardImportService = cardImportService;
-    this.query = query;
-  }
+    public DevCardImportRunner(
+            CardImportService cardImportService,
+            @Value("${deckassemble.dev-import.query}") String query) {
+        this.cardImportService = cardImportService;
+        this.query = query;
+    }
 
-  @Override
-  public void run(ApplicationArguments args) {
-    log.info("Starting dev card import for query '{}'", query);
-    var result = cardImportService.importQuery(query);
-    log.info("Dev card import completed: read={}, created={}, updated={}, failed={}",
-        result.recordsRead(), result.recordsCreated(), result.recordsUpdated(), result.recordsFailed());
-  }
+    @Override
+    public void run(ApplicationArguments args) {
+        log.info("Starting dev card import for query '{}'", query);
+        var result = cardImportService.importQuery(query);
+        log.info(
+                "Dev card import completed: read={}, created={}, updated={}, failed={}",
+                result.recordsRead(),
+                result.recordsCreated(),
+                result.recordsUpdated(),
+                result.recordsFailed());
+    }
 }
