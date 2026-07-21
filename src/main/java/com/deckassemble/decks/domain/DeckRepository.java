@@ -1,6 +1,5 @@
-package com.deckassemble.decks.infrastructure;
+package com.deckassemble.decks.domain;
 
-import com.deckassemble.decks.domain.Deck;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

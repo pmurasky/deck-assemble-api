@@ -1,7 +1,7 @@
 package com.deckassemble.imports.application;
 
 import com.deckassemble.imports.domain.CardImportRun;
-import com.deckassemble.imports.infrastructure.CardImportRunRepository;
+import com.deckassemble.imports.domain.CardImportRunRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;

@@ -1,6 +1,5 @@
-package com.deckassemble.users.infrastructure;
+package com.deckassemble.users.domain;
 
-import com.deckassemble.users.domain.Profile;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

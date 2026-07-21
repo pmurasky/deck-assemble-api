@@ -2,9 +2,9 @@ package com.deckassemble.collections.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.collections.domain.CardCollection;
+import com.deckassemble.collections.domain.CardCollectionRepository;
 import com.deckassemble.collections.domain.CollectionCard;
-import com.deckassemble.collections.infrastructure.CardCollectionRepository;
-import com.deckassemble.collections.infrastructure.CollectionCardRepository;
+import com.deckassemble.collections.domain.CollectionCardRepository;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import java.util.List;

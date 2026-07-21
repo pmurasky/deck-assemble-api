@@ -1,7 +1,7 @@
 package com.deckassemble.shared.security;
 
 import com.deckassemble.users.domain.Profile;
-import com.deckassemble.users.infrastructure.ProfileRepository;
+import com.deckassemble.users.domain.ProfileRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 

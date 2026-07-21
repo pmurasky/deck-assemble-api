@@ -1,7 +1,7 @@
 package com.deckassemble.users.application;
 
 import com.deckassemble.users.domain.Profile;
-import com.deckassemble.users.infrastructure.ProfileRepository;
+import com.deckassemble.users.domain.ProfileRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

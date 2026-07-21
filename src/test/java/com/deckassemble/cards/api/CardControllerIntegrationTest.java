@@ -14,7 +14,7 @@ import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.imports.domain.CardImportRun;
-import com.deckassemble.imports.infrastructure.CardImportRunRepository;
+import com.deckassemble.imports.domain.CardImportRunRepository;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
