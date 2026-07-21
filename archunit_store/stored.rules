@@ -1,4 +1,4 @@
 #
-#Tue Jul 21 15:01:11 EDT 2026
-no\ classes\ that\ reside\ in\ a\ package\ '..application..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['..api..',\ '..infrastructure..'],\ because\ application\ services\ define\ ports;\ adapters\ live\ in\ infrastructure=9a4d9d6e-07d7-4745-908a-cc521bcaba25
-slices\ matching\ 'com.deckassemble.(*)..'\ should\ be\ free\ of\ cycles,\ because\ cyclic\ dependencies\ between\ bounded\ contexts\ block\ independent\ change=a92caaaf-768b-4bed-9250-5a4fea4e9d12
+#Tue Jul 21 15:08:32 EDT 2026
+no\ classes\ that\ reside\ in\ a\ package\ '..application..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['..api..',\ '..infrastructure..'],\ because\ application\ services\ define\ ports;\ adapters\ live\ in\ infrastructure=3dec11cb-de16-4f8f-b160-358d75d689e4
+slices\ matching\ 'com.deckassemble.(*)..'\ should\ be\ free\ of\ cycles,\ because\ cyclic\ dependencies\ between\ bounded\ contexts\ block\ independent\ change=cac187f6-5106-449d-af27-4a7b8b8489eb

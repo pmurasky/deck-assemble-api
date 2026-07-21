@@ -1,15 +1,15 @@
 package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
-import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
+import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
@@ -65,7 +65,7 @@ public class CardImportService {
         }
     }
 
-    private void importPage(List<ScryfallCard> cards, Counters counters) {
+    private void importPage(List<CardImportData> cards, Counters counters) {
         cards.forEach(card -> counters.add(importCard(card)));
     }
 
@@ -77,7 +77,7 @@ public class CardImportService {
         return nextPage;
     }
 
-    private Outcome importCard(ScryfallCard source) {
+    private Outcome importCard(CardImportData source) {
         if (source.id() == null
                 || source.oracleId() == null
                 || source.setId() == null
@@ -93,7 +93,7 @@ public class CardImportService {
         return savePrinting(card, resolveSet(source), source);
     }
 
-    private MagicSet resolveSet(ScryfallCard source) {
+    private MagicSet resolveSet(CardImportData source) {
         return magicSetRepository
                 .findBySetCode(source.set())
                 .orElseGet(
@@ -103,7 +103,7 @@ public class CardImportService {
                                                 source.setId(), source.set(), source.setName())));
     }
 
-    private void applyCardDetails(Card card, ScryfallCard source) {
+    private void applyCardDetails(Card card, CardImportData source) {
         card.setManaCost(source.manaCost());
         card.setManaValue(source.cmc() == null ? null : BigDecimal.valueOf(source.cmc()));
         card.setTypeLine(source.typeLine());
@@ -119,7 +119,7 @@ public class CardImportService {
         replaceLegalities(card, source);
     }
 
-    private void replaceLegalities(Card card, ScryfallCard source) {
+    private void replaceLegalities(Card card, CardImportData source) {
         card.getLegalities().clear();
         if (source.legalities() == null) {
             return;
@@ -134,7 +134,7 @@ public class CardImportService {
         return values == null ? null : String.join(",", values);
     }
 
-    private Outcome savePrinting(Card card, MagicSet set, ScryfallCard source) {
+    private Outcome savePrinting(Card card, MagicSet set, CardImportData source) {
         var existing = cardPrintingRepository.findByScryfallCardId(source.id());
         CardPrinting printing = existing.orElseGet(() -> new CardPrinting(card, set, source.id()));
         printing.setCollectorNumber(source.collectorNumber());
@@ -152,28 +152,14 @@ public class CardImportService {
         return existing.isPresent() ? Outcome.UPDATED : Outcome.CREATED;
     }
 
-    private void applyImageUris(CardPrinting printing, ScryfallCard source) {
-        ScryfallImageUris imageUris = imageUris(source);
-        if (imageUris == null) {
+    private void applyImageUris(CardPrinting printing, CardImportData source) {
+        CardImportImages images = source.images();
+        if (images == null) {
             return;
         }
-        printing.setImageUriSmall(imageUris.small());
-        printing.setImageUriNormal(imageUris.normal());
-        printing.setImageUriLarge(imageUris.large());
-    }
-
-    private ScryfallImageUris imageUris(ScryfallCard source) {
-        if (source.imageUris() != null) {
-            return source.imageUris();
-        }
-        if (source.cardFaces() == null) {
-            return null;
-        }
-        return source.cardFaces().stream()
-                .map(face -> face.imageUris())
-                .filter(uri -> uri != null)
-                .findFirst()
-                .orElse(null);
+        printing.setImageUriSmall(images.small());
+        printing.setImageUriNormal(images.normal());
+        printing.setImageUriLarge(images.large());
     }
 
     private enum Outcome {

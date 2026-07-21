@@ -1,12 +1,13 @@
 package com.deckassemble.cards.infrastructure.scryfall;
 
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallBulkData;
+import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportImages;
+import com.deckassemble.cards.domain.CardSearchPage;
+import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallSet;
-import java.io.InputStream;
 import java.net.URI;
-import java.util.List;
 import java.util.function.Supplier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -18,8 +19,6 @@ import org.springframework.web.client.RestClientException;
 @Component
 class RestClientScryfallClient implements ScryfallClient {
 
-    private static final ParameterizedTypeReference<ScryfallList<ScryfallSet>> SET_LIST =
-            new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
             new ParameterizedTypeReference<>() {};
     private static final int MAX_ATTEMPTS = 3;
@@ -40,48 +39,94 @@ class RestClientScryfallClient implements ScryfallClient {
     }
 
     @Override
-    public List<ScryfallSet> getSets() {
-        return execute(() -> restClient.get().uri("/sets").retrieve().body(SET_LIST).data());
+    public CardSearchPage searchCards(String query) {
+        return toPage(
+                execute(
+                        () ->
+                                restClient
+                                        .get()
+                                        .uri(
+                                                uriBuilder ->
+                                                        uriBuilder
+                                                                .path("/cards/search")
+                                                                .queryParam("q", query)
+                                                                .queryParam("include_extras", true)
+                                                                .queryParam(
+                                                                        "include_variations", true)
+                                                                .queryParam("unique", "prints")
+                                                                .build())
+                                        .retrieve()
+                                        .body(CARD_LIST)));
     }
 
     @Override
-    public ScryfallList<ScryfallCard> searchCards(String query) {
-        return execute(
-                () ->
-                        restClient
-                                .get()
-                                .uri(
-                                        uriBuilder ->
-                                                uriBuilder
-                                                        .path("/cards/search")
-                                                        .queryParam("q", query)
-                                                        .queryParam("include_extras", true)
-                                                        .queryParam("include_variations", true)
-                                                        .queryParam("unique", "prints")
-                                                        .build())
-                                .retrieve()
-                                .body(CARD_LIST));
+    public CardSearchPage searchCards(URI nextPageUri) {
+        return toPage(execute(() -> restClient.get().uri(nextPageUri).retrieve().body(CARD_LIST)));
     }
 
-    @Override
-    public ScryfallList<ScryfallCard> searchCards(URI uri) {
-        return execute(() -> restClient.get().uri(uri).retrieve().body(CARD_LIST));
+    private CardSearchPage toPage(ScryfallList<ScryfallCard> page) {
+        return new CardSearchPage(
+                page.data().stream().map(this::toImportData).toList(),
+                page.hasMore(),
+                page.nextPage());
     }
 
-    @Override
-    public ScryfallBulkData getBulkData(String type) {
-        return execute(
-                () ->
-                        restClient
-                                .get()
-                                .uri("/bulk-data/{type}", type)
-                                .retrieve()
-                                .body(ScryfallBulkData.class));
+    // Suppressed: 30-field record factory mapping; splitting the constructor call harms
+    // readability.
+    @SuppressWarnings("checkstyle:MethodLength")
+    private CardImportData toImportData(ScryfallCard source) {
+        return new CardImportData(
+                source.id(),
+                source.oracleId(),
+                source.name(),
+                source.manaCost(),
+                source.cmc(),
+                source.typeLine(),
+                source.oracleText(),
+                source.power(),
+                source.toughness(),
+                source.loyalty(),
+                source.colors(),
+                source.colorIdentity(),
+                source.keywords(),
+                source.layout(),
+                source.reserved(),
+                source.setId(),
+                source.set(),
+                source.setName(),
+                source.collectorNumber(),
+                source.rarity(),
+                source.artist(),
+                source.flavorText(),
+                toImages(imageUris(source)),
+                source.releasedAt(),
+                source.foil(),
+                source.nonfoil(),
+                source.promo(),
+                source.digital(),
+                source.lang(),
+                source.legalities());
     }
 
-    @Override
-    public InputStream download(URI uri) {
-        return execute(() -> restClient.get().uri(uri).retrieve().body(InputStream.class));
+    private CardImportImages toImages(ScryfallImageUris imageUris) {
+        if (imageUris == null) {
+            return null;
+        }
+        return new CardImportImages(imageUris.small(), imageUris.normal(), imageUris.large());
+    }
+
+    private ScryfallImageUris imageUris(ScryfallCard source) {
+        if (source.imageUris() != null) {
+            return source.imageUris();
+        }
+        if (source.cardFaces() == null) {
+            return null;
+        }
+        return source.cardFaces().stream()
+                .map(face -> face.imageUris())
+                .filter(uri -> uri != null)
+                .findFirst()
+                .orElse(null);
     }
 
     private SimpleClientHttpRequestFactory requestFactory(ScryfallProperties properties) {

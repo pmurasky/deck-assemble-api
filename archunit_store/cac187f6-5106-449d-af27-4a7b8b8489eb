@@ -2,11 +2,11 @@ Cycle detected: Slice cards -> \
                 Slice imports -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.runRecorder> has type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.start(java.lang.String, java.lang.String)> in (CardImportService.java:50)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.complete(long, int, int, int, int)> in (CardImportService.java:59)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.fail(long, java.lang.String)> in (CardImportService.java:63)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.start(java.lang.String, java.lang.String)> in (CardImportService.java:51)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.complete(long, int, int, int, int)> in (CardImportService.java:60)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.fail(long, java.lang.String)> in (CardImportService.java:64)\
   2. Dependencies of Slice imports\
     - Constructor <com.deckassemble.imports.application.DevCardImportRunner.<init>(com.deckassemble.cards.application.CardImportService, java.lang.String)> has parameter of type <com.deckassemble.cards.application.CardImportService> in (DevCardImportRunner.java:0)\
     - Field <com.deckassemble.imports.application.DevCardImportRunner.cardImportService> has type <com.deckassemble.cards.application.CardImportService> in (DevCardImportRunner.java:0)\
@@ -19,9 +19,9 @@ Cycle detected: Slice cards -> \
                 Slice shared -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCardNotFound()> has annotation member of type <com.deckassemble.cards.application.CardNotFoundException> in (ApiExceptionHandler.java:0)
 Cycle detected: Slice cards -> \
@@ -29,9 +29,9 @@ Cycle detected: Slice cards -> \
                 Slice collections -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionCardNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleCollectionNotFound()> has annotation member of type <com.deckassemble.collections.application.CollectionNotFoundException> in (ApiExceptionHandler.java:0)\
@@ -48,9 +48,9 @@ Cycle detected: Slice cards -> \
                 Slice decks -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.domain.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
-    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
+    - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:51)\
   2. Dependencies of Slice shared\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckCardNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckCardNotFoundException> in (ApiExceptionHandler.java:0)\
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckNotFoundException> in (ApiExceptionHandler.java:0)\

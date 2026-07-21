@@ -6,16 +6,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.cards.domain.CardSearchPage;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
-import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
-import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
+import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.shared.security.CurrentUser;
 import java.net.URI;
@@ -40,8 +39,8 @@ class CardImportServiceTest {
 
     @Test
     void shouldImportAValidScryfallCard() {
-        ScryfallCard source =
-                new ScryfallCard(
+        CardImportData source =
+                new CardImportData(
                         "printing-id",
                         "oracle-id",
                         "Spider-Man",
@@ -64,30 +63,19 @@ class CardImportServiceTest {
                         "rare",
                         null,
                         null,
-                        null,
+                        new CardImportImages("small", "normal", "large"),
                         null,
                         false,
                         false,
                         false,
                         false,
                         "en",
-                        List.of(
-                                new ScryfallCardFace(
-                                        "Spider-Man",
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        null,
-                                        List.of(),
-                                        new ScryfallImageUris("small", "normal", "large"))),
                         Map.of("commander", "legal"));
         URI nextPage = URI.create("https://api.scryfall.com/cards/search?page=2");
         when(scryfallClient.searchCards("set:mar"))
-                .thenReturn(new ScryfallList<>(List.of(source), true, nextPage));
+                .thenReturn(new CardSearchPage(List.of(source), true, nextPage));
         when(scryfallClient.searchCards(nextPage))
-                .thenReturn(new ScryfallList<>(List.of(source), false, null));
+                .thenReturn(new CardSearchPage(List.of(source), false, null));
         when(cardRepository.findByScryfallOracleId("oracle-id")).thenReturn(Optional.empty());
         when(cardRepository.save(any(Card.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
