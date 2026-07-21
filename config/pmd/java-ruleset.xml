@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Curated PMD ruleset for deck-assemble-api.
+
+  Principles (per docs/STATIC_ANALYSIS_STANDARDS.md):
+  - Rules are referenced individually, never whole categories, so PMD
+    upgrades cannot silently enable new rules.
+  - Every inclusion exists to enforce a documented engineering standard;
+    thresholds match the table in STATIC_ANALYSIS_STANDARDS.md.
+  - Formatting/naming/Javadoc are owned by Spotless and Checkstyle and are
+    intentionally absent here.
+-->
+<ruleset name="deck-assemble-api"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>deck-assemble-api curated ruleset - see docs/STATIC_ANALYSIS_STANDARDS.md</description>
+
+    <!-- ===================== design: complexity & size thresholds ===================== -->
+
+    <!-- Enforces 10 max cyclomatic complexity per method, 40 per class -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="methodReportLevel" value="10"/>
+            <property name="classReportLevel" value="40"/>
+        </properties>
+    </rule>
+
+    <!-- Enforces 15 max cognitive complexity per method -->
+    <rule ref="category/java/design.xml/CognitiveComplexity">
+        <properties>
+            <property name="reportLevel" value="15"/>
+        </properties>
+    </rule>
+
+    <!-- Enforces 20-line method max and 300-line class max -->
+    <rule ref="category/java/design.xml/NcssCount">
+        <properties>
+            <property name="methodReportLevel" value="20"/>
+            <property name="classReportLevel" value="300"/>
+        </properties>
+    </rule>
+
+    <!-- Enforces 5 max parameters per method -->
+    <rule ref="category/java/design.xml/ExcessiveParameterList">
+        <properties>
+            <property name="minimum" value="6"/>
+        </properties>
+    </rule>
+
+    <!-- Signals SRP violations: 15+ fields -->
+    <rule ref="category/java/design.xml/TooManyFields">
+        <properties>
+            <property name="maxfields" value="15"/>
+        </properties>
+    </rule>
+
+    <!-- Signals God class: 20+ methods -->
+    <rule ref="category/java/design.xml/TooManyMethods">
+        <properties>
+            <property name="maxmethods" value="20"/>
+        </properties>
+    </rule>
+
+    <!-- Limits execution paths per method -->
+    <rule ref="category/java/design.xml/NPathComplexity">
+        <properties>
+            <property name="reportLevel" value="200"/>
+        </properties>
+    </rule>
+
+    <!-- Enforces 3-level nesting max -->
+    <rule ref="category/java/design.xml/AvoidDeeplyNestedIfStmts">
+        <properties>
+            <property name="problemDepth" value="3"/>
+        </properties>
+    </rule>
+
+    <!-- Exceptions are for exceptional flow; using them for control flow hides logic -->
+    <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"/>
+
+    <!-- ===================== errorprone: actual bugs ===================== -->
+
+    <rule ref="category/java/errorprone.xml/NullAssignment"/>
+    <rule ref="category/java/errorprone.xml/CloseResource"/>
+    <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+    <rule ref="category/java/errorprone.xml/DoNotTerminateVM"/>
+    <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
+    <rule ref="category/java/errorprone.xml/ConstructorCallsOverridableMethod"/>
+    <rule ref="category/java/errorprone.xml/EqualsNull"/>
+    <rule ref="category/java/errorprone.xml/IdempotentOperations"/>
+    <rule ref="category/java/errorprone.xml/UnconditionalIfStatement"/>
+    <rule ref="category/java/errorprone.xml/UselessOperationOnImmutable"/>
+    <rule ref="category/java/errorprone.xml/AvoidMultipleUnaryOperators"/>
+    <rule ref="category/java/errorprone.xml/MissingBreakInSwitch"/>
+
+    <!-- ===================== best practices ===================== -->
+
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+    <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+    <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
+    <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+    <!-- Program to interfaces: List not ArrayList, Map not HashMap -->
+    <rule ref="category/java/bestpractices.xml/LooseCoupling"/>
+    <rule ref="category/java/bestpractices.xml/UseTryWithResources"/>
+    <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+
+    <!-- ===================== multithreading ===================== -->
+
+    <rule ref="category/java/multithreading.xml/UseConcurrentHashMap"/>
+    <rule ref="category/java/multithreading.xml/DontCallThreadRun"/>
+
+    <!-- ===================== security (whole category: small, high-value) ===================== -->
+
+    <rule ref="category/java/security.xml/HardCodedCryptoKey"/>
+    <rule ref="category/java/security.xml/InsecureCryptoIv"/>
+
+</ruleset>
