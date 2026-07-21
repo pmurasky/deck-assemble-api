@@ -1,6 +1,5 @@
-package com.deckassemble.cards.infrastructure;
+package com.deckassemble.cards.domain;
 
-import com.deckassemble.cards.domain.Card;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

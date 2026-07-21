@@ -1,6 +1,5 @@
-package com.deckassemble.cards.infrastructure;
+package com.deckassemble.cards.domain;
 
-import com.deckassemble.cards.domain.CardFace;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 

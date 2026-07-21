@@ -12,12 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardLegality;
+import com.deckassemble.cards.domain.CardLegalityRepository;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingRepository;
+import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
-import com.deckassemble.cards.infrastructure.CardLegalityRepository;
-import com.deckassemble.cards.infrastructure.CardPrintingRepository;
-import com.deckassemble.cards.infrastructure.CardRepository;
-import com.deckassemble.cards.infrastructure.MagicSetRepository;
+import com.deckassemble.cards.domain.MagicSetRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;

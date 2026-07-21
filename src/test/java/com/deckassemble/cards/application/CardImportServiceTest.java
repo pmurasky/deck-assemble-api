@@ -7,10 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingRepository;
+import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
-import com.deckassemble.cards.infrastructure.CardPrintingRepository;
-import com.deckassemble.cards.infrastructure.CardRepository;
-import com.deckassemble.cards.infrastructure.MagicSetRepository;
+import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;

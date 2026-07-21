@@ -9,10 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingRepository;
+import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
-import com.deckassemble.cards.infrastructure.CardPrintingRepository;
-import com.deckassemble.cards.infrastructure.CardRepository;
-import com.deckassemble.cards.infrastructure.MagicSetRepository;
+import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.imports.domain.CardImportRun;
 import com.deckassemble.imports.infrastructure.CardImportRunRepository;
 import java.time.OffsetDateTime;

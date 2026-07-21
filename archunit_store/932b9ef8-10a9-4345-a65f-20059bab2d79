@@ -2,7 +2,7 @@ Cycle detected: Slice cards -> \
                 Slice imports -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.MagicSetRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.runRecorder> has type <com.deckassemble.imports.application.ImportRunRecorder> in (CardImportService.java:0)\
     - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.start(java.lang.String, java.lang.String)> in (CardImportService.java:50)\
     - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.imports.application.ImportRunRecorder.complete(long, int, int, int, int)> in (CardImportService.java:59)\
@@ -19,7 +19,7 @@ Cycle detected: Slice cards -> \
                 Slice shared -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.MagicSetRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
@@ -29,7 +29,7 @@ Cycle detected: Slice cards -> \
                 Slice collections -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.MagicSetRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
@@ -48,7 +48,7 @@ Cycle detected: Slice cards -> \
                 Slice decks -> \
                 Slice cards\
   1. Dependencies of Slice cards\
-    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.MagicSetRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
+    - Constructor <com.deckassemble.cards.application.CardImportService.<init>(com.deckassemble.cards.infrastructure.scryfall.ScryfallClient, com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.MagicSetRepository, com.deckassemble.cards.domain.CardPrintingRepository, com.deckassemble.imports.application.ImportRunRecorder, com.deckassemble.shared.security.CurrentUser)> has parameter of type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Field <com.deckassemble.cards.application.CardImportService.currentUser> has type <com.deckassemble.shared.security.CurrentUser> in (CardImportService.java:0)\
     - Method <com.deckassemble.cards.application.CardImportService.importQuery(java.lang.String)> calls method <com.deckassemble.shared.security.CurrentUser.subject()> in (CardImportService.java:50)\
   2. Dependencies of Slice shared\
@@ -56,12 +56,12 @@ Cycle detected: Slice cards -> \
     - Method <com.deckassemble.shared.exception.ApiExceptionHandler.handleDeckNotFound()> has annotation member of type <com.deckassemble.decks.application.DeckNotFoundException> in (ApiExceptionHandler.java:0)\
   3. Dependencies of Slice decks\
     - Constructor <com.deckassemble.decks.api.DeckCardResponse.<init>(java.lang.Long, java.lang.Long, int, java.lang.String, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
-    - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.infrastructure.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
-    - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.infrastructure.CardRepository, com.deckassemble.cards.infrastructure.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.infrastructure.CardRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.domain.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Constructor <com.deckassemble.decks.application.CommanderLegalityEvaluator.<init>(com.deckassemble.cards.domain.CardRepository, com.deckassemble.cards.domain.CardPrintingRepository)> has parameter of type <com.deckassemble.cards.domain.CardRepository> in (CommanderLegalityEvaluator.java:0)\
     - Constructor <com.deckassemble.decks.application.DeckService.<init>(com.deckassemble.decks.infrastructure.DeckRepository, com.deckassemble.decks.infrastructure.DeckCardRepository, com.deckassemble.shared.security.CurrentUser, com.deckassemble.users.application.ProfileService, com.deckassemble.cards.application.CardCatalogService, com.deckassemble.decks.application.CommanderLegalityEvaluator)> has parameter of type <com.deckassemble.cards.application.CardCatalogService> in (DeckService.java:0)\
     - Field <com.deckassemble.decks.api.DeckCardResponse.card> has type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
-    - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardPrintingRepository> has type <com.deckassemble.cards.infrastructure.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
-    - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardRepository> has type <com.deckassemble.cards.infrastructure.CardRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardPrintingRepository> has type <com.deckassemble.cards.domain.CardPrintingRepository> in (CommanderLegalityEvaluator.java:0)\
+    - Field <com.deckassemble.decks.application.CommanderLegalityEvaluator.cardRepository> has type <com.deckassemble.cards.domain.CardRepository> in (CommanderLegalityEvaluator.java:0)\
     - Field <com.deckassemble.decks.application.DeckService.cardCatalogService> has type <com.deckassemble.cards.application.CardCatalogService> in (DeckService.java:0)\
     - Method <com.deckassemble.decks.api.DeckCardResponse.card()> has return type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\
     - Method <com.deckassemble.decks.api.DeckCardResponse.from(com.deckassemble.decks.domain.DeckCard, com.deckassemble.cards.api.CardSummaryResponse)> has parameter of type <com.deckassemble.cards.api.CardSummaryResponse> in (DeckCardResponse.java:0)\

@@ -2,8 +2,8 @@ package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
-import com.deckassemble.cards.infrastructure.CardPrintingRepository;
-import com.deckassemble.cards.infrastructure.CardRepository;
+import com.deckassemble.cards.domain.CardPrintingRepository;
+import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.decks.api.DeckLegalityResponse;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;

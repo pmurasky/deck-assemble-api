@@ -1,6 +1,5 @@
-package com.deckassemble.cards.infrastructure;
+package com.deckassemble.cards.domain;
 
-import com.deckassemble.cards.domain.CardPrinting;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
