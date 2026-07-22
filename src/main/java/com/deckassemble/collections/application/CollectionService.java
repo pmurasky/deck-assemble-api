@@ -81,6 +81,8 @@ public class CollectionService {
 
     public CollectionCardResponse addCard(long collectionId, CollectionCardAddRequest request) {
         owned(collectionId);
+        cardCatalogService.validateFinishAvailability(
+                request.cardPrintingId(), request.regularQuantity(), request.foilQuantity());
         return responseFor(collectionCardRepository.save(mergeOrNew(collectionId, request)));
     }
 
@@ -108,6 +110,8 @@ public class CollectionService {
             long collectionId, long collectionCardId, CollectionCardUpdateRequest request) {
         owned(collectionId);
         CollectionCard card = ownedCard(collectionId, collectionCardId);
+        cardCatalogService.validateFinishAvailability(
+                card.getCardPrintingId(), request.regularQuantity(), request.foilQuantity());
         card.setRegularQuantity(request.regularQuantity());
         card.setFoilQuantity(request.foilQuantity());
         return responseFor(collectionCardRepository.save(card));

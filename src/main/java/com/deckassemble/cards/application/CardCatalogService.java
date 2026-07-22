@@ -24,9 +24,9 @@ public class CardCatalogService {
     }
 
     public Page<CardSummaryResponse> search(
-            String query, String setCode, String colorIdentity, Pageable pageable) {
+            String query, String setCode, String colorIdentity, String type, Pageable pageable) {
         return cardRepository
-                .findAll(specification(query, setCode, colorIdentity), pageable)
+                .findAll(specification(query, setCode, colorIdentity, type), pageable)
                 .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
     }
 
@@ -37,13 +37,17 @@ public class CardCatalogService {
                 .orElse(null);
     }
 
-    private Specification<Card> specification(String query, String setCode, String colorIdentity) {
+    private Specification<Card> specification(
+            String query, String setCode, String colorIdentity, String type) {
         Specification<Card> result = activeSpec().and(nameSpec(query));
         if (colorIdentity != null) {
             result = result.and(colorIdentitySpec(colorIdentity));
         }
         if (setCode != null) {
             result = result.and(setCodeSpec(setCode));
+        }
+        if (type != null) {
+            result = result.and(typeLineSpec(type));
         }
         return result;
     }
@@ -60,6 +64,11 @@ public class CardCatalogService {
     private Specification<Card> colorIdentitySpec(String colorIdentity) {
         return (root, criteria, builder) ->
                 builder.like(root.get("colorIdentity"), "%" + colorIdentity + "%");
+    }
+
+    private Specification<Card> typeLineSpec(String type) {
+        return (root, criteria, builder) ->
+                builder.like(builder.lower(root.get("typeLine")), "%" + type.toLowerCase() + "%");
     }
 
     private Specification<Card> setCodeSpec(String setCode) {
@@ -93,6 +102,20 @@ public class CardCatalogService {
 
     public @Nullable String getNameById(long cardId) {
         return cardRepository.findById(cardId).map(Card::getName).orElse(null);
+    }
+
+    public void validateFinishAvailability(long cardPrintingId, int regularQuantity, int foilQuantity) {
+        CardPrinting printing =
+                cardPrintingRepository
+                        .findById(cardPrintingId)
+                        .filter(p -> p.getActive() && p.getCard().getActive())
+                        .orElseThrow(CardNotFoundException::new);
+        if (regularQuantity > 0 && Boolean.FALSE.equals(printing.getNonfoilAvailable())) {
+            throw new FinishUnavailableException("nonfoil");
+        }
+        if (foilQuantity > 0 && Boolean.FALSE.equals(printing.getFoilAvailable())) {
+            throw new FinishUnavailableException("foil");
+        }
     }
 
     public Page<CardSummaryResponse> getSetPrintings(String setCode, Pageable pageable) {

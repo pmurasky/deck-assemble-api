@@ -164,6 +164,48 @@ class CardCatalogServiceTest {
         assertThat(result.get(0).nonfoilAvailable()).isFalse();
     }
 
+    @Test
+    void shouldRejectFoilQuantityWhenFoilUnavailable() {
+        CardPrinting printing = new CardPrinting(card("Bolt"), SET, "scry-1");
+        printing.setFoilAvailable(false);
+        printing.setNonfoilAvailable(true);
+        when(cardPrintingRepository.findById(10L)).thenReturn(Optional.of(printing));
+
+        assertThatThrownBy(() -> service().validateFinishAvailability(10L, 1, 1))
+                .isInstanceOf(FinishUnavailableException.class)
+                .hasMessageContaining("foil");
+    }
+
+    @Test
+    void shouldRejectRegularQuantityWhenNonfoilUnavailable() {
+        CardPrinting printing = new CardPrinting(card("Bolt"), SET, "scry-1");
+        printing.setFoilAvailable(true);
+        printing.setNonfoilAvailable(false);
+        when(cardPrintingRepository.findById(10L)).thenReturn(Optional.of(printing));
+
+        assertThatThrownBy(() -> service().validateFinishAvailability(10L, 1, 0))
+                .isInstanceOf(FinishUnavailableException.class)
+                .hasMessageContaining("nonfoil");
+    }
+
+    @Test
+    void shouldAcceptQuantitiesWhenFinishesAvailable() {
+        CardPrinting printing = new CardPrinting(card("Bolt"), SET, "scry-1");
+        printing.setFoilAvailable(true);
+        printing.setNonfoilAvailable(true);
+        when(cardPrintingRepository.findById(10L)).thenReturn(Optional.of(printing));
+
+        service().validateFinishAvailability(10L, 2, 3);
+    }
+
+    @Test
+    void shouldThrowWhenValidatingMissingPrinting() {
+        when(cardPrintingRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().validateFinishAvailability(10L, 1, 0))
+                .isInstanceOf(CardNotFoundException.class);
+    }
+
     private CardCatalogService service() {
         return new CardCatalogService(cardRepository, cardPrintingRepository);
     }

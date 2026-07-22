@@ -1,6 +1,7 @@
 package com.deckassemble.shared.exception;
 
 import com.deckassemble.cards.application.CardNotFoundException;
+import com.deckassemble.cards.application.FinishUnavailableException;
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.CollectionNotFoundException;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
@@ -42,6 +43,17 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DeckCardNotFoundException.class)
     ProblemDetail handleDeckCardNotFound() {
         return notFound("deck-card", "Deck card");
+    }
+
+    @ExceptionHandler(FinishUnavailableException.class)
+    ProblemDetail handleFinishUnavailable(FinishUnavailableException exception) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage());
+        problem.setType(URI.create("https://deckassemble.app/problems/finish-unavailable"));
+        problem.setTitle("Finish unavailable");
+        problem.setProperty("code", "FINISH_UNAVAILABLE");
+        return problem;
     }
 
     private ProblemDetail notFound(String resource, String title) {

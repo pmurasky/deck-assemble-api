@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.FinishUnavailableException;
 import com.deckassemble.collections.domain.CardCollection;
 import com.deckassemble.collections.domain.CardCollectionRepository;
 import com.deckassemble.collections.domain.CollectionCard;
@@ -158,6 +159,36 @@ class CollectionServiceTest {
 
         assertThatThrownBy(() -> service().removeCard(1L, 7L))
                 .isInstanceOf(CollectionCardNotFoundException.class);
+    }
+
+    @Test
+    void shouldRejectAddWhenFinishUnavailable() {
+        stubUser();
+        when(collectionRepository.findByIdAndProfileId(1L, PROFILE_ID))
+                .thenReturn(Optional.of(collection("Alpha")));
+        org.mockito.Mockito.doThrow(new FinishUnavailableException("foil"))
+                .when(cardCatalogService)
+                .validateFinishAvailability(10L, 0, 1);
+
+        assertThatThrownBy(() -> service().addCard(1L, new CollectionCardAddRequest(10L, 0, 1)))
+                .isInstanceOf(FinishUnavailableException.class);
+    }
+
+    @Test
+    void shouldRejectUpdateWhenFinishUnavailable() {
+        stubUser();
+        when(collectionRepository.findByIdAndProfileId(1L, PROFILE_ID))
+                .thenReturn(Optional.of(collection("Alpha")));
+        CollectionCard card = new CollectionCard(1L, 10L, 2, 1);
+        when(collectionCardRepository.findByIdAndCollectionId(7L, 1L))
+                .thenReturn(Optional.of(card));
+        org.mockito.Mockito.doThrow(new FinishUnavailableException("nonfoil"))
+                .when(cardCatalogService)
+                .validateFinishAvailability(10L, 3, 0);
+
+        assertThatThrownBy(
+                        () -> service().updateCard(1L, 7L, new CollectionCardUpdateRequest(3, 0)))
+                .isInstanceOf(FinishUnavailableException.class);
     }
 
     @Test
