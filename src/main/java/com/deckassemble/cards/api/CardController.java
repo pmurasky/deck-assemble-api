@@ -30,8 +30,9 @@ public class CardController {
             @RequestParam(defaultValue = "") @Size(max = 100) String query,
             @RequestParam(required = false) String setCode,
             @RequestParam(required = false) String colorIdentity,
+            @RequestParam(required = false) String type,
             @PageableDefault(size = 24) Pageable pageable) {
-        return cardCatalogService.search(query, setCode, colorIdentity, pageable);
+        return cardCatalogService.search(query, setCode, colorIdentity, type, pageable);
     }
 
     @GetMapping("/{cardId}")

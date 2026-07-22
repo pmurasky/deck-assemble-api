@@ -131,6 +131,21 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldFilterCardsByTypeLine() throws Exception {
+        Card creature = cardRepository.save(new Card("oracle-hulk", "Hulk, Incredible"));
+        creature.setTypeLine("Legendary Creature — Human Warrior");
+        cardRepository.save(creature);
+        Card instant = cardRepository.save(new Card("oracle-repulse", "Repulse"));
+        instant.setTypeLine("Instant");
+        cardRepository.save(instant);
+
+        mockMvc.perform(get("/cards").queryParam("type", "instant").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Repulse"));
+    }
+
+    @Test
     void shouldAllowAnonymousCardBrowsing() throws Exception {
         cardRepository.save(new Card("oracle-public", "Public Card"));
 
