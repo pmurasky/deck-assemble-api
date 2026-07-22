@@ -104,7 +104,8 @@ public class CardCatalogService {
         return cardRepository.findById(cardId).map(Card::getName).orElse(null);
     }
 
-    public void validateFinishAvailability(long cardPrintingId, int regularQuantity, int foilQuantity) {
+    public void validateFinishAvailability(
+            long cardPrintingId, int regularQuantity, int foilQuantity) {
         CardPrinting printing =
                 cardPrintingRepository
                         .findById(cardPrintingId)
