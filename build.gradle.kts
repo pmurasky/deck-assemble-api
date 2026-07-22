@@ -7,6 +7,7 @@ plugins {
     id("com.diffplug.spotless") version "7.2.1"
     id("com.github.spotbugs") version "6.4.2"
     id("net.ltgt.errorprone") version "4.3.0"
+    id("info.solidsoft.pitest") version "1.19.0"
     jacoco
     pmd
     checkstyle
@@ -57,6 +58,8 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.4.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    pitest("org.pitest:pitest-junit5-plugin:1.2.3")
 }
 
 spotless {
@@ -203,4 +206,19 @@ tasks.withType<com.github.spotbugs.snom.SpotBugsTask> {
 // Standards run SpotBugs on main sources only.
 tasks.named("spotbugsTest") {
     enabled = false
+}
+
+// 1.25.8: first PIT line with Java 25 fixes; gradle plugin ships an older default.
+// Not wired into `check` — mutation runs are slow; run on demand via `./gradlew pitest`.
+pitest {
+    pitestVersion.set("1.25.8")
+    targetClasses.set(setOf("com.deckassemble.*"))
+    // ponytail: same exclusions as the JaCoCo gate — no logic worth mutating.
+    excludedClasses.set(
+            setOf("com.deckassemble.DeckAssembleApplication",
+                    "com.deckassemble.imports.application.DevCardImportRunner"))
+    // Integration tests boot Testcontainers per mutation — unit tests only.
+    excludedTestClasses.set(setOf("*IntegrationTest", "*AbstractIntegrationTest", "*ArchitectureTest"))
+    threads.set(Runtime.getRuntime().availableProcessors())
+    outputFormats.set(setOf("XML", "HTML"))
 }
