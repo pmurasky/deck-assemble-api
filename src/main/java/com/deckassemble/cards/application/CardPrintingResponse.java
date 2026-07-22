@@ -9,7 +9,9 @@ public record CardPrintingResponse(
         String collectorNumber,
         String rarity,
         String imageUri,
-        LocalDate releasedAt) {
+        LocalDate releasedAt,
+        Boolean foilAvailable,
+        Boolean nonfoilAvailable) {
 
     public static CardPrintingResponse from(CardPrinting printing) {
         return new CardPrintingResponse(
@@ -18,6 +20,8 @@ public record CardPrintingResponse(
                 printing.getCollectorNumber(),
                 printing.getRarity(),
                 printing.getImageUriNormal(),
-                printing.getReleasedAt());
+                printing.getReleasedAt(),
+                printing.getFoilAvailable(),
+                printing.getNonfoilAvailable());
     }
 }

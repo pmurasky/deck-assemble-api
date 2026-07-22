@@ -20,7 +20,9 @@ public record CardSummaryResponse(
         @Nullable String imageUrl,
         @Nullable String setCode,
         @Nullable String setName,
-        @Nullable String rarity) {
+        @Nullable String rarity,
+        @Nullable Boolean foilAvailable,
+        @Nullable Boolean nonfoilAvailable) {
 
     public static CardSummaryResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardSummaryResponse(
@@ -38,6 +40,8 @@ public record CardSummaryResponse(
                 latestPrinting != null ? latestPrinting.getImageUriNormal() : null,
                 latestPrinting != null ? latestPrinting.getMagicSet().getSetCode() : null,
                 latestPrinting != null ? latestPrinting.getMagicSet().getName() : null,
-                latestPrinting != null ? latestPrinting.getRarity() : null);
+                latestPrinting != null ? latestPrinting.getRarity() : null,
+                latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
+                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null);
     }
 }

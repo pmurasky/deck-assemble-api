@@ -37,24 +37,35 @@ class CardCatalogServiceTest {
     void shouldSearchWithLatestPrintingMapped() {
         Card card = card("Lightning Bolt");
         CardPrinting printing = new CardPrinting(card, SET, "scry-1");
+        printing.setFoilAvailable(true);
+        printing.setNonfoilAvailable(false);
         when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
                 .thenReturn(new PageImpl<>(List.of(card)));
         when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(anyLong()))
                 .thenReturn(List.of(printing));
 
-        Page<CardSummaryResponse> result = service().search("bolt", null, null, PAGEABLE);
+        Page<CardSummaryResponse> result = service().search("bolt", null, null, null, PAGEABLE);
 
         assertThat(result.getContent()).hasSize(1);
+        CardSummaryResponse summary = result.getContent().get(0);
+        assertThat(summary.foilAvailable()).isTrue();
+        assertThat(summary.nonfoilAvailable()).isFalse();
     }
 
     @Test
     void shouldReturnDetailForActiveCard() {
         Card card = card("Lightning Bolt");
+        CardPrinting printing = new CardPrinting(card, SET, "scry-1");
+        printing.setFoilAvailable(true);
+        printing.setNonfoilAvailable(true);
         when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
         when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(anyLong()))
-                .thenReturn(List.of());
+                .thenReturn(List.of(printing));
 
-        assertThat(service().getById(1L).name()).isEqualTo("Lightning Bolt");
+        CardDetailResponse detail = service().getById(1L);
+        assertThat(detail.name()).isEqualTo("Lightning Bolt");
+        assertThat(detail.foilAvailable()).isTrue();
+        assertThat(detail.nonfoilAvailable()).isTrue();
     }
 
     @Test
@@ -77,9 +88,14 @@ class CardCatalogServiceTest {
     void shouldReturnSummaryByPrintingId() {
         Card card = card("Lightning Bolt");
         CardPrinting printing = new CardPrinting(card, SET, "scry-1");
+        printing.setFoilAvailable(false);
+        printing.setNonfoilAvailable(true);
         when(cardPrintingRepository.findById(10L)).thenReturn(Optional.of(printing));
 
-        assertThat(service().getSummaryByPrintingId(10L).name()).isEqualTo("Lightning Bolt");
+        CardSummaryResponse summary = service().getSummaryByPrintingId(10L);
+        assertThat(summary.name()).isEqualTo("Lightning Bolt");
+        assertThat(summary.foilAvailable()).isFalse();
+        assertThat(summary.nonfoilAvailable()).isTrue();
     }
 
     @Test
@@ -136,12 +152,16 @@ class CardCatalogServiceTest {
         Card card = card("Bolt");
         when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
         CardPrinting printing = new CardPrinting(card, SET, "scry-1");
+        printing.setFoilAvailable(true);
+        printing.setNonfoilAvailable(false);
         when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(1L))
                 .thenReturn(List.of(printing));
 
         List<CardPrintingResponse> result = service().getPrintings(1L);
 
         assertThat(result).hasSize(1);
+        assertThat(result.get(0).foilAvailable()).isTrue();
+        assertThat(result.get(0).nonfoilAvailable()).isFalse();
     }
 
     private CardCatalogService service() {

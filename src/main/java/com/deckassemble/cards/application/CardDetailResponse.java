@@ -24,9 +24,11 @@ public record CardDetailResponse(
         @Nullable String setCode,
         @Nullable String setName,
         @Nullable String rarity,
-        @Nullable String flavorText) {
+        @Nullable String flavorText,
+        @Nullable Boolean foilAvailable,
+        @Nullable Boolean nonfoilAvailable) {
 
-    // Suppressed: a 19-field record factory is one mapping per line; splitting harms readability.
+    // Suppressed: a 21-field record factory is one mapping per line; splitting harms readability.
     @SuppressWarnings("checkstyle:MethodLength")
     public static CardDetailResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardDetailResponse(
@@ -48,6 +50,8 @@ public record CardDetailResponse(
                 latestPrinting != null ? latestPrinting.getMagicSet().getSetCode() : null,
                 latestPrinting != null ? latestPrinting.getMagicSet().getName() : null,
                 latestPrinting != null ? latestPrinting.getRarity() : null,
-                latestPrinting != null ? latestPrinting.getFlavorText() : null);
+                latestPrinting != null ? latestPrinting.getFlavorText() : null,
+                latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
+                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null);
     }
 }
