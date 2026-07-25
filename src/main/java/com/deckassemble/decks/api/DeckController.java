@@ -3,6 +3,7 @@ package com.deckassemble.decks.api;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardUpdateRequest;
+import com.deckassemble.decks.application.DeckComboResponse;
 import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckResponse;
@@ -52,6 +53,11 @@ public class DeckController {
     @GetMapping("/{deckId}/legality")
     public DeckLegalityResponse legality(@PathVariable long deckId) {
         return deckService.legality(deckId);
+    }
+
+    @GetMapping("/{deckId}/combos")
+    public DeckComboResponse combos(@PathVariable long deckId) {
+        return deckService.getCombos(deckId);
     }
 
     @PatchMapping("/{deckId}")

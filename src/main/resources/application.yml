@@ -45,3 +45,8 @@ deckassemble:
     connect-timeout: 5s
     read-timeout: 30s
     request-delay: 1s
+  commander-spellbook:
+    base-url: ${COMMANDER_SPELLBOOK_BASE_URL:https://backend.commanderspellbook.com}
+    user-agent: ${COMMANDER_SPELLBOOK_USER_AGENT:DeckAssemble/0.0.1}
+    connect-timeout: 5s
+    read-timeout: 30s

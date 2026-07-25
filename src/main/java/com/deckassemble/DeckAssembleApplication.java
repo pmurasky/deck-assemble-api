@@ -2,6 +2,7 @@ package com.deckassemble;
 
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallProperties;
 import com.deckassemble.recommendations.infrastructure.edhrec.EdhrecProperties;
+import com.deckassemble.recommendations.infrastructure.spellbook.CommanderSpellbookProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,7 +15,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableScheduling
-@EnableConfigurationProperties({ScryfallProperties.class, EdhrecProperties.class})
+@EnableConfigurationProperties({
+    ScryfallProperties.class,
+    EdhrecProperties.class,
+    CommanderSpellbookProperties.class
+})
 public class DeckAssembleApplication {
 
     public static void main(String[] args) {
