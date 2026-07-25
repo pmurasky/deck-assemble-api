@@ -1,36 +1,18 @@
 package com.deckassemble.cards.infrastructure.scryfall;
 
-import java.time.Duration;
-import java.time.Instant;
+import com.deckassemble.common.RateLimiter;
 import org.springframework.stereotype.Component;
 
 @Component
 class ScryfallRateLimiter {
 
-    private final Duration requestDelay;
-    private Instant nextRequestAt = Instant.MIN;
+    private final RateLimiter rateLimiter;
 
     ScryfallRateLimiter(ScryfallProperties properties) {
-        requestDelay = properties.requestDelay();
+        rateLimiter = new RateLimiter(properties.requestDelay(), "Scryfall");
     }
 
-    synchronized void awaitPermit() {
-        var now = Instant.now();
-        var delay = Duration.between(now, nextRequestAt);
-        sleepIfNeeded(delay);
-        nextRequestAt = Instant.now().plus(requestDelay);
-    }
-
-    private void sleepIfNeeded(Duration delay) {
-        if (!delay.isPositive()) {
-            return;
-        }
-        try {
-            Thread.sleep(delay);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(
-                    "Interrupted while rate limiting Scryfall requests", exception);
-        }
+    void awaitPermit() {
+        rateLimiter.awaitPermit();
     }
 }
