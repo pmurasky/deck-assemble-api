@@ -29,6 +29,7 @@ public record CardImportData(
         String artist,
         String flavorText,
         @Nullable CardImportImages images,
+        List<CardImportFace> faces,
         LocalDate releasedAt,
         Boolean foil,
         Boolean nonfoil,
