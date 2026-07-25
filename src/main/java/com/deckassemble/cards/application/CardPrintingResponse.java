@@ -2,6 +2,7 @@ package com.deckassemble.cards.application;
 
 import com.deckassemble.cards.domain.CardPrinting;
 import java.time.LocalDate;
+import java.util.List;
 
 public record CardPrintingResponse(
         Long id,
@@ -11,7 +12,8 @@ public record CardPrintingResponse(
         String imageUri,
         LocalDate releasedAt,
         Boolean foilAvailable,
-        Boolean nonfoilAvailable) {
+        Boolean nonfoilAvailable,
+        List<CardFaceResponse> faces) {
 
     public static CardPrintingResponse from(CardPrinting printing) {
         return new CardPrintingResponse(
@@ -22,6 +24,7 @@ public record CardPrintingResponse(
                 printing.getImageUriNormal(),
                 printing.getReleasedAt(),
                 printing.getFoilAvailable(),
-                printing.getNonfoilAvailable());
+                printing.getNonfoilAvailable(),
+                printing.getCard().getFaces().stream().map(CardFaceResponse::from).toList());
     }
 }

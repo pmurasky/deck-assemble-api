@@ -3,6 +3,7 @@ package com.deckassemble.cards.application;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 public record CardDetailResponse(
@@ -26,7 +27,8 @@ public record CardDetailResponse(
         @Nullable String rarity,
         @Nullable String flavorText,
         @Nullable Boolean foilAvailable,
-        @Nullable Boolean nonfoilAvailable) {
+        @Nullable Boolean nonfoilAvailable,
+        List<CardFaceResponse> faces) {
 
     // Suppressed: a 21-field record factory is one mapping per line; splitting harms readability.
     @SuppressWarnings("checkstyle:MethodLength")
@@ -52,6 +54,7 @@ public record CardDetailResponse(
                 latestPrinting != null ? latestPrinting.getRarity() : null,
                 latestPrinting != null ? latestPrinting.getFlavorText() : null,
                 latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
-                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null);
+                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
+                card.getFaces().stream().map(CardFaceResponse::from).toList());
     }
 }
