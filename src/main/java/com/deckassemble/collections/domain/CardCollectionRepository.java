@@ -9,4 +9,6 @@ public interface CardCollectionRepository extends JpaRepository<CardCollection, 
     List<CardCollection> findByProfileIdOrderByNameAsc(Long profileId);
 
     Optional<CardCollection> findByIdAndProfileId(Long id, Long profileId);
+
+    Optional<CardCollection> findByProfileIdAndDefaultCollectionTrue(Long profileId);
 }

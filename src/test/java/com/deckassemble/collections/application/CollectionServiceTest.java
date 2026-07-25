@@ -133,6 +133,35 @@ class CollectionServiceTest {
     }
 
     @Test
+    void shouldAddCardToDefaultCollection() {
+        stubUser();
+        when(collectionRepository.findByProfileIdAndDefaultCollectionTrue(PROFILE_ID))
+                .thenReturn(Optional.of(collection("Alpha")));
+        when(collectionRepository.findByIdAndProfileId(1L, PROFILE_ID))
+                .thenReturn(Optional.of(collection("Alpha")));
+        when(collectionCardRepository.findByCollectionIdAndCardPrintingId(1L, 10L))
+                .thenReturn(Optional.empty());
+        when(collectionCardRepository.save(any(CollectionCard.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        CollectionCardResponse result = service().addToDefaultCollection(10L, 1, 0);
+
+        assertThat(result.regularQuantity()).isEqualTo(1);
+        assertThat(result.foilQuantity()).isZero();
+    }
+
+    @Test
+    void shouldThrowWhenNoCollectionExistsForAcquire() {
+        stubUser();
+        when(collectionRepository.findByProfileIdAndDefaultCollectionTrue(PROFILE_ID))
+                .thenReturn(Optional.empty());
+        when(collectionRepository.findByProfileIdOrderByNameAsc(PROFILE_ID)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service().addToDefaultCollection(10L, 1, 0))
+                .isInstanceOf(CollectionNotFoundException.class);
+    }
+
+    @Test
     void shouldUpdateCardQuantities() {
         stubUser();
         when(collectionRepository.findByIdAndProfileId(1L, PROFILE_ID))

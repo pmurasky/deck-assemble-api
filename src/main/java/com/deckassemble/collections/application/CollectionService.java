@@ -8,6 +8,8 @@ import com.deckassemble.collections.domain.CollectionCardRepository;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,20 @@ public class CollectionService {
         return collectionRepository.findByProfileIdOrderByNameAsc(profileId()).stream()
                 .map(CollectionResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> getOwnedPrintingIds(long profileId) {
+        List<Long> collectionIds =
+                collectionRepository.findByProfileIdOrderByNameAsc(profileId).stream()
+                        .map(CardCollection::getId)
+                        .toList();
+        if (collectionIds.isEmpty()) {
+            return Set.of();
+        }
+        return collectionCardRepository.findByCollectionIdIn(collectionIds).stream()
+                .map(CollectionCard::getCardPrintingId)
+                .collect(Collectors.toSet());
     }
 
     public CollectionResponse create(CollectionCreateRequest request) {
@@ -84,6 +100,24 @@ public class CollectionService {
         cardCatalogService.validateFinishAvailability(
                 request.cardPrintingId(), request.regularQuantity(), request.foilQuantity());
         return responseFor(collectionCardRepository.save(mergeOrNew(collectionId, request)));
+    }
+
+    public CollectionCardResponse addToDefaultCollection(
+            long cardPrintingId, int regularQuantity, int foilQuantity) {
+        long profileId = profileId();
+        CardCollection collection =
+                collectionRepository
+                        .findByProfileIdAndDefaultCollectionTrue(profileId)
+                        .or(
+                                () ->
+                                        collectionRepository
+                                                .findByProfileIdOrderByNameAsc(profileId)
+                                                .stream()
+                                                .findFirst())
+                        .orElseThrow(CollectionNotFoundException::new);
+        return addCard(
+                collection.getId(),
+                new CollectionCardAddRequest(cardPrintingId, regularQuantity, foilQuantity));
     }
 
     private CollectionCard mergeOrNew(long collectionId, CollectionCardAddRequest request) {
