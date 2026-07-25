@@ -115,6 +115,45 @@ public class CardCatalogService {
                                 printing -> printing.getCard().getScryfallOracleId()));
     }
 
+    @Transactional(readOnly = true)
+    public Card getCard(long cardId) {
+        return cardRepository
+                .findById(cardId)
+                .filter(Card::getActive)
+                .orElseThrow(CardNotFoundException::new);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Card> getCardsByNames(Collection<String> names) {
+        if (names.isEmpty()) {
+            return List.of();
+        }
+        return cardRepository.findByNameIn(names);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Card> getCardsByPrintingIds(Collection<Long> cardPrintingIds) {
+        if (cardPrintingIds.isEmpty()) {
+            return Map.of();
+        }
+        return cardPrintingRepository.findAllById(cardPrintingIds).stream()
+                .collect(Collectors.toMap(CardPrinting::getId, CardPrinting::getCard));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Long> getLatestPrintingIdByCardIds(Collection<Long> cardIds) {
+        if (cardIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> printingIds = new java.util.HashMap<>();
+        for (var cardId : cardIds) {
+            cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
+                    .findFirst()
+                    .ifPresent(printing -> printingIds.put(cardId, printing.getId()));
+        }
+        return printingIds;
+    }
+
     public CardDetailResponse getById(long cardId) {
         return cardRepository
                 .findById(cardId)

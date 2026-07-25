@@ -240,4 +240,44 @@ class CardCatalogServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(card, "id", 1L);
         return card;
     }
+
+    @Test
+    void shouldReturnActiveCardById() {
+        when(cardRepository.findById(1L)).thenReturn(Optional.of(card("Atraxa")));
+
+        assertThat(service().getCard(1L).getName()).isEqualTo("Atraxa");
+    }
+
+    @Test
+    void shouldThrowWhenGetCardMissing() {
+        when(cardRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().getCard(1L)).isInstanceOf(CardNotFoundException.class);
+    }
+
+    @Test
+    void shouldMapPrintingsToCards() {
+        Card card = card("Sol Ring");
+        var printing = new CardPrinting(card, SET, "sc-1");
+        org.springframework.test.util.ReflectionTestUtils.setField(printing, "id", 9L);
+        when(cardPrintingRepository.findAllById(List.of(9L))).thenReturn(List.of(printing));
+
+        var cards = service().getCardsByPrintingIds(List.of(9L));
+
+        assertThat(cards.get(9L).getName()).isEqualTo("Sol Ring");
+        assertThat(service().getCardsByPrintingIds(List.of())).isEmpty();
+    }
+
+    @Test
+    void shouldMapCardsToLatestPrintingIds() {
+        Card card = card("Forest");
+        var printing = new CardPrinting(card, SET, "sc-2");
+        org.springframework.test.util.ReflectionTestUtils.setField(printing, "id", 5L);
+        when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(1L))
+                .thenReturn(List.of(printing));
+
+        var printingIds = service().getLatestPrintingIdByCardIds(List.of(1L, 2L));
+
+        assertThat(printingIds).containsExactly(Map.entry(1L, 5L));
+    }
 }
