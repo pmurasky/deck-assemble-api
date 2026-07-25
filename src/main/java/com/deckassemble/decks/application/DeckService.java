@@ -9,6 +9,7 @@ import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.recommendations.domain.CommanderSpellbookClient;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
@@ -16,12 +17,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class DeckService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeckService.class);
 
     private final DeckRepository deckRepository;
     private final DeckCardRepository deckCardRepository;
@@ -32,6 +38,7 @@ public class DeckService {
     private final OwnershipChecker ownershipChecker;
     private final CollectionService collectionService;
     private final CardPriceService cardPriceService;
+    private final CommanderSpellbookClient commanderSpellbookClient;
 
     // Suppressed: collaborators are what this orchestration service needs; Spring injects them.
     @SuppressWarnings("checkstyle:ParameterNumber")
@@ -44,7 +51,8 @@ public class DeckService {
             CommanderLegalityEvaluator commanderLegalityEvaluator,
             OwnershipChecker ownershipChecker,
             CollectionService collectionService,
-            CardPriceService cardPriceService) {
+            CardPriceService cardPriceService,
+            CommanderSpellbookClient commanderSpellbookClient) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.currentUser = currentUser;
@@ -54,6 +62,7 @@ public class DeckService {
         this.ownershipChecker = ownershipChecker;
         this.collectionService = collectionService;
         this.cardPriceService = cardPriceService;
+        this.commanderSpellbookClient = commanderSpellbookClient;
     }
 
     public List<DeckResponse> list() {
@@ -81,6 +90,50 @@ public class DeckService {
     public DeckLegalityResponse legality(long deckId) {
         Deck deck = owned(deckId);
         return commanderLegalityEvaluator.evaluate(deck, deckCardRepository.findByDeckId(deckId));
+    }
+
+    @Transactional(readOnly = true)
+    public DeckComboResponse getCombos(long deckId) {
+        owned(deckId);
+        var cards = deckCardRepository.findByDeckId(deckId);
+        var names = cardCatalogService.getCardsByPrintingIds(cardPrintingIds(cards));
+        var deckList = withNames(cards, names);
+        if (deckList.isBlank()) {
+            return new DeckComboResponse(true, List.of());
+        }
+        try {
+            return new DeckComboResponse(true, commanderSpellbookClient.findCombos(deckList));
+        } catch (org.springframework.web.client.RestClientException exception) {
+            LOGGER.warn("Commander Spellbook lookup failed for deck {}", deckId, exception);
+            return new DeckComboResponse(false, List.of());
+        }
+    }
+
+    private static List<Long> cardPrintingIds(List<DeckCard> cards) {
+        return cards.stream()
+                .filter(DeckService::includedInSpellbookLookup)
+                .map(DeckCard::getCardPrintingId)
+                .toList();
+    }
+
+    private static String withNames(List<DeckCard> cards, Map<Long, Card> cardsByPrintingId) {
+        return cards.stream()
+                .filter(DeckService::includedInSpellbookLookup)
+                .flatMap(card -> deckListLine(card, cardsByPrintingId).stream())
+                .collect(Collectors.joining("\n"));
+    }
+
+    private static boolean includedInSpellbookLookup(DeckCard card) {
+        return card.getDeckSection() == DeckCard.Section.COMMANDER
+                || card.getDeckSection() == DeckCard.Section.MAIN_DECK
+                || card.getDeckSection() == DeckCard.Section.COMPANION;
+    }
+
+    private static Optional<String> deckListLine(DeckCard card, Map<Long, Card> cardsByPrintingId) {
+        Card catalogCard = cardsByPrintingId.get(card.getCardPrintingId());
+        return catalogCard == null
+                ? Optional.empty()
+                : Optional.of(card.getQuantity() + " " + catalogCard.getName());
     }
 
     @Transactional(readOnly = true)
