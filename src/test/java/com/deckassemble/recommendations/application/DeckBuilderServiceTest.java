@@ -338,7 +338,8 @@ class DeckBuilderServiceTest {
         var island = basicLand("Island");
         stubUser();
         when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
-        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L, 12L, 13L, 14L));
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID))
+                .thenReturn(Set.of(11L, 12L, 13L, 14L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L, 13L, 14L)))
                 .thenReturn(Map.of(11L, first, 12L, second, 13L, third, 14L, fourth));
         when(edhrecCommanderService.getCardScores(any(), any()))
