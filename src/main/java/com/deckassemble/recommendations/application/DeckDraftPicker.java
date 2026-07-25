@@ -13,6 +13,12 @@ public final class DeckDraftPicker {
 
     static final Map<Category, Integer> QUOTAS = quotas();
 
+    private static final int LAND_QUOTA = 36;
+    private static final int RAMP_QUOTA = 10;
+    private static final int DRAW_QUOTA = 10;
+    private static final int REMOVAL_QUOTA = 8;
+    private static final int WIPE_QUOTA = 3;
+
     private DeckDraftPicker() {}
 
     public static List<DeckCandidate> pick(List<DeckCandidate> sortedCandidates, int slots) {
@@ -22,7 +28,8 @@ public final class DeckDraftPicker {
             var quota = Math.min(entry.getValue(), slots - picked.size());
             pickCategory(sortedCandidates, entry.getKey(), quota, picked, pickedOracles);
         }
-        pickCategory(sortedCandidates, Category.SYNERGY, slots - picked.size(), picked, pickedOracles);
+        pickCategory(
+                sortedCandidates, Category.SYNERGY, slots - picked.size(), picked, pickedOracles);
         pickAny(sortedCandidates, slots - picked.size(), picked, pickedOracles);
         return picked;
     }
@@ -47,7 +54,10 @@ public final class DeckDraftPicker {
     }
 
     private static void pickAny(
-            List<DeckCandidate> sorted, int slots, List<DeckCandidate> picked, Set<String> oracles) {
+            List<DeckCandidate> sorted,
+            int slots,
+            List<DeckCandidate> picked,
+            Set<String> oracles) {
         var remaining = slots;
         for (var candidate : sorted) {
             if (remaining == 0) {
@@ -62,11 +72,11 @@ public final class DeckDraftPicker {
 
     private static Map<Category, Integer> quotas() {
         Map<Category, Integer> quotas = new LinkedHashMap<>();
-        quotas.put(Category.LAND, 36);
-        quotas.put(Category.RAMP, 10);
-        quotas.put(Category.DRAW, 10);
-        quotas.put(Category.REMOVAL, 8);
-        quotas.put(Category.WIPE, 3);
+        quotas.put(Category.LAND, LAND_QUOTA);
+        quotas.put(Category.RAMP, RAMP_QUOTA);
+        quotas.put(Category.DRAW, DRAW_QUOTA);
+        quotas.put(Category.REMOVAL, REMOVAL_QUOTA);
+        quotas.put(Category.WIPE, WIPE_QUOTA);
         return Collections.unmodifiableMap(quotas);
     }
 }

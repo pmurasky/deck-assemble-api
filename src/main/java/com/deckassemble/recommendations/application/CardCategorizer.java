@@ -24,24 +24,39 @@ public class CardCategorizer {
             appendLowercased(typeLine, face.getTypeLine());
             appendLowercased(oracleText, face.getOracleText());
         }
-        var types = typeLine.toString();
-        var text = oracleText.toString();
+        return categorizeText(typeLine.toString(), oracleText.toString());
+    }
+
+    private static Category categorizeText(String types, String text) {
         if (types.contains("land")) {
             return Category.LAND;
         }
-        if (text.contains("add {") || (text.contains("search your library") && text.contains("land"))) {
+        if (isRamp(text)) {
             return Category.RAMP;
         }
         if (text.contains("draw")) {
             return Category.DRAW;
         }
-        if (text.contains("destroy all") || text.contains("exile all")) {
+        if (isWipe(text)) {
             return Category.WIPE;
         }
-        if (text.contains("destroy target") || text.contains("exile target")) {
+        if (isRemoval(text)) {
             return Category.REMOVAL;
         }
         return Category.SYNERGY;
+    }
+
+    private static boolean isRamp(String text) {
+        return text.contains("add {")
+                || (text.contains("search your library") && text.contains("land"));
+    }
+
+    private static boolean isWipe(String text) {
+        return text.contains("destroy all") || text.contains("exile all");
+    }
+
+    private static boolean isRemoval(String text) {
+        return text.contains("destroy target") || text.contains("exile target");
     }
 
     private static void appendLowercased(StringBuilder target, String value) {

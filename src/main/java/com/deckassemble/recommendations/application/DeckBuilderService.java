@@ -35,6 +35,7 @@ public class DeckBuilderService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeckBuilderService.class);
     private static final String COMMANDER_FORMAT = "COMMANDER";
+    private static final int DECK_SIZE = 100;
     private static final List<String> COLOR_ORDER = List.of("W", "U", "B", "R", "G");
     private static final Map<String, String> COLOR_TO_BASIC =
             Map.of(
@@ -47,7 +48,8 @@ public class DeckBuilderService {
             Comparator.comparing(DeckCandidate::hasScore)
                     .reversed()
                     .thenComparing(Comparator.comparingDouble(DeckCandidate::scoreValue).reversed())
-                    .thenComparing(Comparator.comparingLong(DeckCandidate::inclusionValue).reversed())
+                    .thenComparing(
+                            Comparator.comparingLong(DeckCandidate::inclusionValue).reversed())
                     .thenComparing(candidate -> candidate.card().getName());
 
     private final CardCatalogService cardCatalogService;
@@ -89,13 +91,11 @@ public class DeckBuilderService {
         var commanders = resolveCommanders(request);
         var identity = colorIdentity(commanders);
         var candidates = loadCandidates(profileId, commanders, identity);
-        var targetSize = 100 - commanders.size();
-        var picked = DeckDraftPicker.pick(candidates, targetSize);
         var gaps = new ArrayList<String>();
-        var finalCards = padWithBasics(picked, identity, targetSize, gaps);
+        var finalCards = draftMainDeck(candidates, identity, DECK_SIZE - commanders.size(), gaps);
         var deck = createDeck(request, commanders);
         var counts = addCards(deck.id(), commanders, finalCards, gaps);
-        var score = averageSynergy(picked);
+        var score = averageSynergy(finalCards);
         deckBuildRepository.save(new DeckBuild(deck.id(), configJson(request), score));
         return new DeckBuildResult(
                 deck,
@@ -105,6 +105,15 @@ public class DeckBuilderService {
                 gaps,
                 score,
                 deckService.legality(deck.id()));
+    }
+
+    private List<DeckCandidate> draftMainDeck(
+            List<DeckCandidate> candidates,
+            Set<String> identity,
+            int targetSize,
+            List<String> gaps) {
+        var picked = DeckDraftPicker.pick(candidates, targetSize);
+        return padWithBasics(picked, identity, targetSize, gaps);
     }
 
     private List<Card> resolveCommanders(DeckBuildRequest request) {
@@ -129,9 +138,11 @@ public class DeckBuilderService {
                                 text.append(face.getOracleText().toLowerCase()).append(' ');
                             }
                         });
-        var legendary = text.toString().contains("legendary") && text.toString().contains("creature");
+        var legendary =
+                text.toString().contains("legendary") && text.toString().contains("creature");
         if (!legendary && !text.toString().contains("can be your commander")) {
-            throw new IllegalArgumentException("Card is not eligible as commander: " + card.getName());
+            throw new IllegalArgumentException(
+                    "Card is not eligible as commander: " + card.getName());
         }
     }
 
@@ -155,6 +166,16 @@ public class DeckBuilderService {
         var scores = loadScores(commanders.get(0));
         var commanderOracles =
                 commanders.stream().map(Card::getScryfallOracleId).collect(Collectors.toSet());
+        var candidates = collectCandidates(ownedPrintingIds, commanderOracles, identity, scores);
+        candidates.sort(SCORE_ORDER);
+        return candidates;
+    }
+
+    private List<DeckCandidate> collectCandidates(
+            Set<Long> ownedPrintingIds,
+            Set<String> commanderOracles,
+            Set<String> identity,
+            Map<String, CardScore> scores) {
         var seen = new HashSet<String>();
         var candidates = new ArrayList<DeckCandidate>();
         for (var entry : cardCatalogService.getCardsByPrintingIds(ownedPrintingIds).entrySet()) {
@@ -169,7 +190,6 @@ public class DeckBuilderService {
                                 scores.get(card.getName())));
             }
         }
-        candidates.sort(SCORE_ORDER);
         return candidates;
     }
 
@@ -183,7 +203,8 @@ public class DeckBuilderService {
         }
     }
 
-    private static boolean isCandidate(Card card, Set<String> commanderOracles, Set<String> identity) {
+    private static boolean isCandidate(
+            Card card, Set<String> commanderOracles, Set<String> identity) {
         return !commanderOracles.contains(card.getScryfallOracleId())
                 && Boolean.TRUE.equals(card.getActive())
                 && isCommanderLegal(card)
@@ -230,9 +251,12 @@ public class DeckBuilderService {
     }
 
     private Map<String, DeckCandidate> basicLands(Set<String> identity) {
-        var names = COLOR_ORDER.stream().filter(identity::contains).map(COLOR_TO_BASIC::get).toList();
+        var names =
+                COLOR_ORDER.stream().filter(identity::contains).map(COLOR_TO_BASIC::get).toList();
         var cardsByName = new LinkedHashMap<String, Card>();
-        cardCatalogService.getCardsByNames(names).forEach(card -> cardsByName.put(card.getName(), card));
+        cardCatalogService
+                .getCardsByNames(names)
+                .forEach(card -> cardsByName.put(card.getName(), card));
         var printingIds =
                 cardCatalogService.getLatestPrintingIdByCardIds(
                         cardsByName.values().stream().map(Card::getId).toList());
@@ -269,7 +293,9 @@ public class DeckBuilderService {
             var status =
                     deckService
                             .addCard(
-                                    deckId, new DeckCardAddRequest(candidate.printingId(), 1, Section.MAIN_DECK))
+                                    deckId,
+                                    new DeckCardAddRequest(
+                                            candidate.printingId(), 1, Section.MAIN_DECK))
                             .ownershipStatus();
             count(counts, status);
         }
@@ -289,7 +315,9 @@ public class DeckBuilderService {
             }
             var status =
                     deckService
-                            .addCard(deckId, new DeckCardAddRequest(printingId, 1, Section.COMMANDER))
+                            .addCard(
+                                    deckId,
+                                    new DeckCardAddRequest(printingId, 1, Section.COMMANDER))
                             .ownershipStatus();
             count(counts, status);
         }
@@ -324,7 +352,9 @@ public class DeckBuilderService {
 
     private Long profileId() {
         String subject =
-                currentUser.subject().orElseThrow(() -> new IllegalStateException("No authenticated user"));
+                currentUser
+                        .subject()
+                        .orElseThrow(() -> new IllegalStateException("No authenticated user"));
         return profileService.getOrCreate(subject).getId();
     }
 }
