@@ -27,6 +27,7 @@ public class CardCatalogService {
         this.cardPrintingRepository = cardPrintingRepository;
     }
 
+    @Transactional(readOnly = true)
     public Page<CardSummaryResponse> search(
             String query, String setCode, String colorIdentity, String type, Pageable pageable) {
         return cardRepository
@@ -163,6 +164,7 @@ public class CardCatalogService {
         return printingIds;
     }
 
+    @Transactional(readOnly = true)
     public CardDetailResponse getById(long cardId) {
         return cardRepository
                 .findById(cardId)
@@ -171,6 +173,7 @@ public class CardCatalogService {
                 .orElseThrow(CardNotFoundException::new);
     }
 
+    @Transactional(readOnly = true)
     public CardSummaryResponse getSummaryByPrintingId(long cardPrintingId) {
         return cardPrintingRepository
                 .findById(cardPrintingId)
@@ -198,10 +201,12 @@ public class CardCatalogService {
         }
     }
 
+    @Transactional(readOnly = true)
     public Page<CardSummaryResponse> getSetPrintings(String setCode, Pageable pageable) {
         return getSetPrintings(setCode, "", pageable);
     }
 
+    @Transactional(readOnly = true)
     public Page<CardSummaryResponse> getSetPrintings(
             String setCode, String query, Pageable pageable) {
         Page<CardPrinting> printings =
@@ -215,6 +220,7 @@ public class CardCatalogService {
         return printings.map(printing -> CardSummaryResponse.from(printing.getCard(), printing));
     }
 
+    @Transactional(readOnly = true)
     public List<CardPrintingResponse> getPrintings(long cardId) {
         getById(cardId);
         return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
