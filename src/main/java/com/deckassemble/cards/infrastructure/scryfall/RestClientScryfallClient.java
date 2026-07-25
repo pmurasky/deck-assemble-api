@@ -2,11 +2,14 @@ package com.deckassemble.cards.infrastructure.scryfall;
 
 import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportImages;
+import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.cards.domain.CardSearchPage;
 import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallPrices;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -63,6 +66,34 @@ class RestClientScryfallClient implements ScryfallClient {
     @Override
     public CardSearchPage searchCards(URI nextPageUri) {
         return toPage(execute(() -> restClient.get().uri(nextPageUri).retrieve().body(CARD_LIST)));
+    }
+
+    @Override
+    public CardPrice getCardPrice(String scryfallCardId) {
+        ScryfallCard card =
+                execute(
+                        () ->
+                                restClient
+                                        .get()
+                                        .uri("/cards/{id}", scryfallCardId)
+                                        .retrieve()
+                                        .body(ScryfallCard.class));
+        return toPrice(card == null ? null : card.prices());
+    }
+
+    private CardPrice toPrice(@Nullable ScryfallPrices prices) {
+        if (prices == null) {
+            return new CardPrice(null, null, null, null);
+        }
+        return new CardPrice(
+                parse(prices.usd()),
+                parse(prices.usdFoil()),
+                parse(prices.eur()),
+                parse(prices.tix()));
+    }
+
+    private static @Nullable BigDecimal parse(@Nullable String value) {
+        return value == null ? null : new BigDecimal(value);
     }
 
     private CardSearchPage toPage(ScryfallList<ScryfallCard> page) {

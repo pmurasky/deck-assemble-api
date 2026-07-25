@@ -7,4 +7,6 @@ public interface ScryfallClient {
     CardSearchPage searchCards(String query);
 
     CardSearchPage searchCards(URI nextPageUri);
+
+    CardPrice getCardPrice(String scryfallCardId);
 }
