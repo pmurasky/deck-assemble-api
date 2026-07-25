@@ -3,6 +3,7 @@ package com.deckassemble.cards.application;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 public record CardSummaryResponse(
@@ -22,7 +23,8 @@ public record CardSummaryResponse(
         @Nullable String setName,
         @Nullable String rarity,
         @Nullable Boolean foilAvailable,
-        @Nullable Boolean nonfoilAvailable) {
+        @Nullable Boolean nonfoilAvailable,
+        List<CardFaceResponse> faces) {
 
     public static CardSummaryResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardSummaryResponse(
@@ -42,6 +44,7 @@ public record CardSummaryResponse(
                 latestPrinting != null ? latestPrinting.getMagicSet().getName() : null,
                 latestPrinting != null ? latestPrinting.getRarity() : null,
                 latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
-                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null);
+                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
+                card.getFaces().stream().map(CardFaceResponse::from).toList());
     }
 }

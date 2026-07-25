@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
@@ -16,6 +17,7 @@ import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.imports.domain.CardImportRun;
 import com.deckassemble.imports.domain.CardImportRunRepository;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
@@ -157,6 +159,12 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void shouldIncludePrintingDataInCardSummary() throws Exception {
         Card card = cardRepository.save(new Card("oracle-thor", "Thor"));
+        CardFace front = new CardFace(card, 0, "Thor");
+        front.setImageUri("https://img.example/thor-front.png");
+        CardFace back = new CardFace(card, 1, "Thor, God of Flips");
+        back.setImageUri("https://img.example/thor-back.png");
+        card.getFaces().addAll(List.of(front, back));
+        cardRepository.save(card);
         MagicSet set =
                 magicSetRepository.save(
                         new MagicSet("set-marvel-summary", "msu", "Marvel Summary"));
@@ -169,6 +177,10 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].printingId").value(printing.getId()))
                 .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/thor.png"))
+                .andExpect(jsonPath("$.content[0].faces[0].name").value("Thor"))
+                .andExpect(
+                        jsonPath("$.content[0].faces[1].imageUrl")
+                                .value("https://img.example/thor-back.png"))
                 .andExpect(jsonPath("$.content[0].setCode").value("msu"))
                 .andExpect(jsonPath("$.content[0].rarity").value("mythic"));
     }
