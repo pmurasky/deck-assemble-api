@@ -26,6 +26,8 @@ public record CardSummaryResponse(
         @Nullable Boolean nonfoilAvailable,
         List<CardFaceResponse> faces) {
 
+    // Suppressed: a 18-field record factory is one mapping per line; splitting harms readability.
+    @SuppressWarnings("checkstyle:MethodLength")
     public static CardSummaryResponse from(Card card, @Nullable CardPrinting latestPrinting) {
         return new CardSummaryResponse(
                 card.getId(),
