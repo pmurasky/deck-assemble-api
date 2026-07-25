@@ -15,6 +15,7 @@ import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
@@ -120,7 +121,7 @@ public class Deck {
         return description;
     }
 
-    public void setDescription(String description) {
+    public void setDescription(@Nullable String description) {
         this.description = description;
     }
 
@@ -128,7 +129,7 @@ public class Deck {
         return commanderCardId;
     }
 
-    public void setCommanderCardId(Long commanderCardId) {
+    public void setCommanderCardId(@Nullable Long commanderCardId) {
         this.commanderCardId = commanderCardId;
     }
 
@@ -136,7 +137,7 @@ public class Deck {
         return secondaryCommanderCardId;
     }
 
-    public void setSecondaryCommanderCardId(Long secondaryCommanderCardId) {
+    public void setSecondaryCommanderCardId(@Nullable Long secondaryCommanderCardId) {
         this.secondaryCommanderCardId = secondaryCommanderCardId;
     }
 
@@ -152,7 +153,7 @@ public class Deck {
         return budgetLimit;
     }
 
-    public void setBudgetLimit(BigDecimal budgetLimit) {
+    public void setBudgetLimit(@Nullable BigDecimal budgetLimit) {
         this.budgetLimit = budgetLimit;
     }
 
@@ -160,7 +161,7 @@ public class Deck {
         return desiredPowerLevel;
     }
 
-    public void setDesiredPowerLevel(Integer desiredPowerLevel) {
+    public void setDesiredPowerLevel(@Nullable Integer desiredPowerLevel) {
         this.desiredPowerLevel = desiredPowerLevel;
     }
 
@@ -168,7 +169,7 @@ public class Deck {
         return playStyle;
     }
 
-    public void setPlayStyle(String playStyle) {
+    public void setPlayStyle(@Nullable String playStyle) {
         this.playStyle = playStyle;
     }
 

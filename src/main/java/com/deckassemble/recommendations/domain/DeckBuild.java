@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -41,7 +42,7 @@ public class DeckBuild {
 
     protected DeckBuild() {}
 
-    public DeckBuild(Long deckId, String config, BigDecimal score) {
+    public DeckBuild(Long deckId, String config, @Nullable BigDecimal score) {
         this.deckId = deckId;
         this.config = config;
         this.score = score;
