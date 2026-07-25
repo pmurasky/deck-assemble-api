@@ -19,9 +19,7 @@ class CardCategorizerTest {
 
     @Test
     void shouldCategorizeRampByManaProduction() {
-        assertThat(
-                        categorizer.categorize(
-                                card("Creature — Elf Druid", "{T}: Add {G}.")))
+        assertThat(categorizer.categorize(card("Creature — Elf Druid", "{T}: Add {G}.")))
                 .isEqualTo(Category.RAMP);
     }
 

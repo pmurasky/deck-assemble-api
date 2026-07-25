@@ -82,17 +82,14 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L))).thenReturn(pool);
         when(edhrecCommanderService.getCardScores(any(), any()))
                 .thenReturn(Map.of("Counterspell", new CardScore(0.9, 1000L)));
-        when(cardCategorizer.categorize(any()))
-                .thenReturn(Category.SYNERGY, Category.SYNERGY);
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY, Category.SYNERGY);
         var island = basicLand("Island");
         when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any()))
-                .thenAnswer(invocation -> cardResponse("OWNED"));
-        when(deckService.legality(DECK_ID))
-                .thenReturn(new DeckLegalityResponse(true, List.of()));
+        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
 
@@ -133,8 +130,7 @@ class DeckBuilderServiceTest {
         when(edhrecCommanderService.getCardScores(any(), any())).thenReturn(Map.of());
         when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of());
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.legality(DECK_ID))
-                .thenReturn(new DeckLegalityResponse(false, List.of()));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(false, List.of()));
 
         var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
 
@@ -156,10 +152,8 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any()))
-                .thenAnswer(invocation -> cardResponse("OWNED"));
-        when(deckService.legality(DECK_ID))
-                .thenReturn(new DeckLegalityResponse(true, List.of()));
+        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
 

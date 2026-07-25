@@ -33,7 +33,9 @@ class EdhrecCommanderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new EdhrecCommanderService(cacheRepository, edhrecClient, JsonMapper.builder().build());
+        service =
+                new EdhrecCommanderService(
+                        cacheRepository, edhrecClient, JsonMapper.builder().build());
     }
 
     @Test

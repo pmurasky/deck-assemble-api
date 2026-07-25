@@ -71,8 +71,12 @@ public class EdhrecCommanderService {
     public Map<String, CardScore> getCardScores(String commanderOracleId, String commanderName) {
         var payload = getCommanderData(commanderOracleId, commanderName);
         Map<String, CardScore> scores = new HashMap<>();
-        var cardlists = objectMapper.readTree(payload).path("container").path("json_dict")
-                .path("cardlists");
+        var cardlists =
+                objectMapper
+                        .readTree(payload)
+                        .path("container")
+                        .path("json_dict")
+                        .path("cardlists");
         for (var cardlist : cardlists) {
             for (var cardview : cardlist.path("cardviews")) {
                 merge(scores, cardview);
@@ -91,7 +95,9 @@ public class EdhrecCommanderService {
                 name,
                 new CardScore(
                         max(existing == null ? null : existing.synergy(), synergyOf(cardview)),
-                        max(existing == null ? null : existing.inclusion(), inclusionOf(cardview))));
+                        max(
+                                existing == null ? null : existing.inclusion(),
+                                inclusionOf(cardview))));
     }
 
     private static @Nullable Double max(@Nullable Double left, @Nullable Double right) {
