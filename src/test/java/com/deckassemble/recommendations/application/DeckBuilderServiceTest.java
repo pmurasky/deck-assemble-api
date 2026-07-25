@@ -54,6 +54,7 @@ class DeckBuilderServiceTest {
     @Mock private DeckBuildRepository deckBuildRepository;
     @Mock private com.deckassemble.shared.security.CurrentUser currentUser;
     @Mock private ProfileService profileService;
+    @Mock private com.deckassemble.cards.application.CardPriceService cardPriceService;
 
     private DeckBuilderService builderService;
 
@@ -69,7 +70,8 @@ class DeckBuilderServiceTest {
                         deckBuildRepository,
                         JsonMapper.builder().build(),
                         currentUser,
-                        profileService);
+                        profileService,
+                        cardPriceService);
     }
 
     @Test
@@ -91,7 +93,7 @@ class DeckBuilderServiceTest {
         when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
+        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.cardCount()).isEqualTo(100);
         assertThat(result.ownedCount()).isEqualTo(100);
@@ -116,7 +118,7 @@ class DeckBuilderServiceTest {
         assertThatThrownBy(
                         () ->
                                 builderService.build(
-                                        new DeckBuildRequest(COMMANDER_ID, null, null, null)))
+                                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(deckService, never()).create(any());
     }
@@ -132,7 +134,7 @@ class DeckBuilderServiceTest {
         when(deckService.create(any())).thenReturn(deckResponse());
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(false, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
+        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.gaps()).isNotEmpty();
         assertThat(result.cardCount()).isEqualTo(1);
@@ -155,10 +157,104 @@ class DeckBuilderServiceTest {
         when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null));
+        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.cardCount()).isEqualTo(100);
         assertThat(result.score()).isNull();
+    }
+
+    @Test
+    void shouldBuildOptimalDeckFromEdhrecPool() {
+        var commander = commander();
+        var rhystic = poolCard(20L, "Rhystic Study");
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(Map.of("Rhystic Study", new CardScore(0.95, 5000L)));
+        when(cardCatalogService.getCardsByNames(any()))
+                .thenAnswer(
+                        invocation -> {
+                            java.util.Collection<String> names = invocation.getArgument(0);
+                            return names.contains("Island") ? List.of(island) : List.of(rhystic);
+                        });
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, 20L, 77L, island.getId(), 99L));
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("WISHLIST"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, false, null));
+
+        assertThat(result.cardCount()).isEqualTo(100);
+        assertThat(result.wishlistCount()).isEqualTo(100);
+        var createCaptor = ArgumentCaptor.forClass(DeckCreateRequest.class);
+        verify(deckService).create(createCaptor.capture());
+        assertThat(createCaptor.getValue().useOwnedCardsOnly()).isFalse();
+        var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        assertThat(addCaptor.getAllValues())
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(77L));
+    }
+
+    @Test
+    void shouldExcludeUnownedCardsOverBudget() {
+        var commander = commander();
+        var expensive = poolCard(20L, "Expensive Card");
+        var cheap = poolCard(21L, "Cheap Card");
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(
+                        Map.of(
+                                "Expensive Card", new CardScore(0.9, 100L),
+                                "Cheap Card", new CardScore(0.8, 90L)));
+        when(cardCatalogService.getCardsByNames(any()))
+                .thenAnswer(
+                        invocation -> {
+                            java.util.Collection<String> names = invocation.getArgument(0);
+                            return names.contains("Island")
+                                    ? List.of(island)
+                                    : List.of(expensive, cheap);
+                        });
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, 20L, 77L, 21L, 78L, island.getId(), 99L));
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
+        when(cardPriceService.latestPrices(any()))
+                .thenReturn(
+                        Map.of(
+                                77L,
+                                        new com.deckassemble.cards.domain.CardPrice(
+                                                new java.math.BigDecimal("10.00"),
+                                                null, null, null),
+                                78L,
+                                        new com.deckassemble.cards.domain.CardPrice(
+                                                new java.math.BigDecimal("1.00"), null, null,
+                                                null)));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("WISHLIST"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(
+                                COMMANDER_ID, null, null, null, false,
+                                new java.math.BigDecimal("5.00")));
+
+        var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        assertThat(addCaptor.getAllValues())
+                .noneSatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(77L))
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(78L));
+        assertThat(result.cardCount()).isEqualTo(100);
     }
 
     private void stubUser() {

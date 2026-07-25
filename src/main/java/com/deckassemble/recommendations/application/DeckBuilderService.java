@@ -1,7 +1,9 @@
 package com.deckassemble.recommendations.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -17,6 +19,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +64,7 @@ public class DeckBuilderService {
     private final ObjectMapper objectMapper;
     private final CurrentUser currentUser;
     private final ProfileService profileService;
+    private final CardPriceService cardPriceService;
 
     // checkstyle:ParameterNumber suppressed: builder orchestrates the full build pipeline and
     // every collaborator is required; grouping them would add indirection without cohesion.
@@ -74,7 +78,8 @@ public class DeckBuilderService {
             DeckBuildRepository deckBuildRepository,
             ObjectMapper objectMapper,
             CurrentUser currentUser,
-            ProfileService profileService) {
+            ProfileService profileService,
+            CardPriceService cardPriceService) {
         this.cardCatalogService = cardCatalogService;
         this.collectionService = collectionService;
         this.edhrecCommanderService = edhrecCommanderService;
@@ -84,16 +89,21 @@ public class DeckBuilderService {
         this.objectMapper = objectMapper;
         this.currentUser = currentUser;
         this.profileService = profileService;
+        this.cardPriceService = cardPriceService;
     }
 
     public DeckBuildResult build(DeckBuildRequest request) {
         var profileId = profileId();
         var commanders = resolveCommanders(request);
         var identity = colorIdentity(commanders);
-        var candidates = loadCandidates(profileId, commanders, identity);
+        var ownedOnly = !Boolean.FALSE.equals(request.useOwnedCardsOnly());
+        var scores = loadScores(commanders.get(0));
+        var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
+        var candidates =
+                candidates(request, commanders, identity, scores, ownedPrintingIds, ownedOnly);
         var gaps = new ArrayList<String>();
         var finalCards = draftMainDeck(candidates, identity, DECK_SIZE - commanders.size(), gaps);
-        var deck = createDeck(request, commanders);
+        var deck = createDeck(request, commanders, ownedOnly);
         var counts = addCards(deck.id(), commanders, finalCards, gaps);
         var score = averageSynergy(finalCards);
         deckBuildRepository.save(new DeckBuild(deck.id(), configJson(request), score));
@@ -105,6 +115,51 @@ public class DeckBuilderService {
                 gaps,
                 score,
                 deckService.legality(deck.id()));
+    }
+
+    private List<DeckCandidate> candidates(
+            DeckBuildRequest request,
+            List<Card> commanders,
+            Set<String> identity,
+            Map<String, CardScore> scores,
+            Set<Long> ownedPrintingIds,
+            boolean ownedOnly) {
+        var commanderOracles =
+                commanders.stream().map(Card::getScryfallOracleId).collect(Collectors.toSet());
+        var candidates =
+                ownedOnly
+                        ? collectCandidates(ownedPrintingIds, commanderOracles, identity, scores)
+                        : collectOptimalCandidates(commanderOracles, identity, scores);
+        candidates.sort(SCORE_ORDER);
+        if (request.budgetLimit() != null) {
+            return withinBudget(candidates, ownedPrintingIds, request.budgetLimit());
+        }
+        return candidates;
+    }
+
+    private List<DeckCandidate> withinBudget(
+            List<DeckCandidate> candidates, Set<Long> ownedPrintingIds, BigDecimal budget) {
+        var unownedIds =
+                candidates.stream()
+                        .map(DeckCandidate::printingId)
+                        .filter(printingId -> !ownedPrintingIds.contains(printingId))
+                        .toList();
+        var prices = cardPriceService.latestPrices(unownedIds);
+        var cost = BigDecimal.ZERO;
+        var kept = new ArrayList<DeckCandidate>();
+        for (var candidate : candidates) {
+            var unit = unitPrice(prices.get(candidate.printingId()));
+            var owned = ownedPrintingIds.contains(candidate.printingId());
+            if (owned || cost.add(unit).compareTo(budget) <= 0) {
+                cost = owned ? cost : cost.add(unit);
+                kept.add(candidate);
+            }
+        }
+        return kept;
+    }
+
+    private static BigDecimal unitPrice(@Nullable CardPrice price) {
+        return price == null || price.usd() == null ? BigDecimal.ZERO : price.usd();
     }
 
     private List<DeckCandidate> draftMainDeck(
@@ -160,14 +215,30 @@ public class DeckBuilderService {
         return identity;
     }
 
-    private List<DeckCandidate> loadCandidates(
-            long profileId, List<Card> commanders, Set<String> identity) {
-        var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
-        var scores = loadScores(commanders.get(0));
-        var commanderOracles =
-                commanders.stream().map(Card::getScryfallOracleId).collect(Collectors.toSet());
-        var candidates = collectCandidates(ownedPrintingIds, commanderOracles, identity, scores);
-        candidates.sort(SCORE_ORDER);
+    private List<DeckCandidate> collectOptimalCandidates(
+            Set<String> commanderOracles, Set<String> identity, Map<String, CardScore> scores) {
+        var cardsByName = new HashMap<String, Card>();
+        cardCatalogService
+                .getCardsByNames(scores.keySet())
+                .forEach(card -> cardsByName.put(card.getName(), card));
+        var printingIds =
+                cardCatalogService.getLatestPrintingIdByCardIds(
+                        cardsByName.values().stream().map(Card::getId).toList());
+        var seen = new HashSet<String>();
+        var candidates = new ArrayList<DeckCandidate>();
+        for (var card : cardsByName.values()) {
+            var printingId = printingIds.get(card.getId());
+            if (printingId != null
+                    && isCandidate(card, commanderOracles, identity)
+                    && seen.add(card.getScryfallOracleId())) {
+                candidates.add(
+                        new DeckCandidate(
+                                printingId,
+                                card,
+                                categorizer.categorize(card),
+                                scores.get(card.getName())));
+            }
+        }
         return candidates;
     }
 
@@ -271,7 +342,8 @@ public class DeckBuilderService {
         return basics;
     }
 
-    private DeckResponse createDeck(DeckBuildRequest request, List<Card> commanders) {
+    private DeckResponse createDeck(
+            DeckBuildRequest request, List<Card> commanders, boolean ownedOnly) {
         return deckService.create(
                 new DeckCreateRequest(
                         commanders.get(0).getName() + " EDHREC Build",
@@ -279,8 +351,8 @@ public class DeckBuilderService {
                         null,
                         commanders.get(0).getId(),
                         commanders.size() > 1 ? commanders.get(1).getId() : null,
-                        true,
-                        null,
+                        ownedOnly,
+                        request.budgetLimit(),
                         request.desiredPowerLevel(),
                         request.playStyle()));
     }
