@@ -39,3 +39,9 @@ deckassemble:
     connect-timeout: 5s
     read-timeout: 30s
     request-delay: 100ms
+  edhrec:
+    base-url: ${EDHREC_BASE_URL:https://json.edhrec.com}
+    user-agent: ${EDHREC_USER_AGENT:DeckAssemble/0.0.1}
+    connect-timeout: 5s
+    read-timeout: 30s
+    request-delay: 1s
