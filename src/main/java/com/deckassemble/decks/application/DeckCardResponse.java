@@ -4,7 +4,12 @@ import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.decks.domain.DeckCard;
 
 public record DeckCardResponse(
-        Long id, Long cardPrintingId, int quantity, String deckSection, CardSummaryResponse card) {
+        Long id,
+        Long cardPrintingId,
+        int quantity,
+        String deckSection,
+        String ownershipStatus,
+        CardSummaryResponse card) {
 
     public static DeckCardResponse from(DeckCard deckCard, CardSummaryResponse card) {
         return new DeckCardResponse(
@@ -12,6 +17,7 @@ public record DeckCardResponse(
                 deckCard.getCardPrintingId(),
                 deckCard.getQuantity(),
                 deckCard.getDeckSection().name(),
+                deckCard.getOwnershipStatus().name(),
                 card);
     }
 }

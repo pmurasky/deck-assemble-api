@@ -29,6 +29,12 @@ public class DeckCard {
         MAYBE_BOARD
     }
 
+    public enum OwnershipStatus {
+        OWNED,
+        WISHLIST,
+        PROXY
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,6 +51,10 @@ public class DeckCard {
     @Enumerated(EnumType.STRING)
     @Column(name = "deck_section", nullable = false, length = 20)
     private Section deckSection = Section.MAIN_DECK;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ownership_status", nullable = false, length = 20)
+    private OwnershipStatus ownershipStatus = OwnershipStatus.OWNED;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -97,5 +107,13 @@ public class DeckCard {
 
     public void setDeckSection(Section deckSection) {
         this.deckSection = deckSection;
+    }
+
+    public OwnershipStatus getOwnershipStatus() {
+        return ownershipStatus;
+    }
+
+    public void setOwnershipStatus(OwnershipStatus ownershipStatus) {
+        this.ownershipStatus = ownershipStatus;
     }
 }

@@ -1,6 +1,7 @@
 package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
@@ -8,6 +9,8 @@ import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +24,10 @@ public class DeckService {
     private final ProfileService profileService;
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
+    private final OwnershipChecker ownershipChecker;
+    private final CollectionService collectionService;
 
-    // Suppressed: six collaborators is what this orchestration service needs; Spring injects them.
+    // Suppressed: collaborators are what this orchestration service needs; Spring injects them.
     @SuppressWarnings("checkstyle:ParameterNumber")
     public DeckService(
             DeckRepository deckRepository,
@@ -30,13 +35,17 @@ public class DeckService {
             CurrentUser currentUser,
             ProfileService profileService,
             CardCatalogService cardCatalogService,
-            CommanderLegalityEvaluator commanderLegalityEvaluator) {
+            CommanderLegalityEvaluator commanderLegalityEvaluator,
+            OwnershipChecker ownershipChecker,
+            CollectionService collectionService) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.currentUser = currentUser;
         this.profileService = profileService;
         this.cardCatalogService = cardCatalogService;
         this.commanderLegalityEvaluator = commanderLegalityEvaluator;
+        this.ownershipChecker = ownershipChecker;
+        this.collectionService = collectionService;
     }
 
     public List<DeckResponse> list() {
@@ -137,14 +146,19 @@ public class DeckService {
 
     private void copyCards(long sourceDeckId, Deck copy) {
         deckCardRepository.findByDeckId(sourceDeckId).stream()
-                .map(
-                        card ->
-                                new DeckCard(
-                                        copy.getId(),
-                                        card.getCardPrintingId(),
-                                        card.getQuantity(),
-                                        card.getDeckSection()))
+                .map(card -> copyCard(card, copy.getId()))
                 .forEach(deckCardRepository::save);
+    }
+
+    private DeckCard copyCard(DeckCard card, long deckId) {
+        DeckCard copy =
+                new DeckCard(
+                        deckId,
+                        card.getCardPrintingId(),
+                        card.getQuantity(),
+                        card.getDeckSection());
+        copy.setOwnershipStatus(card.getOwnershipStatus());
+        return copy;
     }
 
     public List<DeckCardResponse> listCards(long deckId) {
@@ -170,7 +184,17 @@ public class DeckService {
                             existing.setQuantity(existing.getQuantity() + quantity);
                             return existing;
                         })
-                .orElseGet(() -> new DeckCard(deckId, request.cardPrintingId(), quantity, section));
+                .orElseGet(() -> newCard(deckId, request, section, quantity));
+    }
+
+    private DeckCard newCard(
+            long deckId, DeckCardAddRequest request, DeckCard.Section section, int quantity) {
+        DeckCard card = new DeckCard(deckId, request.cardPrintingId(), quantity, section);
+        card.setOwnershipStatus(
+                ownershipChecker.isOwned(profileId(), request.cardPrintingId())
+                        ? DeckCard.OwnershipStatus.OWNED
+                        : DeckCard.OwnershipStatus.WISHLIST);
+        return card;
     }
 
     public DeckCardResponse updateCard(
@@ -189,6 +213,51 @@ public class DeckService {
     public void removeCard(long deckId, long deckCardId) {
         owned(deckId);
         deckCardRepository.delete(ownedCard(deckId, deckCardId));
+    }
+
+    public OwnershipSyncResponse syncOwnership(long deckId) {
+        owned(deckId);
+        List<DeckCard> cards = deckCardRepository.findByDeckId(deckId);
+        var ownedPrintingIds =
+                ownershipChecker.filterOwnedPrintingIds(
+                        profileId(), cards.stream().map(DeckCard::getCardPrintingId).toList());
+        var changes =
+                cards.stream()
+                        .map(card -> syncCard(card, ownedPrintingIds))
+                        .flatMap(Optional::stream)
+                        .toList();
+        return new OwnershipSyncResponse(changes.size(), changes);
+    }
+
+    private Optional<OwnershipSyncResponse.OwnershipChange> syncCard(
+            DeckCard card, Set<Long> ownedPrintingIds) {
+        var current = card.getOwnershipStatus();
+        var target =
+                ownedPrintingIds.contains(card.getCardPrintingId())
+                        ? DeckCard.OwnershipStatus.OWNED
+                        : current == DeckCard.OwnershipStatus.PROXY
+                                ? DeckCard.OwnershipStatus.PROXY
+                                : DeckCard.OwnershipStatus.WISHLIST;
+        if (target == current) {
+            return Optional.empty();
+        }
+        card.setOwnershipStatus(target);
+        deckCardRepository.save(card);
+        return Optional.of(
+                new OwnershipSyncResponse.OwnershipChange(
+                        card.getId(), card.getCardPrintingId(), current.name(), target.name()));
+    }
+
+    public DeckCardResponse acquireCard(long deckId, long deckCardId) {
+        owned(deckId);
+        DeckCard deckCard = ownedCard(deckId, deckCardId);
+        collectionService.addToDefaultCollection(
+                deckCard.getCardPrintingId(), deckCard.getQuantity(), 0);
+        if (deckCard.getOwnershipStatus() != DeckCard.OwnershipStatus.OWNED) {
+            deckCard.setOwnershipStatus(DeckCard.OwnershipStatus.OWNED);
+            deckCardRepository.save(deckCard);
+        }
+        return responseFor(deckCard);
     }
 
     private Deck owned(long deckId) {
