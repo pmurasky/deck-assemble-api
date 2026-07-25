@@ -116,6 +116,7 @@ public class CardImportService {
         card.setKeywords(join(source.keywords()));
         card.setLayout(source.layout());
         card.setReserved(source.reserved());
+        card.setGameChanger(Boolean.TRUE.equals(source.gameChanger()));
         replaceLegalities(card, source);
     }
 

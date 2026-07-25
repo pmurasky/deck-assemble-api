@@ -137,7 +137,8 @@ class RestClientScryfallClient implements ScryfallClient {
                 source.promo(),
                 source.digital(),
                 source.lang(),
-                source.legalities());
+                source.legalities(),
+                source.gameChanger());
     }
 
     private @Nullable CardImportImages toImages(@Nullable ScryfallImageUris imageUris) {

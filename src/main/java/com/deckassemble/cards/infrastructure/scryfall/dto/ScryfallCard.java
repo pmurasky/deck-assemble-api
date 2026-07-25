@@ -39,4 +39,5 @@ public record ScryfallCard(
         String lang,
         List<ScryfallCardFace> cardFaces,
         Map<String, String> legalities,
-        ScryfallPrices prices) {}
+        ScryfallPrices prices,
+        Boolean gameChanger) {}

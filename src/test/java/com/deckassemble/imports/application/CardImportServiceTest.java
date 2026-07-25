@@ -69,7 +69,8 @@ class CardImportServiceTest {
                         false,
                         false,
                         "en",
-                        Map.of("commander", "legal"));
+                        Map.of("commander", "legal"),
+                        true);
         URI nextPage = URI.create("https://api.scryfall.com/cards/search?page=2");
         when(scryfallClient.searchCards("set:mar"))
                 .thenReturn(new CardSearchPage(List.of(source), true, nextPage));
@@ -118,5 +119,7 @@ class CardImportServiceTest {
                                                     assertThat(legality.getLegalityStatus())
                                                             .isEqualTo("legal");
                                                 }));
+        assertThat(cards.getAllValues())
+                .allSatisfy(card -> assertThat(card.getGameChanger()).isTrue());
     }
 }

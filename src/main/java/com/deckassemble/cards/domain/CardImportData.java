@@ -35,4 +35,5 @@ public record CardImportData(
         Boolean promo,
         Boolean digital,
         String lang,
-        Map<String, String> legalities) {}
+        Map<String, String> legalities,
+        Boolean gameChanger) {}
