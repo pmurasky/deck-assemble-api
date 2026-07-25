@@ -8,6 +8,7 @@ import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.application.DeckUpdateRequest;
+import com.deckassemble.decks.application.DeckWishlistResponse;
 import com.deckassemble.decks.application.OwnershipSyncResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -79,6 +80,11 @@ public class DeckController {
     @PostMapping("/{deckId}/sync-ownership")
     public OwnershipSyncResponse syncOwnership(@PathVariable long deckId) {
         return deckService.syncOwnership(deckId);
+    }
+
+    @GetMapping("/{deckId}/wishlist")
+    public DeckWishlistResponse wishlist(@PathVariable long deckId) {
+        return deckService.getWishlist(deckId);
     }
 
     @GetMapping("/{deckId}/cards")

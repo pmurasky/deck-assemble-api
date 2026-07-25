@@ -37,6 +37,7 @@ class DeckServiceTest {
     @Mock private CommanderLegalityEvaluator commanderLegalityEvaluator;
     @Mock private OwnershipChecker ownershipChecker;
     @Mock private CollectionService collectionService;
+    @Mock private com.deckassemble.cards.application.CardPriceService cardPriceService;
 
     @Test
     void shouldListDecksForCurrentProfile() {
@@ -334,6 +335,49 @@ class DeckServiceTest {
         assertThatThrownBy(() -> service().list()).isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void shouldReturnWishlistWithPricesAndTotal() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID))
+                .thenReturn(Optional.of(deck(1L)));
+        DeckCard wishlistCard = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
+        wishlistCard.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
+        ReflectionTestUtils.setField(wishlistCard, "id", 7L);
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(wishlistCard));
+        var card = new com.deckassemble.cards.domain.Card("oracle-x", "Rhystic Study");
+        when(cardCatalogService.getCardsByPrintingIds(List.of(10L))).thenReturn(java.util.Map.of(10L, card));
+        when(cardPriceService.latestPrices(List.of(10L)))
+                .thenReturn(
+                        java.util.Map.of(
+                                10L,
+                                new com.deckassemble.cards.domain.CardPrice(
+                                        new java.math.BigDecimal("4.50"), null, null, null)));
+
+        DeckWishlistResponse result = service().getWishlist(1L);
+
+        assertThat(result.items()).hasSize(1);
+        var item = result.items().get(0);
+        assertThat(item.cardName()).isEqualTo("Rhystic Study");
+        assertThat(item.quantity()).isEqualTo(2);
+        assertThat(item.unitPriceUsd()).isEqualByComparingTo("4.50");
+        assertThat(item.lineTotalUsd()).isEqualByComparingTo("9.00");
+        assertThat(result.totalUsd()).isEqualByComparingTo("9.00");
+    }
+
+    @Test
+    void shouldReturnEmptyWishlistWhenNoWishlistCards() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID))
+                .thenReturn(Optional.of(deck(1L)));
+        when(deckCardRepository.findByDeckId(1L))
+                .thenReturn(List.of(new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK)));
+
+        DeckWishlistResponse result = service().getWishlist(1L);
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.totalUsd()).isNull();
+    }
+
     private DeckService service() {
         return new DeckService(
                 deckRepository,
@@ -343,7 +387,8 @@ class DeckServiceTest {
                 cardCatalogService,
                 commanderLegalityEvaluator,
                 ownershipChecker,
-                collectionService);
+                collectionService,
+                cardPriceService);
     }
 
     private void stubUser() {
