@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
@@ -13,6 +14,7 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -204,6 +206,29 @@ class CardCatalogServiceTest {
 
         assertThatThrownBy(() -> service().validateFinishAvailability(10L, 1, 0))
                 .isInstanceOf(CardNotFoundException.class);
+    }
+
+    @Test
+    void shouldClearStaleRanksAndAssignNewOnes() {
+        Card atraxa = card("Atraxa, Praetors' Voice");
+        when(cardRepository.findByNameIn(java.util.Set.of("Atraxa, Praetors' Voice")))
+                .thenReturn(List.of(atraxa));
+
+        int updated = service().updateCommanderRanks(Map.of("Atraxa, Praetors' Voice", 1));
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(atraxa.getCommanderRank()).isEqualTo(1);
+        verify(cardRepository).clearCommanderRanks();
+    }
+
+    @Test
+    void shouldClearAllRanksWhenNewListIsEmpty() {
+        when(cardRepository.findByNameIn(java.util.Set.of())).thenReturn(List.of());
+
+        int updated = service().updateCommanderRanks(Map.of());
+
+        assertThat(updated).isZero();
+        verify(cardRepository).clearCommanderRanks();
     }
 
     private CardCatalogService service() {

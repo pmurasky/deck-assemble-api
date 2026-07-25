@@ -4,12 +4,16 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CardCatalogService {
@@ -28,6 +32,22 @@ public class CardCatalogService {
         return cardRepository
                 .findAll(specification(query, setCode, colorIdentity, type), pageable)
                 .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+    }
+
+    @Transactional
+    public int updateCommanderRanks(Map<String, Integer> ranksByName) {
+        cardRepository.clearCommanderRanks();
+        var commanders = cardRepository.findByNameIn(ranksByName.keySet());
+        var assigned = 0;
+        for (var card : commanders) {
+            Integer rank = ranksByName.get(card.getName());
+            if (rank != null) {
+                card.setCommanderRank(rank);
+                assigned++;
+            }
+        }
+        cardRepository.saveAll(commanders);
+        return assigned;
     }
 
     // ponytail: one printing lookup per card (N+1 at page size); batch fetch if pages get slow
@@ -82,6 +102,17 @@ public class CardCatalogService {
                                     builder.equal(
                                             printings.get("magicSet").get("setCode"), setCode)));
         };
+    }
+
+    public Map<Long, String> getOracleIdsByPrintingIds(Collection<Long> cardPrintingIds) {
+        if (cardPrintingIds.isEmpty()) {
+            return Map.of();
+        }
+        return cardPrintingRepository.findAllById(cardPrintingIds).stream()
+                .collect(
+                        Collectors.toMap(
+                                CardPrinting::getId,
+                                printing -> printing.getCard().getScryfallOracleId()));
     }
 
     public CardDetailResponse getById(long cardId) {
