@@ -55,6 +55,9 @@ public class Card extends CardAttributes {
     @Column(name = "commander_rank")
     private Integer commanderRank;
 
+    @Column(name = "game_changer", nullable = false)
+    private Boolean gameChanger = false;
+
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
@@ -146,6 +149,14 @@ public class Card extends CardAttributes {
 
     public void setCommanderRank(Integer commanderRank) {
         this.commanderRank = commanderRank;
+    }
+
+    public Boolean getGameChanger() {
+        return gameChanger;
+    }
+
+    public void setGameChanger(Boolean gameChanger) {
+        this.gameChanger = gameChanger;
     }
 
     public Boolean getActive() {

@@ -231,6 +231,19 @@ class CardCatalogServiceTest {
         verify(cardRepository).clearCommanderRanks();
     }
 
+    @Test
+    void shouldClearStaleGameChangersAndAssignCurrentOnes() {
+        Card manaVault = card("Mana Vault");
+        when(cardRepository.findByScryfallOracleIdIn(java.util.Set.of("oracle-Mana Vault")))
+                .thenReturn(List.of(manaVault));
+
+        int updated = service().updateGameChangers(java.util.Set.of("oracle-Mana Vault"));
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(manaVault.getGameChanger()).isTrue();
+        verify(cardRepository).clearGameChangers();
+    }
+
     private CardCatalogService service() {
         return new CardCatalogService(cardRepository, cardPrintingRepository);
     }

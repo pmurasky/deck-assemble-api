@@ -18,7 +18,13 @@ public interface CardRepository extends JpaRepository<Card, Long>, JpaSpecificat
 
     List<Card> findByNameIn(Collection<String> names);
 
+    List<Card> findByScryfallOracleIdIn(Collection<String> scryfallOracleIds);
+
     @Modifying
     @Query("UPDATE Card c SET c.commanderRank = NULL")
     void clearCommanderRanks();
+
+    @Modifying
+    @Query("UPDATE Card c SET c.gameChanger = FALSE")
+    void clearGameChangers();
 }

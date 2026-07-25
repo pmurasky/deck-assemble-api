@@ -50,6 +50,15 @@ public class CardCatalogService {
         return assigned;
     }
 
+    @Transactional
+    public int updateGameChangers(Collection<String> oracleIds) {
+        cardRepository.clearGameChangers();
+        var gameChangers = cardRepository.findByScryfallOracleIdIn(oracleIds);
+        gameChangers.forEach(card -> card.setGameChanger(true));
+        cardRepository.saveAll(gameChangers);
+        return gameChangers.size();
+    }
+
     // ponytail: one printing lookup per card (N+1 at page size); batch fetch if pages get slow
     private @Nullable CardPrinting latestPrinting(long cardId) {
         return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
