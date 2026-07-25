@@ -1,16 +1,19 @@
 package com.deckassemble.cards.infrastructure.scryfall;
 
 import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.cards.domain.CardSearchPage;
 import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
+import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallImageUris;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallList;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallPrices;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.ParameterizedTypeReference;
@@ -131,6 +134,7 @@ class RestClientScryfallClient implements ScryfallClient {
                 source.artist(),
                 source.flavorText(),
                 toImages(imageUris(source)),
+                toFaces(source.cardFaces()),
                 source.releasedAt(),
                 source.foil(),
                 source.nonfoil(),
@@ -146,6 +150,16 @@ class RestClientScryfallClient implements ScryfallClient {
             return null;
         }
         return new CardImportImages(imageUris.small(), imageUris.normal(), imageUris.large());
+    }
+
+    private List<CardImportFace> toFaces(@Nullable List<ScryfallCardFace> cardFaces) {
+        if (cardFaces == null) {
+            return List.of();
+        }
+        return cardFaces.stream()
+                .filter(face -> face.imageUris() != null && face.imageUris().normal() != null)
+                .map(face -> new CardImportFace(face.name(), face.imageUris().normal()))
+                .toList();
     }
 
     private @Nullable ScryfallImageUris imageUris(ScryfallCard source) {

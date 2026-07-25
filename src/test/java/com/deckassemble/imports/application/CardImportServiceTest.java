@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
@@ -63,6 +64,9 @@ class CardImportServiceTest {
                         null,
                         null,
                         new CardImportImages("small", "normal", "large"),
+                        List.of(
+                                new CardImportFace("Spider-Man", "front"),
+                                new CardImportFace("Spider-Back", "back")),
                         null,
                         false,
                         false,
@@ -121,5 +125,11 @@ class CardImportServiceTest {
                                                 }));
         assertThat(cards.getAllValues())
                 .allSatisfy(card -> assertThat(card.getGameChanger()).isTrue());
+        assertThat(cards.getAllValues())
+                .allSatisfy(
+                        card ->
+                                assertThat(card.getFaces())
+                                        .extracting(face -> face.getImageUri())
+                                        .containsExactly("front", "back"));
     }
 }

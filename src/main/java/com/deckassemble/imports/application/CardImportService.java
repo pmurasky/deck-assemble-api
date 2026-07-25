@@ -1,7 +1,9 @@
 package com.deckassemble.imports.application;
 
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardImportData;
+import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
@@ -118,6 +120,7 @@ public class CardImportService {
         card.setReserved(source.reserved());
         card.setGameChanger(Boolean.TRUE.equals(source.gameChanger()));
         replaceLegalities(card, source);
+        replaceFaces(card, source);
     }
 
     private void replaceLegalities(Card card, CardImportData source) {
@@ -129,6 +132,16 @@ public class CardImportService {
                 .forEach(
                         (format, status) ->
                                 card.getLegalities().add(new CardLegality(card, format, status)));
+    }
+
+    private void replaceFaces(Card card, CardImportData source) {
+        card.getFaces().clear();
+        for (int faceOrder = 0; faceOrder < source.faces().size(); faceOrder++) {
+            CardImportFace sourceFace = source.faces().get(faceOrder);
+            CardFace face = new CardFace(card, faceOrder, sourceFace.name());
+            face.setImageUri(sourceFace.imageUri());
+            card.getFaces().add(face);
+        }
     }
 
     private @Nullable String join(@Nullable List<String> values) {
