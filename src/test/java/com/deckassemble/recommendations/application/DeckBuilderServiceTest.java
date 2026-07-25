@@ -93,7 +93,9 @@ class DeckBuilderServiceTest {
         when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.cardCount()).isEqualTo(100);
         assertThat(result.ownedCount()).isEqualTo(100);
@@ -118,7 +120,8 @@ class DeckBuilderServiceTest {
         assertThatThrownBy(
                         () ->
                                 builderService.build(
-                                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null)))
+                                        new DeckBuildRequest(
+                                                COMMANDER_ID, null, null, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class);
         verify(deckService, never()).create(any());
     }
@@ -134,7 +137,9 @@ class DeckBuilderServiceTest {
         when(deckService.create(any())).thenReturn(deckResponse());
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(false, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.gaps()).isNotEmpty();
         assertThat(result.cardCount()).isEqualTo(1);
@@ -157,7 +162,9 @@ class DeckBuilderServiceTest {
         when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
-        var result = builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
 
         assertThat(result.cardCount()).isEqualTo(100);
         assertThat(result.score()).isNull();
@@ -233,10 +240,14 @@ class DeckBuilderServiceTest {
                                 77L,
                                         new com.deckassemble.cards.domain.CardPrice(
                                                 new java.math.BigDecimal("10.00"),
-                                                null, null, null),
+                                                null,
+                                                null,
+                                                null),
                                 78L,
                                         new com.deckassemble.cards.domain.CardPrice(
-                                                new java.math.BigDecimal("1.00"), null, null,
+                                                new java.math.BigDecimal("1.00"),
+                                                null,
+                                                null,
                                                 null)));
         when(deckService.create(any())).thenReturn(deckResponse());
         when(deckService.addCard(anyLong(), any()))
@@ -246,7 +257,11 @@ class DeckBuilderServiceTest {
         var result =
                 builderService.build(
                         new DeckBuildRequest(
-                                COMMANDER_ID, null, null, null, false,
+                                COMMANDER_ID,
+                                null,
+                                null,
+                                null,
+                                false,
                                 new java.math.BigDecimal("5.00")));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);

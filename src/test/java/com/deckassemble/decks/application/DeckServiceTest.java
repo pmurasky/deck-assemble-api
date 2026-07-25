@@ -338,14 +338,14 @@ class DeckServiceTest {
     @Test
     void shouldReturnWishlistWithPricesAndTotal() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID))
-                .thenReturn(Optional.of(deck(1L)));
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
         DeckCard wishlistCard = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
         wishlistCard.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
         ReflectionTestUtils.setField(wishlistCard, "id", 7L);
         when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(wishlistCard));
         var card = new com.deckassemble.cards.domain.Card("oracle-x", "Rhystic Study");
-        when(cardCatalogService.getCardsByPrintingIds(List.of(10L))).thenReturn(java.util.Map.of(10L, card));
+        when(cardCatalogService.getCardsByPrintingIds(List.of(10L)))
+                .thenReturn(java.util.Map.of(10L, card));
         when(cardPriceService.latestPrices(List.of(10L)))
                 .thenReturn(
                         java.util.Map.of(
@@ -367,8 +367,7 @@ class DeckServiceTest {
     @Test
     void shouldReturnEmptyWishlistWhenNoWishlistCards() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID))
-                .thenReturn(Optional.of(deck(1L)));
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
         when(deckCardRepository.findByDeckId(1L))
                 .thenReturn(List.of(new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK)));
 
