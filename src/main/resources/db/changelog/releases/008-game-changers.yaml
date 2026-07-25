@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-game-changers
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: cards
+            columns:
+              - column:
+                  name: game_changer
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
