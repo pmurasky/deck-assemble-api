@@ -96,14 +96,19 @@ public class DeckBuilderService {
         var profileId = profileId();
         var commanders = resolveCommanders(request);
         var identity = colorIdentity(commanders);
-        var ownedOnly = !Boolean.FALSE.equals(request.useOwnedCardsOnly());
-        var scores = loadScores(commanders.get(0));
         var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
-        var candidates =
-                candidates(request, commanders, identity, scores, ownedPrintingIds, ownedOnly);
+        var candidates = candidates(request, commanders, identity, ownedPrintingIds);
+        return assembleDeck(request, commanders, identity, candidates);
+    }
+
+    private DeckBuildResult assembleDeck(
+            DeckBuildRequest request,
+            List<Card> commanders,
+            Set<String> identity,
+            List<DeckCandidate> candidates) {
         var gaps = new ArrayList<String>();
         var finalCards = draftMainDeck(candidates, identity, DECK_SIZE - commanders.size(), gaps);
-        var deck = createDeck(request, commanders, ownedOnly);
+        var deck = createDeck(request, commanders);
         var counts = addCards(deck.id(), commanders, finalCards, gaps);
         var score = averageSynergy(finalCards);
         deckBuildRepository.save(new DeckBuild(deck.id(), configJson(request), score));
@@ -121,13 +126,12 @@ public class DeckBuilderService {
             DeckBuildRequest request,
             List<Card> commanders,
             Set<String> identity,
-            Map<String, CardScore> scores,
-            Set<Long> ownedPrintingIds,
-            boolean ownedOnly) {
+            Set<Long> ownedPrintingIds) {
         var commanderOracles =
                 commanders.stream().map(Card::getScryfallOracleId).collect(Collectors.toSet());
+        var scores = loadScores(commanders.get(0));
         var candidates =
-                ownedOnly
+                ownedOnly(request)
                         ? collectCandidates(ownedPrintingIds, commanderOracles, identity, scores)
                         : collectOptimalCandidates(commanderOracles, identity, scores);
         candidates.sort(SCORE_ORDER);
@@ -135,6 +139,10 @@ public class DeckBuilderService {
             return withinBudget(candidates, ownedPrintingIds, request.budgetLimit());
         }
         return candidates;
+    }
+
+    private static boolean ownedOnly(DeckBuildRequest request) {
+        return !Boolean.FALSE.equals(request.useOwnedCardsOnly());
     }
 
     private List<DeckCandidate> withinBudget(
@@ -231,15 +239,15 @@ public class DeckBuilderService {
             if (printingId != null
                     && isCandidate(card, commanderOracles, identity)
                     && seen.add(card.getScryfallOracleId())) {
-                candidates.add(
-                        new DeckCandidate(
-                                printingId,
-                                card,
-                                categorizer.categorize(card),
-                                scores.get(card.getName())));
+                candidates.add(toCandidate(printingId, card, scores));
             }
         }
         return candidates;
+    }
+
+    private DeckCandidate toCandidate(long printingId, Card card, Map<String, CardScore> scores) {
+        return new DeckCandidate(
+                printingId, card, categorizer.categorize(card), scores.get(card.getName()));
     }
 
     private List<DeckCandidate> collectCandidates(
@@ -342,8 +350,7 @@ public class DeckBuilderService {
         return basics;
     }
 
-    private DeckResponse createDeck(
-            DeckBuildRequest request, List<Card> commanders, boolean ownedOnly) {
+    private DeckResponse createDeck(DeckBuildRequest request, List<Card> commanders) {
         return deckService.create(
                 new DeckCreateRequest(
                         commanders.get(0).getName() + " EDHREC Build",
@@ -351,7 +358,7 @@ public class DeckBuilderService {
                         null,
                         commanders.get(0).getId(),
                         commanders.size() > 1 ? commanders.get(1).getId() : null,
-                        ownedOnly,
+                        ownedOnly(request),
                         request.budgetLimit(),
                         request.desiredPowerLevel(),
                         request.playStyle()));

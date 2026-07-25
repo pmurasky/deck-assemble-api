@@ -100,15 +100,15 @@ public class DeckService {
         var cards = cardCatalogService.getCardsByPrintingIds(printingIds);
         var prices = cardPriceService.latestPrices(printingIds);
         var items =
-                wishlistCards.stream()
-                        .map(card -> toWishlistItem(card, cards, prices))
-                        .toList();
-        var total =
-                items.stream()
-                        .map(DeckWishlistItem::lineTotalUsd)
-                        .filter(java.util.Objects::nonNull)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new DeckWishlistResponse(items, total);
+                wishlistCards.stream().map(card -> toWishlistItem(card, cards, prices)).toList();
+        return new DeckWishlistResponse(items, wishlistTotal(items));
+    }
+
+    private static BigDecimal wishlistTotal(List<DeckWishlistItem> items) {
+        return items.stream()
+                .map(DeckWishlistItem::lineTotalUsd)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private static DeckWishlistItem toWishlistItem(
