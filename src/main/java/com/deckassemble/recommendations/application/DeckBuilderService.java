@@ -39,6 +39,10 @@ public class DeckBuilderService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeckBuilderService.class);
     private static final String COMMANDER_FORMAT = "COMMANDER";
     private static final int DECK_SIZE = 100;
+    private static final int LOW_POWER_MAX = 4;
+    private static final int MEDIUM_POWER_MAX = 6;
+    private static final int UNLIMITED_GAME_CHANGERS = Integer.MAX_VALUE;
+    private static final int BRACKET_THREE_GAME_CHANGERS = 3;
     private static final List<String> COLOR_ORDER = List.of("W", "U", "B", "R", "G");
     private static final Map<String, String> COLOR_TO_BASIC =
             Map.of(
@@ -135,10 +139,34 @@ public class DeckBuilderService {
                         ? collectCandidates(ownedPrintingIds, commanderOracles, identity, scores)
                         : collectOptimalCandidates(commanderOracles, identity, scores);
         candidates.sort(SCORE_ORDER);
+        candidates = withinGameChangerLimit(candidates, request.desiredPowerLevel());
         if (request.budgetLimit() != null) {
             return withinBudget(candidates, ownedPrintingIds, request.budgetLimit());
         }
         return candidates;
+    }
+
+    private static List<DeckCandidate> withinGameChangerLimit(
+            List<DeckCandidate> candidates, @Nullable Integer desiredPowerLevel) {
+        var allowed = allowedGameChangers(desiredPowerLevel);
+        if (allowed == UNLIMITED_GAME_CHANGERS) {
+            return candidates;
+        }
+        var kept = new ArrayList<DeckCandidate>();
+        var included = 0;
+        for (var candidate : candidates) {
+            if (!Boolean.TRUE.equals(candidate.card().getGameChanger()) || included++ < allowed) {
+                kept.add(candidate);
+            }
+        }
+        return kept;
+    }
+
+    private static int allowedGameChangers(@Nullable Integer desiredPowerLevel) {
+        if (desiredPowerLevel == null || desiredPowerLevel > MEDIUM_POWER_MAX) {
+            return UNLIMITED_GAME_CHANGERS;
+        }
+        return desiredPowerLevel > LOW_POWER_MAX ? BRACKET_THREE_GAME_CHANGERS : 0;
     }
 
     private static boolean ownedOnly(DeckBuildRequest request) {

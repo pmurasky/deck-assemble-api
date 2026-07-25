@@ -272,6 +272,100 @@ class DeckBuilderServiceTest {
         assertThat(result.cardCount()).isEqualTo(100);
     }
 
+    @Test
+    void shouldExcludeGameChangersAtLowPower() {
+        var commander = commander();
+        var gameChanger = poolCard(11L, "Mana Vault");
+        gameChanger.setGameChanger(true);
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(11L)))
+                .thenReturn(Map.of(11L, gameChanger));
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(Map.of("Mana Vault", new CardScore(0.9, 1000L)));
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 4, null, null, null));
+
+        var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        assertThat(addCaptor.getAllValues())
+                .noneSatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L));
+    }
+
+    @Test
+    void shouldKeepGameChangersAtHighPower() {
+        var commander = commander();
+        var gameChanger = poolCard(11L, "Mana Vault");
+        gameChanger.setGameChanger(true);
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(11L)))
+                .thenReturn(Map.of(11L, gameChanger));
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(Map.of("Mana Vault", new CardScore(0.9, 1000L)));
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 7, null, null, null));
+
+        var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        assertThat(addCaptor.getAllValues())
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L));
+    }
+
+    @Test
+    void shouldKeepOnlyThreeGameChangersAtMediumPower() {
+        var commander = commander();
+        var first = gameChangerCard(11L, "First");
+        var second = gameChangerCard(12L, "Second");
+        var third = gameChangerCard(13L, "Third");
+        var fourth = gameChangerCard(14L, "Fourth");
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L, 12L, 13L, 14L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L, 13L, 14L)))
+                .thenReturn(Map.of(11L, first, 12L, second, 13L, third, 14L, fourth));
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(
+                        Map.of(
+                                "First", new CardScore(0.9, 1000L),
+                                "Second", new CardScore(0.8, 900L),
+                                "Third", new CardScore(0.7, 800L),
+                                "Fourth", new CardScore(0.6, 700L)));
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 5, null, null, null));
+
+        var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        assertThat(addCaptor.getAllValues())
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L))
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(12L))
+                .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(13L))
+                .noneSatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(14L));
+    }
+
     private void stubUser() {
         when(currentUser.subject()).thenReturn(Optional.of("sub"));
         var profile = new Profile("sub", "user");
@@ -292,6 +386,12 @@ class DeckBuilderServiceTest {
         card.setColorIdentity("U");
         card.getFaces().add(face(card, "Instant"));
         card.getLegalities().add(new CardLegality(card, "commander", "legal"));
+        return card;
+    }
+
+    private Card gameChangerCard(long id, String name) {
+        var card = poolCard(id, name);
+        card.setGameChanger(true);
         return card;
     }
 
