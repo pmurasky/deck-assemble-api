@@ -1,0 +1,133 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-recommendations
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: deck_cards
+            columns:
+              - column:
+                  name: ownership_status
+                  type: varchar(20)
+                  defaultValue: OWNED
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: card_price_snapshots
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_card_price_snapshots
+              - column:
+                  name: card_printing_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: usd
+                  type: numeric(10, 2)
+              - column:
+                  name: usd_foil
+                  type: numeric(10, 2)
+              - column:
+                  name: eur
+                  type: numeric(10, 2)
+              - column:
+                  name: tix
+                  type: numeric(10, 2)
+              - column:
+                  name: fetched_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: edhrec_commander_cache
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_edhrec_commander_cache
+              - column:
+                  name: commander_oracle_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: deck_builds
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_builds
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config
+                  type: text
+              - column:
+                  name: score
+                  type: numeric(6, 2)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: edhrec_commander_cache
+            columnNames: commander_oracle_id
+            constraintName: uq_edhrec_cache_oracle
+        - addForeignKeyConstraint:
+            baseTableName: card_price_snapshots
+            baseColumnNames: card_printing_id
+            referencedTableName: card_printings
+            referencedColumnNames: id
+            constraintName: fk_card_price_snapshots_printing
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_builds
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_builds_deck
+            onDelete: CASCADE
+        - createIndex:
+            tableName: card_price_snapshots
+            indexName: idx_card_price_snapshots_printing
+            columns:
+              - column:
+                  name: card_printing_id
+              - column:
+                  name: fetched_at
+        - createIndex:
+            tableName: deck_builds
+            indexName: idx_deck_builds_deck_id
+            columns:
+              - column:
+                  name: deck_id

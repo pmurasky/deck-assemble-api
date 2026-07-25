@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/releases/005-card-import-runs.yaml
   - include:
       file: db/changelog/releases/006-decks.yaml
+  - include:
+      file: db/changelog/releases/007-recommendations.yaml
