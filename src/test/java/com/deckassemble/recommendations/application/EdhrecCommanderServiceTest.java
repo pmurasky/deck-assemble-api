@@ -13,13 +13,14 @@ import com.deckassemble.recommendations.domain.EdhrecCommanderCacheRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class EdhrecCommanderServiceTest {
@@ -28,7 +29,12 @@ class EdhrecCommanderServiceTest {
 
     @Mock private EdhrecCommanderCacheRepository cacheRepository;
     @Mock private EdhrecClient edhrecClient;
-    @InjectMocks private EdhrecCommanderService service;
+    private EdhrecCommanderService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new EdhrecCommanderService(cacheRepository, edhrecClient, JsonMapper.builder().build());
+    }
 
     @Test
     void shouldReturnCachedPayloadWhenFresh() {
@@ -94,6 +100,41 @@ class EdhrecCommanderServiceTest {
 
         assertThatThrownBy(() -> service.getCommanderData(ORACLE_ID, "Atraxa, Praetors' Voice"))
                 .isInstanceOf(RestClientException.class);
+    }
+
+    @Test
+    void shouldMergeCardScoresAcrossCardlists() {
+        var payload =
+                """
+                {"container":{"json_dict":{"cardlists":[
+                  {"cardviews":[{"name":"Sol Ring","synergy":0.4,"inclusion":100},
+                                {"name":"Arcane Signet","inclusion":50}]},
+                  {"cardviews":[{"name":"Sol Ring","synergy":0.6,"inclusion":80}]}
+                ]}}}""";
+        var fresh = new EdhrecCommanderCache(ORACLE_ID, payload, Instant.now());
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.of(fresh));
+
+        var scores = service.getCardScores(ORACLE_ID, "Atraxa, Praetors' Voice");
+
+        assertThat(scores.get("Sol Ring").synergy()).isEqualTo(0.6);
+        assertThat(scores.get("Sol Ring").inclusion()).isEqualTo(100L);
+        assertThat(scores.get("Arcane Signet").synergy()).isNull();
+        assertThat(scores.get("Arcane Signet").inclusion()).isEqualTo(50L);
+    }
+
+    @Test
+    void shouldSkipCardviewsWithoutNames() {
+        var payload =
+                """
+                {"container":{"json_dict":{"cardlists":[
+                  {"cardviews":[{"synergy":0.4},{"name":"Sol Ring","synergy":0.2}]}
+                ]}}}""";
+        var fresh = new EdhrecCommanderCache(ORACLE_ID, payload, Instant.now());
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.of(fresh));
+
+        var scores = service.getCardScores(ORACLE_ID, "Atraxa, Praetors' Voice");
+
+        assertThat(scores).containsOnlyKeys("Sol Ring");
     }
 
     @Test

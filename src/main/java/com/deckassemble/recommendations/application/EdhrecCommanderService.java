@@ -5,11 +5,15 @@ import com.deckassemble.recommendations.domain.EdhrecCommanderCache;
 import com.deckassemble.recommendations.domain.EdhrecCommanderCacheRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class EdhrecCommanderService {
@@ -18,11 +22,15 @@ public class EdhrecCommanderService {
 
     private final EdhrecCommanderCacheRepository cacheRepository;
     private final EdhrecClient edhrecClient;
+    private final ObjectMapper objectMapper;
 
     public EdhrecCommanderService(
-            EdhrecCommanderCacheRepository cacheRepository, EdhrecClient edhrecClient) {
+            EdhrecCommanderCacheRepository cacheRepository,
+            EdhrecClient edhrecClient,
+            ObjectMapper objectMapper) {
         this.cacheRepository = cacheRepository;
         this.edhrecClient = edhrecClient;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -58,6 +66,56 @@ public class EdhrecCommanderService {
             cacheRepository.save(new EdhrecCommanderCache(commanderOracleId, payload, fetchedAt));
         }
         return payload;
+    }
+
+    public Map<String, CardScore> getCardScores(String commanderOracleId, String commanderName) {
+        var payload = getCommanderData(commanderOracleId, commanderName);
+        Map<String, CardScore> scores = new HashMap<>();
+        var cardlists = objectMapper.readTree(payload).path("container").path("json_dict")
+                .path("cardlists");
+        for (var cardlist : cardlists) {
+            for (var cardview : cardlist.path("cardviews")) {
+                merge(scores, cardview);
+            }
+        }
+        return scores;
+    }
+
+    private static void merge(Map<String, CardScore> scores, JsonNode cardview) {
+        var name = cardview.path("name").asString();
+        if (name.isEmpty()) {
+            return;
+        }
+        var existing = scores.get(name);
+        scores.put(
+                name,
+                new CardScore(
+                        max(existing == null ? null : existing.synergy(), synergyOf(cardview)),
+                        max(existing == null ? null : existing.inclusion(), inclusionOf(cardview))));
+    }
+
+    private static @Nullable Double max(@Nullable Double left, @Nullable Double right) {
+        if (left == null) {
+            return right;
+        }
+        return right == null ? left : Math.max(left, right);
+    }
+
+    private static @Nullable Long max(@Nullable Long left, @Nullable Long right) {
+        if (left == null) {
+            return right;
+        }
+        return right == null ? left : Math.max(left, right);
+    }
+
+    private static @Nullable Double synergyOf(JsonNode cardview) {
+        var value = cardview.path("synergy");
+        return value.isNumber() ? value.doubleValue() : null;
+    }
+
+    private static @Nullable Long inclusionOf(JsonNode cardview) {
+        var value = cardview.path("inclusion");
+        return value.isNumber() ? value.longValue() : null;
     }
 
     static String toSlug(String commanderName) {
