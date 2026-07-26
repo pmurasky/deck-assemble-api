@@ -29,9 +29,16 @@ public class CardCatalogService {
 
     @Transactional(readOnly = true)
     public Page<CardSummaryResponse> search(
-            String query, String setCode, String colorIdentity, String type, Pageable pageable) {
+            String query,
+            String setCode,
+            String colorIdentity,
+            String type,
+            Boolean commanderEligible,
+            Pageable pageable) {
         return cardRepository
-                .findAll(specification(query, setCode, colorIdentity, type), pageable)
+                .findAll(
+                        specification(query, setCode, colorIdentity, type, commanderEligible),
+                        pageable)
                 .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
     }
 
@@ -68,7 +75,11 @@ public class CardCatalogService {
     }
 
     private Specification<Card> specification(
-            String query, String setCode, String colorIdentity, String type) {
+            String query,
+            String setCode,
+            String colorIdentity,
+            String type,
+            Boolean commanderEligible) {
         Specification<Card> result = activeSpec().and(nameSpec(query));
         if (colorIdentity != null) {
             result = result.and(colorIdentitySpec(colorIdentity));
@@ -79,7 +90,23 @@ public class CardCatalogService {
         if (type != null) {
             result = result.and(typeLineSpec(type));
         }
+        if (Boolean.TRUE.equals(commanderEligible)) {
+            result = result.and(commanderEligibleSpec());
+        }
         return result;
+    }
+
+    private Specification<Card> commanderEligibleSpec() {
+        return (root, criteria, builder) -> {
+            var typeLine = builder.lower(root.get("typeLine"));
+            var legendaryCreature =
+                    builder.and(
+                            builder.like(typeLine, "%legendary%"),
+                            builder.like(typeLine, "%creature%"));
+            var canBeCommander =
+                    builder.like(builder.lower(root.get("oracleText")), "%can be your commander%");
+            return builder.or(legendaryCreature, canBeCommander);
+        };
     }
 
     private Specification<Card> activeSpec() {

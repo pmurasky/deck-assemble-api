@@ -1,5 +1,8 @@
 package com.deckassemble.cards.api;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -169,6 +172,29 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].name").value("Repulse"));
+    }
+
+    @Test
+    void shouldFilterCardsByCommanderEligibility() throws Exception {
+        Card commander = cardRepository.save(new Card("oracle-atraxa", "Atraxa, Praetors' Voice"));
+        commander.setTypeLine("Legendary Creature — Phyrexian Angel Horror");
+        cardRepository.save(commander);
+        Card planeswalker =
+                cardRepository.save(new Card("oracle-ajani", "Ajani, Caller of the Pride"));
+        planeswalker.setTypeLine("Legendary Planeswalker — Ajani");
+        planeswalker.setOracleText("+1: Something. Ajani, Caller of the Pride can be your commander.");
+        cardRepository.save(planeswalker);
+        Card instant = cardRepository.save(new Card("oracle-shock", "Shock"));
+        instant.setTypeLine("Instant");
+        cardRepository.save(instant);
+
+        mockMvc.perform(get("/cards").queryParam("commanderEligible", "true").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath(
+                                "$.content[*].name",
+                                hasItems("Atraxa, Praetors' Voice", "Ajani, Caller of the Pride")))
+                .andExpect(jsonPath("$.content[*].name", not(hasItem("Shock"))));
     }
 
     @Test
