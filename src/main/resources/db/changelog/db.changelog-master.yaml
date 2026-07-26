@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/releases/008-game-changers.yaml
   - include:
       file: db/changelog/releases/009-card-printing-faces.yaml
+  - include:
+      file: db/changelog/releases/010-card-legalities-unique-card-format.yaml

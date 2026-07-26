@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-card-legalities-unique-card-format
+      author: sisyphus
+      changes:
+        - dropIndex:
+            tableName: card_legalities
+            indexName: idx_card_legalities_card_format
+        - addUniqueConstraint:
+            tableName: card_legalities
+            constraintName: uk_card_legalities_card_format
+            columnNames: card_id, format_code
+      rollback:
+        - dropUniqueConstraint:
+            tableName: card_legalities
+            constraintName: uk_card_legalities_card_format
+        - createIndex:
+            tableName: card_legalities
+            indexName: idx_card_legalities_card_format
+            columns:
+              - column:
+                  name: card_id
+              - column:
+                  name: format_code
