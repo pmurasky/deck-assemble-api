@@ -4,6 +4,7 @@ import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrice;
+import com.deckassemble.cards.domain.CommanderEligibility;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -218,20 +219,7 @@ public class DeckBuilderService {
     }
 
     private static void requireEligible(Card card) {
-        var text = new StringBuilder();
-        card.getFaces()
-                .forEach(
-                        face -> {
-                            if (face.getTypeLine() != null) {
-                                text.append(face.getTypeLine().toLowerCase()).append(' ');
-                            }
-                            if (face.getOracleText() != null) {
-                                text.append(face.getOracleText().toLowerCase()).append(' ');
-                            }
-                        });
-        var legendary =
-                text.toString().contains("legendary") && text.toString().contains("creature");
-        if (!legendary && !text.toString().contains("can be your commander")) {
+        if (!CommanderEligibility.isEligible(card)) {
             throw new IllegalArgumentException(
                     "Card is not eligible as commander: " + card.getName());
         }
