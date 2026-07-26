@@ -25,6 +25,6 @@ public record CardPrintingResponse(
                 printing.getReleasedAt(),
                 printing.getFoilAvailable(),
                 printing.getNonfoilAvailable(),
-                printing.getCard().getFaces().stream().map(CardFaceResponse::from).toList());
+                printing.getFaces().stream().map(CardFaceResponse::from).toList());
     }
 }
