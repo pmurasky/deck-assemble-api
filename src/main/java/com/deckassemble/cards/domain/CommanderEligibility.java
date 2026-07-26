@@ -1,5 +1,7 @@
 package com.deckassemble.cards.domain;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Commander format eligibility predicate, shared by card search filters and deck building.
  * Eligible when any face is a legendary creature or any face says "can be your commander".
@@ -12,18 +14,22 @@ public final class CommanderEligibility {
 
     public static boolean isEligible(Card card) {
         var text = new StringBuilder();
-        card.getFaces().forEach(face -> appendFaceText(text, face));
+        appendText(text, card.getTypeLine());
+        appendText(text, card.getOracleText());
+        card.getFaces()
+                .forEach(
+                        face -> {
+                            appendText(text, face.getTypeLine());
+                            appendText(text, face.getOracleText());
+                        });
         var content = text.toString();
         var legendaryCreature = content.contains("legendary") && content.contains("creature");
         return legendaryCreature || content.contains(CAN_BE_YOUR_COMMANDER);
     }
 
-    private static void appendFaceText(StringBuilder text, CardFace face) {
-        if (face.getTypeLine() != null) {
-            text.append(face.getTypeLine().toLowerCase()).append(' ');
-        }
-        if (face.getOracleText() != null) {
-            text.append(face.getOracleText().toLowerCase()).append(' ');
+    private static void appendText(StringBuilder text, @Nullable String value) {
+        if (value != null) {
+            text.append(value.toLowerCase()).append(' ');
         }
     }
 }

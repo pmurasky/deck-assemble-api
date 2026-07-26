@@ -50,6 +50,30 @@ class CommanderEligibilityTest {
         assertThat(CommanderEligibility.isEligible(card)).isFalse();
     }
 
+    @Test
+    void shouldBeEligibleWhenRootTypeLineIsLegendaryCreature() {
+        Card card = new Card("oracle-1", "Card");
+        card.setTypeLine("Legendary Creature — Human Wizard");
+
+        assertThat(CommanderEligibility.isEligible(card)).isTrue();
+    }
+
+    @Test
+    void shouldBeEligibleWhenRootOracleTextSaysCanBeYourCommander() {
+        Card card = new Card("oracle-1", "Card");
+        card.setTypeLine("Legendary Planeswalker");
+        card.setOracleText("Ajani can be your commander.");
+
+        assertThat(CommanderEligibility.isEligible(card)).isTrue();
+    }
+
+    @Test
+    void shouldNotBeEligibleWhenRootAttributesAreNullAndNoFaces() {
+        Card card = new Card("oracle-1", "Card");
+
+        assertThat(CommanderEligibility.isEligible(card)).isFalse();
+    }
+
     private Card cardWithFace(String typeLine, String oracleText) {
         Card card = new Card("oracle-1", "Card");
         card.getFaces().add(face(card, 0, typeLine, oracleText));
