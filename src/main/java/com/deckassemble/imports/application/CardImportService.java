@@ -55,6 +55,11 @@ public class CardImportService {
     @Transactional
     public ImportResult importQuery(String query) {
         long runId = runRecorder.start(query, currentUser.subject().orElse("system"));
+        return importQuery(runId, query);
+    }
+
+    @Transactional
+    public ImportResult importQuery(long runId, String query) {
         var counters = new Counters();
         try {
             var page = scryfallClient.searchCards(query);
