@@ -5,7 +5,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.springframework.stereotype.Component;
 
-// ponytail: single background thread serializes imports; swap for a job queue if concurrency matters
+// ponytail: single background thread serializes imports; swap for a job queue if concurrency
+// matters
 @Component
 public class CardImportTrigger {
 

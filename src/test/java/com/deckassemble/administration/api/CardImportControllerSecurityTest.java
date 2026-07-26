@@ -8,8 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.deckassemble.AbstractIntegrationTest;
-import com.deckassemble.imports.application.CardImportService;
-import com.deckassemble.imports.application.ImportResult;
+import com.deckassemble.imports.application.CardImportTrigger;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
 import java.time.OffsetDateTime;
@@ -26,7 +25,7 @@ class CardImportControllerSecurityTest extends AbstractIntegrationTest {
     private static final SimpleGrantedAuthority ADMIN = new SimpleGrantedAuthority("ROLE_ADMIN");
 
     @Autowired private MockMvc mockMvc;
-    @MockitoBean private CardImportService cardImportService;
+    @MockitoBean private CardImportTrigger cardImportTrigger;
     @MockitoBean private ImportRunRecorder importRunRecorder;
 
     @Test
@@ -46,19 +45,18 @@ class CardImportControllerSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldImportCardsForAdministrators() throws Exception {
-        when(cardImportService.importQuery("set:mar")).thenReturn(new ImportResult(7L, 5, 3, 2, 0));
+    void shouldAcceptImportForAdministrators() throws Exception {
+        when(cardImportTrigger.trigger(
+                        org.mockito.ArgumentMatchers.eq("set:mar"),
+                        org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(7L);
 
         mockMvc.perform(
                         post("/admin/card-imports")
                                 .queryParam("query", "set:mar")
                                 .with(jwt().authorities(List.of(ADMIN))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.runId").value(7))
-                .andExpect(jsonPath("$.recordsRead").value(5))
-                .andExpect(jsonPath("$.recordsCreated").value(3))
-                .andExpect(jsonPath("$.recordsUpdated").value(2))
-                .andExpect(jsonPath("$.recordsFailed").value(0));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.runId").value(7));
     }
 
     @Test
