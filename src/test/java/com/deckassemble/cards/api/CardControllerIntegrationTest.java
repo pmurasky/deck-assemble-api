@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingFace;
 import com.deckassemble.cards.domain.CardPrintingRepository;
@@ -54,6 +55,28 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.id").value(card.getId()))
                 .andExpect(jsonPath("$.manaCost").value("{2}{U}{R}"))
                 .andExpect(jsonPath("$.oracleText").value("Flying"));
+    }
+
+    @Test
+    void shouldReturnCardLegalities() throws Exception {
+        Card card = new Card("oracle-captain-marvel", "Captain Marvel");
+        card.getLegalities().add(new CardLegality(card, "commander", "legal"));
+        cardRepository.save(card);
+
+        mockMvc.perform(get("/cards/{cardId}", card.getId()).with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.legalities.commander").value("legal"));
+    }
+
+    @Test
+    void shouldReturnCardLegalityInSearchResults() throws Exception {
+        Card card = new Card("oracle-captain-marvel-search", "Captain Marvel Search");
+        card.getLegalities().add(new CardLegality(card, "commander", "legal"));
+        cardRepository.save(card);
+
+        mockMvc.perform(get("/cards").queryParam("query", "captain marvel search").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].legalities.commander").value("legal"));
     }
 
     @Test
