@@ -1,12 +1,13 @@
 package com.deckassemble.imports.application;
 
 import com.deckassemble.cards.domain.Card;
-import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingFace;
+import com.deckassemble.cards.domain.CardPrintingFaceRepository;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
@@ -27,22 +28,26 @@ public class CardImportService {
     private final CardRepository cardRepository;
     private final MagicSetRepository magicSetRepository;
     private final CardPrintingRepository cardPrintingRepository;
+    private final CardPrintingFaceRepository cardPrintingFaceRepository;
     private final ImportRunRecorder runRecorder;
     private final CurrentUser currentUser;
 
-    // Suppressed: six collaborators is what this orchestration service needs; Spring injects them.
+    // Suppressed: seven collaborators is what this orchestration service needs; Spring injects
+    // them.
     @SuppressWarnings("checkstyle:ParameterNumber")
     public CardImportService(
             ScryfallClient scryfallClient,
             CardRepository cardRepository,
             MagicSetRepository magicSetRepository,
             CardPrintingRepository cardPrintingRepository,
+            CardPrintingFaceRepository cardPrintingFaceRepository,
             ImportRunRecorder runRecorder,
             CurrentUser currentUser) {
         this.scryfallClient = scryfallClient;
         this.cardRepository = cardRepository;
         this.magicSetRepository = magicSetRepository;
         this.cardPrintingRepository = cardPrintingRepository;
+        this.cardPrintingFaceRepository = cardPrintingFaceRepository;
         this.runRecorder = runRecorder;
         this.currentUser = currentUser;
     }
@@ -120,7 +125,6 @@ public class CardImportService {
         card.setReserved(source.reserved());
         card.setGameChanger(Boolean.TRUE.equals(source.gameChanger()));
         replaceLegalities(card, source);
-        replaceFaces(card, source);
     }
 
     private void replaceLegalities(Card card, CardImportData source) {
@@ -134,14 +138,16 @@ public class CardImportService {
                                 card.getLegalities().add(new CardLegality(card, format, status)));
     }
 
-    private void replaceFaces(Card card, CardImportData source) {
-        card.getFaces().clear();
+    private void replaceFaces(CardPrinting printing, CardImportData source) {
+        cardPrintingFaceRepository.deleteByCardPrintingId(printing.getId());
+        var faces = new java.util.ArrayList<CardPrintingFace>();
         for (int faceOrder = 0; faceOrder < source.faces().size(); faceOrder++) {
             CardImportFace sourceFace = source.faces().get(faceOrder);
-            CardFace face = new CardFace(card, faceOrder, sourceFace.name());
-            face.setImageUri(sourceFace.imageUri());
-            card.getFaces().add(face);
+            faces.add(
+                    new CardPrintingFace(
+                            printing, faceOrder, sourceFace.name(), sourceFace.imageUri()));
         }
+        cardPrintingFaceRepository.saveAll(faces);
     }
 
     private @Nullable String join(@Nullable List<String> values) {
@@ -162,7 +168,8 @@ public class CardImportService {
         printing.setDigital(source.digital());
         printing.setLanguage(source.lang());
         applyImageUris(printing, source);
-        cardPrintingRepository.save(printing);
+        printing = cardPrintingRepository.save(printing);
+        replaceFaces(printing, source);
         return existing.isPresent() ? Outcome.UPDATED : Outcome.CREATED;
     }
 

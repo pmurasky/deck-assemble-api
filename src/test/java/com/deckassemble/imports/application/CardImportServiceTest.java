@@ -10,6 +10,8 @@ import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingFace;
+import com.deckassemble.cards.domain.CardPrintingFaceRepository;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.CardSearchPage;
@@ -34,6 +36,7 @@ class CardImportServiceTest {
     @Mock private CardRepository cardRepository;
     @Mock private MagicSetRepository magicSetRepository;
     @Mock private CardPrintingRepository cardPrintingRepository;
+    @Mock private CardPrintingFaceRepository cardPrintingFaceRepository;
     @Mock private ImportRunRecorder runRecorder;
     @Mock private CurrentUser currentUser;
 
@@ -99,6 +102,7 @@ class CardImportServiceTest {
                                 cardRepository,
                                 magicSetRepository,
                                 cardPrintingRepository,
+                                cardPrintingFaceRepository,
                                 runRecorder,
                                 currentUser)
                         .importQuery("set:mar");
@@ -125,11 +129,13 @@ class CardImportServiceTest {
                                                 }));
         assertThat(cards.getAllValues())
                 .allSatisfy(card -> assertThat(card.getGameChanger()).isTrue());
-        assertThat(cards.getAllValues())
+        ArgumentCaptor<Iterable<CardPrintingFace>> faces = ArgumentCaptor.forClass(Iterable.class);
+        verify(cardPrintingFaceRepository, org.mockito.Mockito.times(2)).saveAll(faces.capture());
+        assertThat(faces.getAllValues())
                 .allSatisfy(
-                        card ->
-                                assertThat(card.getFaces())
-                                        .extracting(face -> face.getImageUri())
+                        values ->
+                                assertThat(values)
+                                        .extracting(CardPrintingFace::getImageUri)
                                         .containsExactly("front", "back"));
     }
 }
