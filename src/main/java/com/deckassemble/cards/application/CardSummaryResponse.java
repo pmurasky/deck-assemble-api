@@ -4,6 +4,8 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 public record CardSummaryResponse(
@@ -24,6 +26,7 @@ public record CardSummaryResponse(
         @Nullable String rarity,
         @Nullable Boolean foilAvailable,
         @Nullable Boolean nonfoilAvailable,
+        Map<String, String> legalities,
         List<CardFaceResponse> faces) {
 
     // Suppressed: a 18-field record factory is one mapping per line; splitting harms readability.
@@ -47,6 +50,11 @@ public record CardSummaryResponse(
                 latestPrinting != null ? latestPrinting.getRarity() : null,
                 latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
                 latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
+                card.getLegalities().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        legality -> legality.getFormatCode(),
+                                        legality -> legality.getLegalityStatus())),
                 latestPrinting == null
                         ? List.of()
                         : latestPrinting.getFaces().stream().map(CardFaceResponse::from).toList());
