@@ -5,7 +5,6 @@ import com.deckassemble.cards.domain.CardPrinting;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 public record CardSummaryResponse(
@@ -50,11 +49,7 @@ public record CardSummaryResponse(
                 latestPrinting != null ? latestPrinting.getRarity() : null,
                 latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
                 latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
-                card.getLegalities().stream()
-                        .collect(
-                                Collectors.toMap(
-                                        legality -> legality.getFormatCode(),
-                                        legality -> legality.getLegalityStatus())),
+                LegalityMapper.byFormat(card.getLegalities()),
                 latestPrinting == null
                         ? List.of()
                         : latestPrinting.getFaces().stream().map(CardFaceResponse::from).toList());
