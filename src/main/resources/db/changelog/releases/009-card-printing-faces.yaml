@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-card-printing-faces
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: card_printing_faces
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_printing_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: face_order
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: image_uri
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: card_printing_faces
+            baseColumnNames: card_printing_id
+            constraintName: fk_card_printing_faces_printing
+            referencedTableName: card_printings
+            referencedColumnNames: id
+        - delete:
+            tableName: card_faces
+            where: image_uri IS NOT NULL

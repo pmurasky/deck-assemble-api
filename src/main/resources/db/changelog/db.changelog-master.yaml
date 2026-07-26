@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/releases/007-recommendations.yaml
   - include:
       file: db/changelog/releases/008-game-changers.yaml
+  - include:
+      file: db/changelog/releases/009-card-printing-faces.yaml
