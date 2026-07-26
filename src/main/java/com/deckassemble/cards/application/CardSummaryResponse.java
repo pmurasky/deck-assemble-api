@@ -47,6 +47,8 @@ public record CardSummaryResponse(
                 latestPrinting != null ? latestPrinting.getRarity() : null,
                 latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
                 latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
-                card.getFaces().stream().map(CardFaceResponse::from).toList());
+                latestPrinting == null
+                        ? List.of()
+                        : latestPrinting.getFaces().stream().map(CardFaceResponse::from).toList());
     }
 }

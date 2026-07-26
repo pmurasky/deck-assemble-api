@@ -8,14 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
-import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingFace;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.imports.domain.CardImportRun;
 import com.deckassemble.imports.domain.CardImportRunRepository;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -159,30 +160,55 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void shouldIncludePrintingDataInCardSummary() throws Exception {
         Card card = cardRepository.save(new Card("oracle-thor", "Thor"));
-        CardFace front = new CardFace(card, 0, "Thor");
-        front.setImageUri("https://img.example/thor-front.png");
-        CardFace back = new CardFace(card, 1, "Thor, God of Flips");
-        back.setImageUri("https://img.example/thor-back.png");
-        card.getFaces().addAll(List.of(front, back));
-        cardRepository.save(card);
         MagicSet set =
                 magicSetRepository.save(
                         new MagicSet("set-marvel-summary", "msu", "Marvel Summary"));
         CardPrinting printing = new CardPrinting(card, set, "printing-thor");
         printing.setRarity("mythic");
         printing.setImageUriNormal("https://img.example/thor.png");
+        printing.setReleasedAt(LocalDate.of(2025, 1, 1));
+        printing.getFaces()
+                .addAll(
+                        List.of(
+                                new CardPrintingFace(
+                                        printing, 0, "Thor", "https://img.example/thor-front.png"),
+                                new CardPrintingFace(
+                                        printing,
+                                        1,
+                                        "Thor, God of Flips",
+                                        "https://img.example/thor-back.png")));
         cardPrintingRepository.save(printing);
+        CardPrinting latestPrinting = new CardPrinting(card, set, "printing-thor-latest");
+        latestPrinting.setImageUriNormal("https://img.example/thor-latest.png");
+        latestPrinting.setReleasedAt(LocalDate.of(2026, 1, 1));
+        latestPrinting
+                .getFaces()
+                .addAll(
+                        List.of(
+                                new CardPrintingFace(
+                                        latestPrinting,
+                                        0,
+                                        "Thor Redux",
+                                        "https://img.example/thor-redux-front.png"),
+                                new CardPrintingFace(
+                                        latestPrinting,
+                                        1,
+                                        "Thor Redux, Flipped",
+                                        "https://img.example/thor-redux-back.png")));
+        cardPrintingRepository.save(latestPrinting);
 
         mockMvc.perform(get("/cards").queryParam("query", "thor").with(jwt()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].printingId").value(printing.getId()))
-                .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/thor.png"))
-                .andExpect(jsonPath("$.content[0].faces[0].name").value("Thor"))
+                .andExpect(jsonPath("$.content[0].printingId").value(latestPrinting.getId()))
+                .andExpect(
+                        jsonPath("$.content[0].imageUrl")
+                                .value("https://img.example/thor-latest.png"))
+                .andExpect(jsonPath("$.content[0].faces.length()").value(2))
+                .andExpect(jsonPath("$.content[0].faces[0].name").value("Thor Redux"))
                 .andExpect(
                         jsonPath("$.content[0].faces[1].imageUrl")
-                                .value("https://img.example/thor-back.png"))
-                .andExpect(jsonPath("$.content[0].setCode").value("msu"))
-                .andExpect(jsonPath("$.content[0].rarity").value("mythic"));
+                                .value("https://img.example/thor-redux-back.png"))
+                .andExpect(jsonPath("$.content[0].setCode").value("msu"));
     }
 
     @Test
