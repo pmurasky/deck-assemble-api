@@ -3,8 +3,8 @@ package com.deckassemble.cards.domain;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Commander format eligibility predicate, shared by card search filters and deck building.
- * Eligible when any face is a legendary creature or any face says "can be your commander".
+ * Commander format eligibility predicate, shared by card search filters and deck building. Eligible
+ * when any face is a legendary creature or any face says "can be your commander".
  */
 public final class CommanderEligibility {
 

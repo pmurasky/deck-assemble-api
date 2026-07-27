@@ -46,7 +46,8 @@ class CardCatalogServiceTest {
         when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(anyLong()))
                 .thenReturn(List.of(printing));
 
-        Page<CardSummaryResponse> result = service().search("bolt", null, null, null, null, PAGEABLE);
+        Page<CardSummaryResponse> result =
+                service().search("bolt", null, null, null, null, PAGEABLE);
 
         assertThat(result.getContent()).hasSize(1);
         CardSummaryResponse summary = result.getContent().get(0);

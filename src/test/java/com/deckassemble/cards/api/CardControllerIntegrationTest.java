@@ -182,7 +182,8 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
         Card planeswalker =
                 cardRepository.save(new Card("oracle-ajani", "Ajani, Caller of the Pride"));
         planeswalker.setTypeLine("Legendary Planeswalker — Ajani");
-        planeswalker.setOracleText("+1: Something. Ajani, Caller of the Pride can be your commander.");
+        planeswalker.setOracleText(
+                "+1: Something. Ajani, Caller of the Pride can be your commander.");
         cardRepository.save(planeswalker);
         Card instant = cardRepository.save(new Card("oracle-shock", "Shock"));
         instant.setTypeLine("Instant");
