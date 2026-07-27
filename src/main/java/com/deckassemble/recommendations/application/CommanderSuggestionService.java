@@ -78,7 +78,7 @@ public class CommanderSuggestionService {
         var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
         var cardsByOracle = new LinkedHashMap<String, Card>();
         cardCatalogService
-                .getCardsWithFacesByPrintingIds(ownedPrintingIds)
+                .getCardsByPrintingIds(ownedPrintingIds)
                 .values()
                 .forEach(card -> cardsByOracle.putIfAbsent(card.getScryfallOracleId(), card));
         return cardsByOracle;

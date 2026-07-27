@@ -180,27 +180,30 @@ public class CardCatalogService {
         if (names.isEmpty()) {
             return List.of();
         }
-        return cardRepository.findByNameIn(names);
+        var cards = cardRepository.findByNameIn(names);
+        cards.forEach(CardCatalogService::initializeAssociations);
+        return cards;
     }
 
+    /**
+     * Initializes the lazy faces and legalities collections before the session closes, so
+     * callers outside a transaction (e.g. deck building, suggestions) can read them.
+     */
     @Transactional(readOnly = true)
     public Map<Long, Card> getCardsByPrintingIds(Collection<Long> cardPrintingIds) {
         if (cardPrintingIds.isEmpty()) {
             return Map.of();
         }
-        return cardPrintingRepository.findAllById(cardPrintingIds).stream()
-                .collect(Collectors.toMap(CardPrinting::getId, CardPrinting::getCard));
+        var cards =
+                cardPrintingRepository.findAllById(cardPrintingIds).stream()
+                        .collect(Collectors.toMap(CardPrinting::getId, CardPrinting::getCard));
+        cards.values().forEach(CardCatalogService::initializeAssociations);
+        return cards;
     }
 
-    /**
-     * Like {@link #getCardsByPrintingIds(Collection)} but initializes each card's lazy faces
-     * collection before the session closes, so callers outside a transaction can read faces.
-     */
-    @Transactional(readOnly = true)
-    public Map<Long, Card> getCardsWithFacesByPrintingIds(Collection<Long> cardPrintingIds) {
-        var cards = getCardsByPrintingIds(cardPrintingIds);
-        cards.values().forEach(card -> Hibernate.initialize(card.getFaces()));
-        return cards;
+    private static void initializeAssociations(Card card) {
+        Hibernate.initialize(card.getFaces());
+        Hibernate.initialize(card.getLegalities());
     }
 
     @Transactional(readOnly = true)

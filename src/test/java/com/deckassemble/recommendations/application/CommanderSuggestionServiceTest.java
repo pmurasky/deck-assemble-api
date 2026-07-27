@@ -58,7 +58,7 @@ class CommanderSuggestionServiceTest {
         var missingStaple = card(4L, "Missing Staple", "missing");
         stubUser();
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L, 11L, 12L));
-        when(cardCatalogService.getCardsWithFacesByPrintingIds(Set.of(10L, 11L, 12L)))
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L, 11L, 12L)))
                 .thenReturn(Map.of(10L, highCoverage, 11L, lowCoverage, 12L, ownedStaple));
         when(edhrecCommanderService.getCardScores("high", "High Coverage"))
                 .thenReturn(Map.of("Owned Staple", new CardScore(0.5, 10L)));
@@ -91,7 +91,7 @@ class CommanderSuggestionServiceTest {
         var commander = commander(1L, "Commander", "commander", 1);
         stubUser();
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
-        when(cardCatalogService.getCardsWithFacesByPrintingIds(Set.of(10L)))
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
                 .thenReturn(Map.of(10L, commander));
         when(edhrecCommanderService.getCardScores("commander", "Commander"))
                 .thenReturn(Map.of("Unknown Staple", new CardScore(0.5, 10L)));
@@ -111,7 +111,7 @@ class CommanderSuggestionServiceTest {
         var nonCommander = card(1L, "Not A Commander", "not-a-commander");
         stubUser();
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
-        when(cardCatalogService.getCardsWithFacesByPrintingIds(Set.of(10L)))
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
                 .thenReturn(Map.of(10L, nonCommander));
 
         assertThat(service.suggest()).isEmpty();
