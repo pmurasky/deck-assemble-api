@@ -4,6 +4,7 @@ import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrice;
+import com.deckassemble.cards.domain.CommanderEligibility;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
@@ -64,7 +65,8 @@ public class CommanderSuggestionService {
         var ownedCards = ownedCards();
         var ownedOracleIds = ownedCards.keySet();
         return ownedCards.values().stream()
-                .filter(CommanderSuggestionService::eligibleCommander)
+                .filter(card -> Boolean.TRUE.equals(card.getActive()))
+                .filter(CommanderEligibility::isEligible)
                 .map(commander -> suggestionFor(commander, ownedOracleIds))
                 .flatMap(java.util.Optional::stream)
                 .sorted(SUGGESTION_ORDER)
@@ -177,30 +179,6 @@ public class CommanderSuggestionService {
             }
         }
         return new PriceSummary(cost, unpriced);
-    }
-
-    private static boolean eligibleCommander(Card card) {
-        if (!Boolean.TRUE.equals(card.getActive())) {
-            return false;
-        }
-        var text = new StringBuilder();
-        card.getFaces()
-                .forEach(
-                        face ->
-                                appendCommanderText(
-                                        text, face.getTypeLine(), face.getOracleText()));
-        return text.toString().contains("legendary creature")
-                || text.toString().contains("can be your commander");
-    }
-
-    private static void appendCommanderText(
-            StringBuilder text, @Nullable String typeLine, @Nullable String oracleText) {
-        if (typeLine != null) {
-            text.append(typeLine.toLowerCase(java.util.Locale.ROOT)).append(' ');
-        }
-        if (oracleText != null) {
-            text.append(oracleText.toLowerCase(java.util.Locale.ROOT)).append(' ');
-        }
     }
 
     private static @Nullable BigDecimal usd(@Nullable CardPrice price) {
