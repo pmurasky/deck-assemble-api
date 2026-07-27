@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.hibernate.Hibernate;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -175,6 +176,17 @@ public class CardCatalogService {
         }
         return cardPrintingRepository.findAllById(cardPrintingIds).stream()
                 .collect(Collectors.toMap(CardPrinting::getId, CardPrinting::getCard));
+    }
+
+    /**
+     * Like {@link #getCardsByPrintingIds(Collection)} but initializes each card's lazy faces
+     * collection before the session closes, so callers outside a transaction can read faces.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Card> getCardsWithFacesByPrintingIds(Collection<Long> cardPrintingIds) {
+        var cards = getCardsByPrintingIds(cardPrintingIds);
+        cards.values().forEach(card -> Hibernate.initialize(card.getFaces()));
+        return cards;
     }
 
     @Transactional(readOnly = true)
