@@ -186,8 +186,8 @@ public class CardCatalogService {
     }
 
     /**
-     * Initializes the lazy faces and legalities collections before the session closes, so
-     * callers outside a transaction (e.g. deck building, suggestions) can read them.
+     * Initializes the lazy faces and legalities collections before the session closes, so callers
+     * outside a transaction (e.g. deck building, suggestions) can read them.
      */
     @Transactional(readOnly = true)
     public Map<Long, Card> getCardsByPrintingIds(Collection<Long> cardPrintingIds) {
