@@ -25,6 +25,9 @@ public class CardController {
         this.cardCatalogService = cardCatalogService;
     }
 
+    // Suppressed: search filters map 1:1 to optional request params; grouping them into a
+    // parameter object would change the public API signature for no cohesion gain.
+    @SuppressWarnings("checkstyle:ParameterNumber")
     @GetMapping
     public Page<CardSummaryResponse> search(
             @RequestParam(defaultValue = "") @Size(max = 100) String query,

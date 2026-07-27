@@ -28,6 +28,9 @@ public class CardCatalogService {
         this.cardPrintingRepository = cardPrintingRepository;
     }
 
+    // Suppressed: mirrors the controller's search signature; each parameter is an independent
+    // optional filter consumed by the specification builder.
+    @SuppressWarnings("checkstyle:ParameterNumber")
     @Transactional(readOnly = true)
     public Page<CardSummaryResponse> search(
             String query,
