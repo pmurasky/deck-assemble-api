@@ -161,6 +161,17 @@ public class CardCatalogService {
                 .orElseThrow(CardNotFoundException::new);
     }
 
+    /**
+     * Like {@link #getCard(long)} but initializes the lazy faces collection before the session
+     * closes, so callers outside a transaction can read faces.
+     */
+    @Transactional(readOnly = true)
+    public Card getCardWithFaces(long cardId) {
+        var card = getCard(cardId);
+        Hibernate.initialize(card.getFaces());
+        return card;
+    }
+
     @Transactional(readOnly = true)
     public List<Card> getCardsByNames(Collection<String> names) {
         if (names.isEmpty()) {

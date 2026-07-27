@@ -79,7 +79,7 @@ class DeckBuilderServiceTest {
         var commander = commander();
         var pool = Map.of(11L, poolCard(11L, "Counterspell"), 12L, poolCard(12L, "Opt"));
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L, 12L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L))).thenReturn(pool);
         when(edhrecCommanderService.getCardScores(any(), any()))
@@ -115,7 +115,7 @@ class DeckBuilderServiceTest {
         notALegend.getFaces().clear();
         notALegend.getFaces().add(face(notALegend, "Creature — Merfolk"));
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(notALegend);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(notALegend);
 
         assertThatThrownBy(
                         () ->
@@ -130,7 +130,7 @@ class DeckBuilderServiceTest {
     void shouldReportGapWhenNoBasicsAvailable() {
         var commander = commander();
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
         when(edhrecCommanderService.getCardScores(any(), any())).thenReturn(Map.of());
         when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of());
@@ -149,7 +149,7 @@ class DeckBuilderServiceTest {
     void shouldStillBuildWhenEdhrecIsUnavailable() {
         var commander = commander();
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
         when(cardCatalogService.getCardsByPrintingIds(Set.of())).thenReturn(Map.of());
         when(edhrecCommanderService.getCardScores(any(), any()))
@@ -176,7 +176,7 @@ class DeckBuilderServiceTest {
         var rhystic = poolCard(20L, "Rhystic Study");
         var island = basicLand("Island");
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
         when(edhrecCommanderService.getCardScores(any(), any()))
                 .thenReturn(Map.of("Rhystic Study", new CardScore(0.95, 5000L)));
@@ -216,7 +216,7 @@ class DeckBuilderServiceTest {
         var cheap = poolCard(21L, "Cheap Card");
         var island = basicLand("Island");
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
         when(edhrecCommanderService.getCardScores(any(), any()))
                 .thenReturn(
@@ -279,7 +279,7 @@ class DeckBuilderServiceTest {
         gameChanger.setGameChanger(true);
         var island = basicLand("Island");
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L)))
                 .thenReturn(Map.of(11L, gameChanger));
@@ -307,7 +307,7 @@ class DeckBuilderServiceTest {
         gameChanger.setGameChanger(true);
         var island = basicLand("Island");
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L)))
                 .thenReturn(Map.of(11L, gameChanger));
@@ -337,7 +337,7 @@ class DeckBuilderServiceTest {
         var fourth = gameChangerCard(14L, "Fourth");
         var island = basicLand("Island");
         stubUser();
-        when(cardCatalogService.getCard(COMMANDER_ID)).thenReturn(commander);
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
         when(collectionService.getOwnedPrintingIds(PROFILE_ID))
                 .thenReturn(Set.of(11L, 12L, 13L, 14L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L, 13L, 14L)))

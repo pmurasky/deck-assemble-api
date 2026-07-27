@@ -210,9 +210,9 @@ public class DeckBuilderService {
 
     private List<Card> resolveCommanders(DeckBuildRequest request) {
         var commanders = new ArrayList<Card>();
-        commanders.add(cardCatalogService.getCard(request.commanderCardId()));
+        commanders.add(cardCatalogService.getCardWithFaces(request.commanderCardId()));
         if (request.secondaryCommanderCardId() != null) {
-            commanders.add(cardCatalogService.getCard(request.secondaryCommanderCardId()));
+            commanders.add(cardCatalogService.getCardWithFaces(request.secondaryCommanderCardId()));
         }
         commanders.forEach(DeckBuilderService::requireEligible);
         return commanders;
