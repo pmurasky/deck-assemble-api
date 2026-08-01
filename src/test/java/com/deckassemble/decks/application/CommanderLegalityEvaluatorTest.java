@@ -8,6 +8,7 @@ import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.cards.domain.CommanderPairingRules;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;

@@ -1,15 +1,14 @@
-package com.deckassemble.decks.application;
+package com.deckassemble.cards.domain;
 
-import com.deckassemble.cards.domain.Card;
 import java.util.Locale;
 import java.util.function.Predicate;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
-class CommanderPairingRules {
+public class CommanderPairingRules {
 
-    boolean canPair(Card first, Card second) {
+    public boolean canPair(Card first, Card second) {
         return genericPartnerPair(first, second)
                 || keywordPair(first, second, "friends forever")
                 || namedPartnerPair(first, second)
