@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "card_import_runs")
@@ -55,7 +56,7 @@ public class CardImportRun {
     private int recordsFailed;
 
     @Column(length = 2000)
-    private String errorSummary;
+    private @Nullable String errorSummary;
 
     private String createdBy;
 
@@ -110,7 +111,7 @@ public class CardImportRun {
         return recordsFailed;
     }
 
-    public String getErrorSummary() {
+    public @Nullable String getErrorSummary() {
         return errorSummary;
     }
 
@@ -138,13 +139,16 @@ public class CardImportRun {
         this.status = recordsFailed == 0 ? Status.COMPLETED : Status.COMPLETED_WITH_ERRORS;
     }
 
-    public void fail(OffsetDateTime completedAt, String errorSummary) {
+    public void fail(OffsetDateTime completedAt, @Nullable String errorSummary) {
         this.completedAt = completedAt;
         this.status = Status.FAILED;
-        this.errorSummary =
-                errorSummary == null
-                        ? null
-                        : errorSummary.substring(
-                                0, Math.min(errorSummary.length(), ERROR_SUMMARY_MAX_LENGTH));
+        this.errorSummary = truncate(errorSummary);
+    }
+
+    private static @Nullable String truncate(@Nullable String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.substring(0, Math.min(value.length(), ERROR_SUMMARY_MAX_LENGTH));
     }
 }
