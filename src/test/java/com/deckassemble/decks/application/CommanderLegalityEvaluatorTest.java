@@ -301,7 +301,8 @@ class CommanderLegalityEvaluatorTest {
     }
 
     private DeckLegalityResponse evaluate(Deck deck, List<DeckCard> cards) {
-        return new CommanderLegalityEvaluator(cardRepository, cardPrintingRepository)
+        return new CommanderLegalityEvaluator(
+                        cardRepository, cardPrintingRepository, new CommanderPairingRules())
                 .evaluate(deck, cards);
     }
 

@@ -1,0 +1,31 @@
+main.xml com/deckassemble/cards/application/CardCatalogService.java:20 CyclomaticComplexity | The class 'CardCatalogService' has a total cyclomatic complexity of 44
+main.xml com/deckassemble/cards/application/CardCatalogService.java:214 UseConcurrentHashMap | If you run in Java5 or newer and have concurrent access, you should us
+main.xml com/deckassemble/cards/application/CardDetailResponse.java:37 CyclomaticComplexity | The method 'from(Card, CardPrinting)' has a cyclomatic complexity of 1
+main.xml com/deckassemble/cards/application/CardDetailResponse.java:37 NPathComplexity | The method 'from(Card, CardPrinting)' has an NPath complexity of 512, 
+main.xml com/deckassemble/cards/application/CardSummaryResponse.java:33 NPathComplexity | The method 'from(Card, CardPrinting)' has an NPath complexity of 256, 
+main.xml com/deckassemble/cards/domain/Card.java:27 TooManyFields | Too many fields
+main.xml com/deckassemble/cards/domain/CardPrinting.java:28 TooManyFields | Too many fields
+main.xml com/deckassemble/cards/domain/MagicSet.java:21 TooManyFields | Too many fields
+main.xml com/deckassemble/decks/application/CommanderLegalityEvaluator.java:18 CyclomaticComplexity | The class 'CommanderLegalityEvaluator' has a total cyclomatic complexi
+main.xml com/deckassemble/decks/application/CommanderLegalityEvaluator.java:18 TooManyMethods | This class has too many methods, consider refactoring it.
+main.xml com/deckassemble/decks/application/DeckService.java:31 CyclomaticComplexity | The class 'DeckService' has a total cyclomatic complexity of 75 (highe
+main.xml com/deckassemble/decks/application/DeckService.java:31 TooManyMethods | This class has too many methods, consider refactoring it.
+main.xml com/deckassemble/decks/application/DeckService.java:48 ExcessiveParameterList | Avoid long parameter lists.
+main.xml com/deckassemble/decks/domain/Deck.java:24 TooManyFields | Too many fields
+main.xml com/deckassemble/imports/application/CardImportService.java:38 ExcessiveParameterList | Avoid long parameter lists.
+main.xml com/deckassemble/imports/domain/CardImportRun.java:146 NullAssignment | Assigning an Object to null is a code smell.  Consider refactoring.
+main.xml com/deckassemble/recommendations/application/DeckBuilderService.java:38 CyclomaticComplexity | The class 'DeckBuilderService' has a total cyclomatic complexity of 81
+main.xml com/deckassemble/recommendations/application/DeckBuilderService.java:38 TooManyMethods | This class has too many methods, consider refactoring it.
+main.xml com/deckassemble/recommendations/application/DeckBuilderService.java:77 ExcessiveParameterList | Avoid long parameter lists.
+main.xml com/deckassemble/recommendations/application/DeckDraftPicker.java:74 UseConcurrentHashMap | If you run in Java5 or newer and have concurrent access, you should us
+main.xml com/deckassemble/recommendations/application/EdhrecCommanderService.java:73 UseConcurrentHashMap | If you run in Java5 or newer and have concurrent access, you should us
+test.xml com/deckassemble/cards/application/CardCatalogServiceTest.java:30 TooManyMethods | This class has too many methods, consider refactoring it.
+test.xml com/deckassemble/decks/application/CommanderLegalityEvaluatorTest.java:22 TooManyMethods | This class has too many methods, consider refactoring it.
+test.xml com/deckassemble/decks/application/DeckServiceTest.java:35 TooManyMethods | This class has too many methods, consider refactoring it.
+test.xml com/deckassemble/decks/application/DeckServiceTest.java:464 NcssCount | The method 'shouldSynthesizeCommanderEntryWhenRowMissing()' has a NCSS
+test.xml com/deckassemble/imports/application/CardImportServiceTest.java:44 NcssCount | The method 'shouldImportAValidScryfallCard()' has a NCSS line count of
+test.xml com/deckassemble/recommendations/application/CommanderSuggestionServiceTest.java:54 NcssCount | The method 'shouldRankOwnedCommandersByCoverageThenCost()' has a NCSS 
+test.xml com/deckassemble/recommendations/application/DeckBuilderServiceTest.java:78 NcssCount | The method 'shouldBuildFullDeckWithBasicsPadding()' has a NCSS line co
+test.xml com/deckassemble/recommendations/application/DeckBuilderServiceTest.java:174 NcssCount | The method 'shouldBuildOptimalDeckFromEdhrecPool()' has a NCSS line co
+test.xml com/deckassemble/recommendations/application/DeckBuilderServiceTest.java:213 NcssCount | The method 'shouldExcludeUnownedCardsOverBudget()' has a NCSS line cou
+test.xml com/deckassemble/recommendations/application/DeckBuilderServiceTest.java:332 NcssCount | The method 'shouldKeepOnlyThreeGameChangersAtMediumPower()' has a NCSS
