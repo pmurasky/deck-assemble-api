@@ -18,6 +18,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Entity
 @Table(name = "magic_sets")
 @EntityListeners(AuditingEntityListener.class)
+// Justified: JPA entity mapping table columns; field count follows the schema.
+@SuppressWarnings("PMD.TooManyFields")
 public class MagicSet {
 
     @Id

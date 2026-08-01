@@ -70,6 +70,9 @@ public final class DeckDraftPicker {
         }
     }
 
+    // Justified: method-local LinkedHashMap (insertion order required), never shared across
+    // threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
     private static Map<Category, Integer> quotas() {
         Map<Category, Integer> quotas = new LinkedHashMap<>();
         quotas.put(Category.LAND, LAND_QUOTA);

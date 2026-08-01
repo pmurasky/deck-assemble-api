@@ -34,6 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.ObjectMapper;
 
+// Justified: orchestration service coordinating the deck-build pipeline; decomposition tracked in
+// #3.
+@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 @Service
 public class DeckBuilderService {
 
@@ -73,7 +76,7 @@ public class DeckBuilderService {
 
     // checkstyle:ParameterNumber suppressed: builder orchestrates the full build pipeline and
     // every collaborator is required; grouping them would add indirection without cohesion.
-    @SuppressWarnings("checkstyle:ParameterNumber")
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckBuilderService(
             CardCatalogService cardCatalogService,
             CollectionService collectionService,

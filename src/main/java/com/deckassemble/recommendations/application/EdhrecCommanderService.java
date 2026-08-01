@@ -68,6 +68,8 @@ public class EdhrecCommanderService {
         return payload;
     }
 
+    // Justified: method-local map, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
     public Map<String, CardScore> getCardScores(String commanderOracleId, String commanderName) {
         var payload = getCommanderData(commanderOracleId, commanderName);
         Map<String, CardScore> scores = new HashMap<>();

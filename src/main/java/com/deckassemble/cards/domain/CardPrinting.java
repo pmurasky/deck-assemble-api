@@ -25,6 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Entity
 @Table(name = "card_printings")
 @EntityListeners(AuditingEntityListener.class)
+// Justified: JPA entity mapping table columns; field count follows the schema.
+@SuppressWarnings("PMD.TooManyFields")
 public class CardPrinting {
 
     @Id

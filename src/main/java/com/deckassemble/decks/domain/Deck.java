@@ -21,6 +21,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "decks")
+// Justified: JPA entity mapping table columns; field count follows the schema.
+@SuppressWarnings("PMD.TooManyFields")
 public class Deck {
 
     public enum Status {

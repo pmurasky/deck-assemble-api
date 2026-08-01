@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+// Justified: query facade over card repositories; methods are thin delegations (tracked in #3).
+@SuppressWarnings("PMD.CyclomaticComplexity")
 public class CardCatalogService {
 
     private final CardRepository cardRepository;
@@ -207,6 +209,8 @@ public class CardCatalogService {
     }
 
     @Transactional(readOnly = true)
+    // Justified: method-local map, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
     public Map<Long, Long> getLatestPrintingIdByCardIds(Collection<Long> cardIds) {
         if (cardIds.isEmpty()) {
             return Map.of();

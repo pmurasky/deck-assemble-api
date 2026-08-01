@@ -34,7 +34,7 @@ public class CardImportService {
 
     // Suppressed: seven collaborators is what this orchestration service needs; Spring injects
     // them.
-    @SuppressWarnings("checkstyle:ParameterNumber")
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public CardImportService(
             ScryfallClient scryfallClient,
             CardRepository cardRepository,
