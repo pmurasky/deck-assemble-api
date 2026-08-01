@@ -201,6 +201,51 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.violations[*].code", hasItem("DECK_SIZE_INVALID")));
     }
 
+    @Test
+    void shouldHydrateCommanderInDeckAndCardsResponses() throws Exception {
+        String subject = "auth0|commander-hydration";
+        Card commander = new Card("oracle-hydrated-commander", "Hydrated Commander");
+        commander.setTypeLine("Legendary Creature — Human");
+        commander.setColorIdentity("W");
+        commander = cardRepository.save(commander);
+        cardLegalityRepository.save(new CardLegality(commander, "commander", "legal"));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-hyd", "hyd", "Hyd Set"));
+        long printingId =
+                cardPrintingRepository
+                        .save(new CardPrinting(commander, set, "printing-hyd"))
+                        .getId();
+        long commanderCardId = commander.getId();
+
+        MvcResult result =
+                mockMvc.perform(
+                                post("/decks")
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"name\":\"Deck\",\"formatCode\":\"COMMANDER\",\"commanderCardId\":"
+                                                        + commanderCardId
+                                                        + "}"))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.commander.name").value("Hydrated Commander"))
+                        .andReturn();
+        long deckId = idFrom(result);
+
+        mockMvc.perform(get("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commander.name").value("Hydrated Commander"))
+                .andExpect(jsonPath("$.commander.printingId").value((int) printingId));
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].deckSection").value("COMMANDER"))
+                .andExpect(jsonPath("$[0].quantity").value(1))
+                .andExpect(jsonPath("$[0].cardPrintingId").value((int) printingId))
+                .andExpect(jsonPath("$[0].card.name").value("Hydrated Commander"));
+    }
+
     private long createDeck(String subject) throws Exception {
         MvcResult result =
                 mockMvc.perform(
