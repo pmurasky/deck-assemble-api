@@ -27,7 +27,7 @@ public class CardController {
 
     // Suppressed: search filters map 1:1 to optional request params; grouping them into a
     // parameter object would change the public API signature for no cohesion gain.
-    @SuppressWarnings("checkstyle:ParameterNumber")
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     @GetMapping
     public Page<CardSummaryResponse> search(
             @RequestParam(defaultValue = "") @Size(max = 100) String query,
@@ -35,9 +35,10 @@ public class CardController {
             @RequestParam(required = false) String colorIdentity,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) Boolean commanderEligible,
+            @RequestParam(required = false) Long partnerForCardId,
             @PageableDefault(size = 24) Pageable pageable) {
         return cardCatalogService.search(
-                query, setCode, colorIdentity, type, commanderEligible, pageable);
+                query, setCode, colorIdentity, type, commanderEligible, partnerForCardId, pageable);
     }
 
     @GetMapping("/{cardId}")

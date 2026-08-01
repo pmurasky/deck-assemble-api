@@ -4,6 +4,7 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.cards.domain.CommanderPairingRules;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -23,16 +25,22 @@ public class CardCatalogService {
 
     private final CardRepository cardRepository;
     private final CardPrintingRepository cardPrintingRepository;
+    private final CommanderPairingRules pairingRules;
 
     public CardCatalogService(
-            CardRepository cardRepository, CardPrintingRepository cardPrintingRepository) {
+            CardRepository cardRepository,
+            CardPrintingRepository cardPrintingRepository,
+            CommanderPairingRules pairingRules) {
         this.cardRepository = cardRepository;
         this.cardPrintingRepository = cardPrintingRepository;
+        this.pairingRules = pairingRules;
     }
 
     // Suppressed: mirrors the controller's search signature; each parameter is an independent
     // optional filter consumed by the specification builder.
-    @SuppressWarnings("checkstyle:ParameterNumber")
+    // Justified: grouping into a parameter object would change the public API signature for no
+    // cohesion gain (same rationale as the controller).
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     @Transactional(readOnly = true)
     public Page<CardSummaryResponse> search(
             String query,
@@ -40,12 +48,31 @@ public class CardCatalogService {
             String colorIdentity,
             String type,
             Boolean commanderEligible,
+            @Nullable Long partnerForCardId,
             Pageable pageable) {
-        return cardRepository
-                .findAll(
-                        specification(query, setCode, colorIdentity, type, commanderEligible),
-                        pageable)
-                .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+        Specification<Card> spec =
+                specification(query, setCode, colorIdentity, type, commanderEligible);
+        if (partnerForCardId == null) {
+            return cardRepository
+                    .findAll(spec, pageable)
+                    .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+        }
+        return searchPartners(spec, getCard(partnerForCardId), pageable);
+    }
+
+    // ponytail: in-memory filter + manual pagination; valid partner candidate sets are small
+    // (backgrounds ~30, named partners exactly 1). Push to SQL if generic partner sets grow.
+    private Page<CardSummaryResponse> searchPartners(
+            Specification<Card> spec, Card primary, Pageable pageable) {
+        List<Card> candidates =
+                cardRepository.findAll(spec, pageable.getSort()).stream()
+                        .filter(card -> pairingRules.canPair(primary, card))
+                        .toList();
+        int start = (int) Math.min(pageable.getOffset(), candidates.size());
+        int end = Math.min(start + pageable.getPageSize(), candidates.size());
+        Page<Card> page =
+                new PageImpl<>(candidates.subList(start, end), pageable, candidates.size());
+        return page.map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
     }
 
     @Transactional

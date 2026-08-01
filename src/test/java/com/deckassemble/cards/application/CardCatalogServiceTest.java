@@ -12,6 +12,7 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.cards.domain.CommanderPairingRules;
 import com.deckassemble.cards.domain.MagicSet;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +36,30 @@ class CardCatalogServiceTest {
 
     @Mock private CardRepository cardRepository;
     @Mock private CardPrintingRepository cardPrintingRepository;
+
+    @Test
+    void shouldFilterSearchResultsByPairingWithPrimaryCommander() {
+        Card primary = card("Tymna the Weaver");
+        primary.setTypeLine("Legendary Creature — Human Cleric");
+        primary.setOracleText("Lifelink\nPartner");
+        Card partner = card("Kraum, Ludevic's Opus");
+        partner.setTypeLine("Legendary Creature — Zombie Horror");
+        partner.setOracleText("Flying, haste\nPartner");
+        Card nonPartner = card("Atraxa, Praetors' Voice");
+        nonPartner.setTypeLine("Legendary Creature — Angel Horror");
+        nonPartner.setOracleText("Flying, vigilance");
+        when(cardRepository.findById(1L)).thenReturn(Optional.of(primary));
+        when(cardRepository.findAll(any(Specification.class), any(Sort.class)))
+                .thenReturn(List.of(partner, nonPartner));
+
+        Page<CardSummaryResponse> result =
+                service().search("", null, null, null, null, 1L, PAGEABLE);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent())
+                .extracting(CardSummaryResponse::name)
+                .containsExactly("Kraum, Ludevic's Opus");
+    }
 
     @Test
     void shouldSearchWithLatestPrintingMapped() {
@@ -47,7 +73,7 @@ class CardCatalogServiceTest {
                 .thenReturn(List.of(printing));
 
         Page<CardSummaryResponse> result =
-                service().search("bolt", null, null, null, null, PAGEABLE);
+                service().search("bolt", null, null, null, null, null, PAGEABLE);
 
         assertThat(result.getContent()).hasSize(1);
         CardSummaryResponse summary = result.getContent().get(0);
@@ -246,7 +272,8 @@ class CardCatalogServiceTest {
     }
 
     private CardCatalogService service() {
-        return new CardCatalogService(cardRepository, cardPrintingRepository);
+        return new CardCatalogService(
+                cardRepository, cardPrintingRepository, new CommanderPairingRules());
     }
 
     private Card card(String name) {
