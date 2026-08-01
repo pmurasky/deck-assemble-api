@@ -49,17 +49,19 @@ public record CardDetailResponse(
                 card.getToughness(),
                 card.getLoyalty(),
                 card.getKeywords(),
-                latestPrinting != null ? latestPrinting.getId() : null,
-                latestPrinting != null ? latestPrinting.getImageUriNormal() : null,
-                latestPrinting != null ? latestPrinting.getMagicSet().getSetCode() : null,
-                latestPrinting != null ? latestPrinting.getMagicSet().getName() : null,
-                latestPrinting != null ? latestPrinting.getRarity() : null,
-                latestPrinting != null ? latestPrinting.getFlavorText() : null,
-                latestPrinting != null ? latestPrinting.getFoilAvailable() : null,
-                latestPrinting != null ? latestPrinting.getNonfoilAvailable() : null,
+                PrintingFields.of(latestPrinting, CardPrinting::getId),
+                PrintingFields.of(latestPrinting, CardPrinting::getImageUriNormal),
+                PrintingFields.of(latestPrinting, printing -> printing.getMagicSet().getSetCode()),
+                PrintingFields.of(latestPrinting, printing -> printing.getMagicSet().getName()),
+                PrintingFields.of(latestPrinting, CardPrinting::getRarity),
+                PrintingFields.of(latestPrinting, CardPrinting::getFlavorText),
+                PrintingFields.of(latestPrinting, CardPrinting::getFoilAvailable),
+                PrintingFields.of(latestPrinting, CardPrinting::getNonfoilAvailable),
                 LegalityMapper.byFormat(card.getLegalities()),
-                latestPrinting == null
-                        ? List.of()
-                        : latestPrinting.getFaces().stream().map(CardFaceResponse::from).toList());
+                PrintingFields.of(
+                        latestPrinting,
+                        printing ->
+                                printing.getFaces().stream().map(CardFaceResponse::from).toList(),
+                        List.of()));
     }
 }
