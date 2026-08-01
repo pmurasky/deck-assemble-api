@@ -2,9 +2,10 @@ package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.decks.domain.DeckCard;
+import org.jspecify.annotations.Nullable;
 
 public record DeckCardResponse(
-        Long id,
+        @Nullable Long id,
         Long cardPrintingId,
         int quantity,
         String deckSection,

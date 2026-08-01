@@ -1,5 +1,6 @@
 package com.deckassemble.decks.application;
 
+import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.decks.domain.Deck;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,9 +20,14 @@ public record DeckResponse(
         String status,
         int cardCount,
         @Nullable String commanderName,
+        @Nullable CardSummaryResponse commander,
         Instant createdAt) {
 
-    public static DeckResponse from(Deck deck, int cardCount, @Nullable String commanderName) {
+    public static DeckResponse from(
+            Deck deck,
+            int cardCount,
+            @Nullable String commanderName,
+            @Nullable CardSummaryResponse commander) {
         return new DeckResponse(
                 deck.getId(),
                 deck.getName(),
@@ -36,6 +42,7 @@ public record DeckResponse(
                 deck.getStatus().name(),
                 cardCount,
                 commanderName,
+                commander,
                 deck.getCreatedAt());
     }
 }

@@ -1,7 +1,9 @@
 package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.CardPriceService;
+import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.collections.application.CollectionService;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -269,8 +272,42 @@ public class DeckService {
     }
 
     public List<DeckCardResponse> listCards(long deckId) {
-        owned(deckId);
-        return deckCardRepository.findByDeckId(deckId).stream().map(this::responseFor).toList();
+        Deck deck = owned(deckId);
+        List<DeckCard> cards = deckCardRepository.findByDeckId(deckId);
+        var responses = new java.util.ArrayList<>(cards.stream().map(this::responseFor).toList());
+        addSynthesizedCommander(deck, cards, responses);
+        return responses;
+    }
+
+    // ponytail: commanders set only via commanderCardId have no DeckCard row; synthesize at read
+    // time instead of backfilling rows. Upgrade path: persist COMMANDER rows on deck create/update.
+    private void addSynthesizedCommander(
+            Deck deck, List<DeckCard> cards, List<DeckCardResponse> responses) {
+        Long commanderCardId = deck.getCommanderCardId();
+        boolean hasCommanderRow =
+                cards.stream()
+                        .anyMatch(card -> card.getDeckSection() == DeckCard.Section.COMMANDER);
+        if (commanderCardId == null || hasCommanderRow) {
+            return;
+        }
+        Long printingId = latestPrintingId(commanderCardId);
+        if (printingId == null) {
+            return;
+        }
+        CardSummaryResponse summary = summaryOrNull(printingId);
+        if (summary == null) {
+            return;
+        }
+        responses.add(synthesizedCommander(printingId, summary));
+    }
+
+    private DeckCardResponse synthesizedCommander(long printingId, CardSummaryResponse summary) {
+        String ownership =
+                ownershipChecker.isOwned(profileId(), printingId)
+                        ? DeckCard.OwnershipStatus.OWNED.name()
+                        : DeckCard.OwnershipStatus.WISHLIST.name();
+        return new DeckCardResponse(
+                null, printingId, 1, DeckCard.Section.COMMANDER.name(), ownership, summary);
     }
 
     public DeckCardResponse addCard(long deckId, DeckCardAddRequest request) {
@@ -401,6 +438,27 @@ public class DeckService {
                 deck.getCommanderCardId() == null
                         ? null
                         : cardCatalogService.getNameById(deck.getCommanderCardId());
-        return DeckResponse.from(deck, cardCount, commanderName);
+        return DeckResponse.from(
+                deck, cardCount, commanderName, commanderSummary(deck.getCommanderCardId()));
+    }
+
+    private @Nullable CardSummaryResponse commanderSummary(@Nullable Long commanderCardId) {
+        if (commanderCardId == null) {
+            return null;
+        }
+        Long printingId = latestPrintingId(commanderCardId);
+        return printingId == null ? null : summaryOrNull(printingId);
+    }
+
+    private @Nullable Long latestPrintingId(long cardId) {
+        return cardCatalogService.getLatestPrintingIdByCardIds(List.of(cardId)).get(cardId);
+    }
+
+    private @Nullable CardSummaryResponse summaryOrNull(long printingId) {
+        try {
+            return cardCatalogService.getSummaryByPrintingId(printingId);
+        } catch (CardNotFoundException exception) {
+            return null;
+        }
     }
 }

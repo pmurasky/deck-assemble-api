@@ -3,10 +3,13 @@ package com.deckassemble.decks.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.CardSummaryResponse;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -18,6 +21,7 @@ import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -424,6 +428,78 @@ class DeckServiceTest {
 
         assertThat(result.available()).isFalse();
         assertThat(result.combos()).isEmpty();
+    }
+
+    @Test
+    void shouldEmbedCommanderCardInDeckResponse() {
+        stubUser();
+        Deck deck = deck(1L);
+        deck.setCommanderCardId(101L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of());
+        var commander = mock(CardSummaryResponse.class);
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(101L)))
+                .thenReturn(Map.of(101L, 201L));
+        when(cardCatalogService.getSummaryByPrintingId(201L)).thenReturn(commander);
+
+        DeckResponse result = service().getById(1L);
+
+        assertThat(result.commander()).isEqualTo(commander);
+    }
+
+    @Test
+    void shouldReturnNullCommanderWhenPrintingMissing() {
+        stubUser();
+        Deck deck = deck(1L);
+        deck.setCommanderCardId(101L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of());
+
+        DeckResponse result = service().getById(1L);
+
+        assertThat(result.commander()).isNull();
+    }
+
+    @Test
+    void shouldSynthesizeCommanderEntryWhenRowMissing() {
+        stubUser();
+        Deck deck = deck(1L);
+        deck.setCommanderCardId(101L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        DeckCard main = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(main));
+        var commander = mock(CardSummaryResponse.class);
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(101L)))
+                .thenReturn(Map.of(101L, 201L));
+        when(cardCatalogService.getSummaryByPrintingId(201L)).thenReturn(commander);
+        when(cardCatalogService.getSummaryByPrintingId(10L))
+                .thenReturn(mock(CardSummaryResponse.class));
+        when(ownershipChecker.isOwned(PROFILE_ID, 201L)).thenReturn(true);
+
+        List<DeckCardResponse> result = service().listCards(1L);
+
+        assertThat(result).hasSize(2);
+        DeckCardResponse synthesized = result.get(1);
+        assertThat(synthesized.deckSection()).isEqualTo("COMMANDER");
+        assertThat(synthesized.quantity()).isEqualTo(1);
+        assertThat(synthesized.cardPrintingId()).isEqualTo(201L);
+        assertThat(synthesized.ownershipStatus()).isEqualTo("OWNED");
+        assertThat(synthesized.card()).isEqualTo(commander);
+    }
+
+    @Test
+    void shouldNotSynthesizeCommanderWhenRowExists() {
+        stubUser();
+        Deck deck = deck(1L);
+        deck.setCommanderCardId(101L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        DeckCard commanderRow = new DeckCard(1L, 201L, 1, DeckCard.Section.COMMANDER);
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(commanderRow));
+
+        List<DeckCardResponse> result = service().listCards(1L);
+
+        assertThat(result).hasSize(1);
+        verify(cardCatalogService, never()).getLatestPrintingIdByCardIds(any());
     }
 
     private DeckService service() {

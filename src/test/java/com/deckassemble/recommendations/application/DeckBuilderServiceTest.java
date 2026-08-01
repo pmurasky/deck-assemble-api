@@ -429,6 +429,7 @@ class DeckBuilderServiceTest {
                 "DRAFT",
                 0,
                 "Tetsuko Umezawa",
+                null,
                 java.time.Instant.now());
     }
 
