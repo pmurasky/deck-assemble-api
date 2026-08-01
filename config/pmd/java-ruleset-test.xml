@@ -34,13 +34,8 @@
         </properties>
     </rule>
 
-    <!-- Enforces 20-line method max and 300-line class max -->
-    <rule ref="category/java/design.xml/NcssCount">
-        <properties>
-            <property name="methodReportLevel" value="20"/>
-            <property name="classReportLevel" value="300"/>
-        </properties>
-    </rule>
+    <!-- NcssCount omitted for tests: CODING_PRACTICES.md allows longer test
+         methods for clarity. -->
 
     <!-- Enforces 5 max parameters per method -->
     <rule ref="category/java/design.xml/ExcessiveParameterList">
@@ -56,12 +51,8 @@
         </properties>
     </rule>
 
-    <!-- Signals God class: 20+ methods -->
-    <rule ref="category/java/design.xml/TooManyMethods">
-        <properties>
-            <property name="maxmethods" value="20"/>
-        </properties>
-    </rule>
+    <!-- TooManyMethods omitted for tests: cohesive test classes legitimately
+         hold many test cases. -->
 
     <!-- Limits execution paths per method -->
     <rule ref="category/java/design.xml/NPathComplexity">

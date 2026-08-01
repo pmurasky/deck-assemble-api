@@ -80,6 +80,11 @@ pmd {
     isIgnoreFailures = false
 }
 
+// Tests use a ruleset without the method/class size rules (see file header).
+tasks.named<Pmd>("pmdTest") {
+    ruleSetConfig = resources.text.fromFile("config/pmd/java-ruleset-test.xml")
+}
+
 tasks.withType<org.gradle.api.plugins.quality.Pmd> {
     reports {
         xml.required.set(true)
