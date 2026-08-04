@@ -11,11 +11,13 @@ import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -63,12 +65,26 @@ public class CommanderSuggestionService {
 
     public List<CommanderSuggestion> suggest() {
         var ownedCards = ownedCards();
-        var ownedOracleIds = ownedCards.keySet();
-        return ownedCards.values().stream()
-                .filter(card -> Boolean.TRUE.equals(card.getActive()))
-                .filter(CommanderEligibility::isEligible)
-                .map(commander -> suggestionFor(commander, ownedOracleIds))
-                .flatMap(java.util.Optional::stream)
+        return suggestions(scoresByCommander(ownedCards.values()), ownedCards.keySet());
+    }
+
+    private List<CommanderSuggestion> suggestions(
+            Map<Card, Map<String, CardScore>> scoresByCommander, Set<String> ownedOracleIds) {
+        if (scoresByCommander.isEmpty()) {
+            return List.of();
+        }
+        var cardsByName = cardsByName(allScoreNames(scoresByCommander.values()));
+        var printingIds = latestPrintingIds(cardsByName.values());
+        var evaluations = evaluations(scoresByCommander, cardsByName, printingIds, ownedOracleIds);
+        var prices = pricesFor(evaluations.stream().map(CommanderEvaluation::missing).toList());
+        return evaluations.stream()
+                .map(
+                        evaluation ->
+                                response(
+                                        evaluation.commander(),
+                                        evaluation.scores().size(),
+                                        evaluation.missing(),
+                                        prices))
                 .sorted(SUGGESTION_ORDER)
                 .toList();
     }
@@ -84,48 +100,79 @@ public class CommanderSuggestionService {
         return cardsByOracle;
     }
 
-    private java.util.Optional<CommanderSuggestion> suggestionFor(
-            Card commander, Set<String> ownedOracleIds) {
+    private Map<Card, Map<String, CardScore>> scoresByCommander(Collection<Card> ownedCards) {
+        var scoresByCommander = new LinkedHashMap<Card, Map<String, CardScore>>();
+        ownedCards.stream()
+                .filter(card -> Boolean.TRUE.equals(card.getActive()))
+                .filter(CommanderEligibility::isEligible)
+                .forEach(
+                        commander ->
+                                scoresFor(commander)
+                                        .ifPresent(
+                                                scores ->
+                                                        scoresByCommander.put(commander, scores)));
+        return scoresByCommander;
+    }
+
+    private Optional<Map<String, CardScore>> scoresFor(Card commander) {
         try {
             var scores =
                     edhrecCommanderService.getCardScores(
                             commander.getScryfallOracleId(), commander.getName());
-            return scores.isEmpty()
-                    ? java.util.Optional.empty()
-                    : java.util.Optional.of(evaluate(commander, scores, ownedOracleIds));
+            return scores.isEmpty() ? Optional.empty() : Optional.of(scores);
         } catch (RestClientException exception) {
             LOGGER.warn(
                     "Skipping commander suggestion for {}; EDHREC is unavailable",
                     commander.getName());
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
     }
 
-    private CommanderSuggestion evaluate(
-            Card commander, Map<String, CardScore> scores, Set<String> ownedOracleIds) {
-        var cardsByName = cardsByName(scores);
-        var missing = missingCards(scores, cardsByName, ownedOracleIds);
-        var prices = pricesFor(missing);
-        var ownedCount = scores.size() - missing.size();
-        return response(commander, scores.size(), ownedCount, missing, prices);
+    private static Set<String> allScoreNames(Collection<Map<String, CardScore>> allScores) {
+        var names = new LinkedHashSet<String>();
+        allScores.forEach(scores -> names.addAll(scores.keySet()));
+        return names;
     }
 
-    private Map<String, Card> cardsByName(Map<String, CardScore> scores) {
-        var cardsByName = new HashMap<String, Card>();
+    private Map<String, Card> cardsByName(Set<String> names) {
+        var cardsByName = new LinkedHashMap<String, Card>();
         cardCatalogService
-                .getCardsByNames(scores.keySet())
+                .getCardsByNames(names)
                 .forEach(card -> cardsByName.put(card.getName(), card));
         return cardsByName;
+    }
+
+    private Map<Long, Long> latestPrintingIds(Collection<Card> cards) {
+        return cardCatalogService.getLatestPrintingIdByCardIds(
+                cards.stream().map(Card::getId).toList());
+    }
+
+    private List<CommanderEvaluation> evaluations(
+            Map<Card, Map<String, CardScore>> scoresByCommander,
+            Map<String, Card> cardsByName,
+            Map<Long, Long> printingIds,
+            Set<String> ownedOracleIds) {
+        var evaluations = new ArrayList<CommanderEvaluation>();
+        scoresByCommander.forEach(
+                (commander, scores) ->
+                        evaluations.add(
+                                new CommanderEvaluation(
+                                        commander,
+                                        scores,
+                                        missingCards(
+                                                scores,
+                                                cardsByName,
+                                                printingIds,
+                                                ownedOracleIds))));
+        return evaluations;
     }
 
     private List<MissingCard> missingCards(
             Map<String, CardScore> scores,
             Map<String, Card> cardsByName,
+            Map<Long, Long> printingIds,
             Set<String> ownedOracleIds) {
         var missing = new ArrayList<MissingCard>();
-        var printingIds =
-                cardCatalogService.getLatestPrintingIdByCardIds(
-                        cardsByName.values().stream().map(Card::getId).toList());
         for (var name : scores.keySet()) {
             Card card = cardsByName.get(name);
             if (card == null || !ownedOracleIds.contains(card.getScryfallOracleId())) {
@@ -135,23 +182,24 @@ public class CommanderSuggestionService {
         return missing;
     }
 
-    private Map<Long, CardPrice> pricesFor(List<MissingCard> missing) {
+    private Map<Long, CardPrice> pricesFor(Collection<List<MissingCard>> missingLists) {
         return cardPriceService.latestPrices(
-                missing.stream()
+                missingLists.stream()
+                        .flatMap(List::stream)
                         .map(MissingCard::printingId)
                         .filter(java.util.Objects::nonNull)
+                        .distinct()
                         .toList());
     }
 
     private static CommanderSuggestion response(
             Card commander,
             int totalCards,
-            int ownedCards,
             List<MissingCard> missing,
             Map<Long, CardPrice> prices) {
         var priceSummary = summarizePrices(missing, prices);
         var coverage =
-                BigDecimal.valueOf(ownedCards)
+                BigDecimal.valueOf(totalCards - missing.size())
                         .multiply(HUNDRED)
                         .divide(BigDecimal.valueOf(totalCards), 2, RoundingMode.HALF_UP);
         return new CommanderSuggestion(
@@ -194,6 +242,9 @@ public class CommanderSuggestionService {
     }
 
     private record MissingCard(@Nullable Long printingId) {}
+
+    private record CommanderEvaluation(
+            Card commander, Map<String, CardScore> scores, List<MissingCard> missing) {}
 
     private record PriceSummary(BigDecimal cost, int unpricedCount) {}
 }

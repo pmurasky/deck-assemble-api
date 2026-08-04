@@ -64,15 +64,10 @@ class CommanderSuggestionServiceTest {
                 .thenReturn(Map.of("Owned Staple", new CardScore(0.5, 10L)));
         when(edhrecCommanderService.getCardScores("low", "Low Coverage"))
                 .thenReturn(Map.of("Missing Staple", new CardScore(0.5, 10L)));
-        when(cardCatalogService.getCardsByNames(Set.of("Owned Staple")))
-                .thenReturn(List.of(ownedStaple));
-        when(cardCatalogService.getCardsByNames(Set.of("Missing Staple")))
-                .thenReturn(List.of(missingStaple));
-        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(3L)))
-                .thenReturn(Map.of(3L, 12L));
-        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(4L)))
-                .thenReturn(Map.of(4L, 13L));
-        when(cardPriceService.latestPrices(List.of())).thenReturn(Map.of());
+        when(cardCatalogService.getCardsByNames(Set.of("Owned Staple", "Missing Staple")))
+                .thenReturn(List.of(ownedStaple, missingStaple));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(3L, 4L)))
+                .thenReturn(Map.of(3L, 12L, 4L, 13L));
         when(cardPriceService.latestPrices(List.of(13L)))
                 .thenReturn(Map.of(13L, new CardPrice(new BigDecimal("7.50"), null, null, null)));
 
