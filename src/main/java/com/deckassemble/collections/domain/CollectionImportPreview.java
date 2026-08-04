@@ -68,6 +68,12 @@ public class CollectionImportPreview {
         this.expiresAt = expiresAt;
     }
 
+    public void markCommitted(String idempotencyKey, Long committedCollectionId) {
+        this.idempotencyKey = idempotencyKey;
+        this.committedCollectionId = committedCollectionId;
+        this.status = Status.COMMITTED;
+    }
+
     public Long getId() {
         return id;
     }

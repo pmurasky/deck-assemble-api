@@ -68,6 +68,12 @@ public class DeckImportPreview {
         this.canonicalRows = canonicalRows;
     }
 
+    public void markCommitted(String idempotencyKey, Long committedDeckId) {
+        this.idempotencyKey = idempotencyKey;
+        this.committedDeckId = committedDeckId;
+        this.status = Status.COMMITTED;
+    }
+
     public Long getId() {
         return id;
     }
