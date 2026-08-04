@@ -133,6 +133,7 @@ class RestClientScryfallClient implements ScryfallClient {
                 source.rarity(),
                 source.artist(),
                 source.flavorText(),
+                source.flavorName(),
                 toImages(imageUris(source)),
                 toFaces(source.cardFaces()),
                 source.releasedAt(),

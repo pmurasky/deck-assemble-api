@@ -138,15 +138,12 @@ public class CardImportService {
             legalities.clear();
             return;
         }
-        legalities.removeIf(
-                legality -> !source.legalities().containsKey(legality.getFormatCode()));
+        legalities.removeIf(legality -> !source.legalities().containsKey(legality.getFormatCode()));
         source.legalities()
                 .forEach(
                         (format, status) ->
                                 legalities.stream()
-                                        .filter(
-                                                legality ->
-                                                        legality.getFormatCode().equals(format))
+                                        .filter(legality -> legality.getFormatCode().equals(format))
                                         .findFirst()
                                         .ifPresentOrElse(
                                                 legality -> legality.updateStatus(status),
@@ -179,6 +176,7 @@ public class CardImportService {
         printing.setRarity(source.rarity());
         printing.setArtist(source.artist());
         printing.setFlavorText(source.flavorText());
+        printing.setFlavorName(source.flavorName());
         printing.setReleasedAt(source.releasedAt());
         printing.setFoilAvailable(source.foil());
         printing.setNonfoilAvailable(source.nonfoil());

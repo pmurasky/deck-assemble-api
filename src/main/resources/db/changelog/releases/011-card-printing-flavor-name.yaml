@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-card-printing-flavor-name
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: card_printings
+            columns:
+              - column:
+                  name: flavor_name
+                  type: varchar(255)
+      rollback:
+        - dropColumn:
+            tableName: card_printings
+            columnName: flavor_name

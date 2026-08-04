@@ -120,7 +120,13 @@ public class CardCatalogService {
             @Nullable Boolean commanderEligible) {
         return (root, criteria, builder) ->
                 cardPredicate(
-                        root, query, setCode, colorIdentity, type, commanderEligible, criteria,
+                        root,
+                        query,
+                        setCode,
+                        colorIdentity,
+                        type,
+                        commanderEligible,
+                        criteria,
                         builder);
     }
 
@@ -137,8 +143,7 @@ public class CardCatalogService {
             CriteriaBuilder builder) {
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(builder.isTrue(card.get("active")));
-        predicates.add(
-                builder.like(builder.lower(card.get("name")), "%" + query.toLowerCase() + "%"));
+        predicates.add(nameOrFlavorNamePredicate(card, query, criteria, builder));
         if (colorIdentity != null) {
             predicates.add(builder.like(card.get("colorIdentity"), "%" + colorIdentity + "%"));
         }
@@ -147,12 +152,36 @@ public class CardCatalogService {
         }
         if (type != null) {
             predicates.add(
-                    builder.like(builder.lower(card.get("typeLine")), "%" + type.toLowerCase() + "%"));
+                    builder.like(
+                            builder.lower(card.get("typeLine")), "%" + type.toLowerCase() + "%"));
         }
         if (Boolean.TRUE.equals(commanderEligible)) {
             predicates.add(commanderEligiblePredicate(card, builder));
         }
         return builder.and(predicates.toArray(new Predicate[0]));
+    }
+
+    private Predicate nameOrFlavorNamePredicate(
+            From<?, Card> card, String query, CriteriaQuery<?> criteria, CriteriaBuilder builder) {
+        var queryLike = "%" + query.toLowerCase() + "%";
+        return builder.or(
+                builder.like(builder.lower(card.get("name")), queryLike),
+                flavorNameExists(card, criteria, builder, queryLike));
+    }
+
+    private Predicate flavorNameExists(
+            From<?, Card> card,
+            CriteriaQuery<?> criteria,
+            CriteriaBuilder builder,
+            String queryLike) {
+        var subquery = criteria.subquery(Long.class);
+        var printings = subquery.from(CardPrinting.class);
+        return builder.exists(
+                subquery.select(printings.get("id"))
+                        .where(
+                                builder.equal(printings.get("card").get("id"), card.get("id")),
+                                builder.like(
+                                        builder.lower(printings.get("flavorName")), queryLike)));
     }
 
     private Predicate commanderEligiblePredicate(From<?, Card> card, CriteriaBuilder builder) {
@@ -167,15 +196,17 @@ public class CardCatalogService {
     }
 
     private Predicate setCodePredicate(
-            From<?, Card> card, String setCode, CriteriaQuery<?> criteria, CriteriaBuilder builder) {
+            From<?, Card> card,
+            String setCode,
+            CriteriaQuery<?> criteria,
+            CriteriaBuilder builder) {
         var subquery = criteria.subquery(Long.class);
         var printings = subquery.from(CardPrinting.class);
         return builder.exists(
                 subquery.select(printings.get("id"))
                         .where(
                                 builder.equal(printings.get("card").get("id"), card.get("id")),
-                                builder.equal(
-                                        printings.get("magicSet").get("setCode"), setCode)));
+                                builder.equal(printings.get("magicSet").get("setCode"), setCode)));
     }
 
     public Map<Long, String> getOracleIdsByPrintingIds(Collection<Long> cardPrintingIds) {
@@ -336,13 +367,24 @@ public class CardCatalogService {
                         builder.and(
                                 builder.isTrue(root.get("active")),
                                 cardPredicate(
-                                        root.join("card"), query, null, colorIdentity, type,
-                                        commanderEligible, criteria, builder));
+                                        root.join("card"),
+                                        query,
+                                        null,
+                                        colorIdentity,
+                                        type,
+                                        commanderEligible,
+                                        criteria,
+                                        builder));
         if (setCode != null) {
             spec = spec.and(ownSetCodeSpec(setCode));
         }
         if (partnerForCardId != null) {
-            spec = spec.and(partnerCandidatesSpec(specification(query, setCode, colorIdentity, type, commanderEligible), getCard(partnerForCardId)));
+            spec =
+                    spec.and(
+                            partnerCandidatesSpec(
+                                    specification(
+                                            query, setCode, colorIdentity, type, commanderEligible),
+                                    getCard(partnerForCardId)));
         }
         return cardPrintingRepository
                 .findAll(spec, pageable)
@@ -356,7 +398,8 @@ public class CardCatalogService {
 
     // ponytail: candidate IDs are fetched then matched via IN; partner candidate sets are small
     // (backgrounds ~30, named partners exactly 1), so DB pagination stays correct and cheap.
-    private Specification<CardPrinting> partnerCandidatesSpec(Specification<Card> cardSpec, Card primary) {
+    private Specification<CardPrinting> partnerCandidatesSpec(
+            Specification<Card> cardSpec, Card primary) {
         List<Long> candidateIds =
                 cardRepository.findAll(cardSpec).stream()
                         .filter(card -> pairingRules.canPair(primary, card))

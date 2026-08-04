@@ -65,6 +65,7 @@ class GameChangerRefreshServiceTest {
                 null,
                 null,
                 null,
+                null,
                 List.of(),
                 null,
                 null,

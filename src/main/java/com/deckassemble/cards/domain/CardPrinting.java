@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -26,7 +27,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "card_printings")
 @EntityListeners(AuditingEntityListener.class)
 // Justified: JPA entity mapping table columns; field count follows the schema.
-@SuppressWarnings("PMD.TooManyFields")
+// CyclomaticComplexity suppressed: plain accessors dominate the class metric.
+@SuppressWarnings({"PMD.TooManyFields", "PMD.CyclomaticComplexity"})
 public class CardPrinting {
 
     @Id
@@ -55,6 +57,9 @@ public class CardPrinting {
 
     @Column(name = "flavor_text", columnDefinition = "text")
     private String flavorText;
+
+    @Column(name = "flavor_name", length = 255)
+    private String flavorName;
 
     @Column(name = "image_uri_small", length = 500)
     private String imageUriSmall;
@@ -160,6 +165,14 @@ public class CardPrinting {
 
     public void setFlavorText(String flavorText) {
         this.flavorText = flavorText;
+    }
+
+    public @Nullable String getFlavorName() {
+        return flavorName;
+    }
+
+    public void setFlavorName(@Nullable String flavorName) {
+        this.flavorName = flavorName;
     }
 
     public String getImageUriSmall() {

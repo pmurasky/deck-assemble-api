@@ -28,6 +28,7 @@ public record CardImportData(
         String rarity,
         String artist,
         String flavorText,
+        @Nullable String flavorName,
         @Nullable CardImportImages images,
         List<CardImportFace> faces,
         LocalDate releasedAt,

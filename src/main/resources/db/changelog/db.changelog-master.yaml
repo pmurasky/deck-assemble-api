@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/releases/009-card-printing-faces.yaml
   - include:
       file: db/changelog/releases/010-card-legalities-unique-card-format.yaml
+  - include:
+      file: db/changelog/releases/011-card-printing-flavor-name.yaml

@@ -67,6 +67,7 @@ class CardImportServiceTest {
                         "rare",
                         null,
                         null,
+                        "Grimm Fate",
                         new CardImportImages("small", "normal", "large"),
                         List.of(
                                 new CardImportFace("Spider-Man", "front"),
@@ -114,6 +115,8 @@ class CardImportServiceTest {
         verify(cardPrintingRepository, org.mockito.Mockito.times(2)).save(printing.capture());
         assertThat(printing.getAllValues())
                 .allSatisfy(value -> assertThat(value.getImageUriNormal()).isEqualTo("normal"));
+        assertThat(printing.getAllValues())
+                .allSatisfy(value -> assertThat(value.getFlavorName()).isEqualTo("Grimm Fate"));
         ArgumentCaptor<Card> cards = ArgumentCaptor.forClass(Card.class);
         verify(cardRepository, org.mockito.Mockito.times(2)).save(cards.capture());
         assertThat(cards.getAllValues())
@@ -187,8 +190,7 @@ class CardImportServiceTest {
 
         assertThat(savedCard.get().getLegalities())
                 .extracting(
-                        legality ->
-                                legality.getFormatCode() + ":" + legality.getLegalityStatus())
+                        legality -> legality.getFormatCode() + ":" + legality.getLegalityStatus())
                 .containsExactlyInAnyOrder("commander:banned", "legacy:legal");
         assertThat(savedCard.get().getLegalities())
                 .as("re-import must update the existing legality row, not insert a duplicate")
@@ -217,6 +219,7 @@ class CardImportServiceTest {
                 "Marvel",
                 "1",
                 "rare",
+                null,
                 null,
                 null,
                 new CardImportImages("small", "normal", "large"),

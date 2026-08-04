@@ -46,6 +46,20 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldReturnCardsMatchingAFlavorNameQuery() throws Exception {
+        MagicSet set = magicSetRepository.save(new MagicSet("set-flv", "flv", "Flavor Set"));
+        Card card = cardRepository.save(new Card("oracle-beast-within", "Beast Within"));
+        CardPrinting printing = new CardPrinting(card, set, "printing-mar-75");
+        printing.setFlavorName("Grimm Fate");
+        cardPrintingRepository.save(printing);
+
+        mockMvc.perform(get("/cards").queryParam("query", "grimm").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(card.getId()))
+                .andExpect(jsonPath("$.content[0].name").value("Beast Within"));
+    }
+
+    @Test
     void shouldReturnTheActiveCardDetail() throws Exception {
         Card card = cardRepository.save(new Card("oracle-iron-man", "Iron Man, Armored Avenger"));
         card.setManaCost("{2}{U}{R}");

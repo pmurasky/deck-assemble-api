@@ -30,6 +30,7 @@ public record ScryfallCard(
         String rarity,
         String artist,
         String flavorText,
+        String flavorName,
         ScryfallImageUris imageUris,
         LocalDate releasedAt,
         Boolean foil,

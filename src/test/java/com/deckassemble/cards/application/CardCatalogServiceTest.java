@@ -87,6 +87,7 @@ class CardCatalogServiceTest {
         CardPrinting printing = new CardPrinting(card, SET, "scry-1");
         printing.setFoilAvailable(true);
         printing.setNonfoilAvailable(true);
+        printing.setFlavorName("Grimm Fate");
         when(cardRepository.findById(1L)).thenReturn(Optional.of(card));
         when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(anyLong()))
                 .thenReturn(List.of(printing));
@@ -95,6 +96,7 @@ class CardCatalogServiceTest {
         assertThat(detail.name()).isEqualTo("Lightning Bolt");
         assertThat(detail.foilAvailable()).isTrue();
         assertThat(detail.nonfoilAvailable()).isTrue();
+        assertThat(detail.flavorName()).isEqualTo("Grimm Fate");
     }
 
     @Test
