@@ -56,6 +56,12 @@ public class CollectionService {
                 .collect(Collectors.toSet());
     }
 
+    /** Returns every distinct printing owned by any user; used by background cache warmups. */
+    @Transactional(readOnly = true)
+    public Set<Long> getAllOwnedPrintingIds() {
+        return collectionCardRepository.findDistinctCardPrintingIds();
+    }
+
     public CollectionResponse create(CollectionCreateRequest request) {
         CardCollection collection =
                 new CardCollection(
