@@ -18,6 +18,8 @@ public interface CardRepository extends JpaRepository<Card, Long>, JpaSpecificat
 
     List<Card> findByNameIn(Collection<String> names);
 
+    List<Card> findByNameIgnoreCase(String name);
+
     List<Card> findByScryfallOracleIdIn(Collection<String> scryfallOracleIds);
 
     @Modifying

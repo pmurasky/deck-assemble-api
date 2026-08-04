@@ -22,4 +22,8 @@ public interface CardPrintingRepository
                     String setCode, String query, Pageable pageable);
 
     Optional<CardPrinting> findByScryfallCardId(String scryfallCardId);
+
+    List<CardPrinting>
+            findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
+                    String name, String setCode, String collectorNumber);
 }
