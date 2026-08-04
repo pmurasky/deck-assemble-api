@@ -4,9 +4,6 @@ import com.deckassemble.decks.application.DeckAccessGuard;
 import java.util.ArrayList;
 import org.springframework.stereotype.Service;
 
-// Justified: orchestration service coordinating the deck-build pipeline; decomposition tracked in
-// #3.
-@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 @Service
 public class DeckBuilderService {
 
