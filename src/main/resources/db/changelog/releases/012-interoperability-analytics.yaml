@@ -1,0 +1,165 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-interoperability-analytics
+      author: opencode
+      changes:
+        - createTable:
+            tableName: deck_import_previews
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_import_previews
+                    nullable: false
+              - column:
+                  name: token
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_deck_import_previews_token
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_sha256
+                  type: char(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: canonical_rows
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: varchar(255)
+              - column:
+                  name: committed_deck_id
+                  type: bigint
+        - createTable:
+            tableName: collection_import_previews
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_collection_import_previews
+                    nullable: false
+              - column:
+                  name: token
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_collection_import_previews_token
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_sha256
+                  type: char(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: canonical_rows
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: varchar(255)
+              - column:
+                  name: committed_collection_id
+                  type: bigint
+        - addUniqueConstraint:
+            tableName: deck_import_previews
+            columnNames: profile_id, idempotency_key
+            constraintName: uq_deck_import_previews_profile_idempotency
+        - addUniqueConstraint:
+            tableName: collection_import_previews
+            columnNames: profile_id, idempotency_key
+            constraintName: uq_collection_import_previews_profile_idempotency
+        - addForeignKeyConstraint:
+            baseTableName: deck_import_previews
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_deck_import_previews_profile
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: collection_import_previews
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_collection_import_previews_profile
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_import_previews
+            baseColumnNames: committed_deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_import_previews_committed_deck
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: collection_import_previews
+            baseColumnNames: committed_collection_id
+            referencedTableName: collections
+            referencedColumnNames: id
+            constraintName: fk_collection_import_previews_committed_collection
+            onDelete: SET NULL
+        - createIndex:
+            tableName: deck_import_previews
+            indexName: idx_deck_import_previews_expires_at
+            columns:
+              - column:
+                  name: expires_at
+        - createIndex:
+            tableName: deck_import_previews
+            indexName: idx_deck_import_previews_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: collection_import_previews
+            indexName: idx_collection_import_previews_expires_at
+            columns:
+              - column:
+                  name: expires_at
+        - createIndex:
+            tableName: collection_import_previews
+            indexName: idx_collection_import_previews_status
+            columns:
+              - column:
+                  name: status

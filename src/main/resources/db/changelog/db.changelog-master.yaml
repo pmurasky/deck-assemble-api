@@ -21,3 +21,5 @@ databaseChangeLog:
       file: db/changelog/releases/010-card-legalities-unique-card-format.yaml
   - include:
       file: db/changelog/releases/011-card-printing-flavor-name.yaml
+  - include:
+      file: db/changelog/releases/012-interoperability-analytics.yaml
