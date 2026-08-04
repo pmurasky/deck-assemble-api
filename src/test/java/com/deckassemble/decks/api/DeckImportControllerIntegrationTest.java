@@ -16,6 +16,7 @@ import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckImportPreviewRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.users.domain.ProfileRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,9 +34,11 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private DeckRepository deckRepository;
     @Autowired private DeckCardRepository deckCardRepository;
     @Autowired private DeckImportPreviewRepository previewRepository;
+    @Autowired private ProfileRepository profileRepository;
 
     @Test
     void shouldPreviewImportWithoutMutatingDecksOrCards() throws Exception {
+        String ownerSubject = "auth0|deck-import";
         createPrinting("Atraxa, Praetors' Voice", "2X2", "170");
         long deckCount = deckRepository.count();
         long deckCardCount = deckCardRepository.count();
@@ -44,7 +47,7 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
                         multipart("/decks/imports/preview")
                                 .file(fixture("deckassemble.txt"))
                                 .param("format", "DECKASSEMBLE_TEXT")
-                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-import"))))
+                                .with(jwt().jwt(jwt -> jwt.subject(ownerSubject))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.metadata.format").value("DECKASSEMBLE_TEXT"))
@@ -54,8 +57,17 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.totals.unmatched").value(3));
 
         var preview = previewRepository.findAll().getLast();
+        var owner = profileRepository.findByAuthProviderSubject(ownerSubject).orElseThrow();
+        String otherSubject = "auth0|deck-import-other";
+        previewFor(otherSubject);
+        var other = profileRepository.findByAuthProviderSubject(otherSubject).orElseThrow();
         assertThat(Duration.between(Instant.now(), preview.getExpiresAt()).toMinutes())
                 .isBetween(29L, 30L);
+        assertThat(preview.getProfileId()).isEqualTo(owner.getId());
+        assertThat(previewRepository.findByTokenAndProfileId(preview.getToken(), owner.getId()))
+                .isPresent();
+        assertThat(previewRepository.findByTokenAndProfileId(preview.getToken(), other.getId()))
+                .isEmpty();
         assertThat(deckRepository.count()).isEqualTo(deckCount);
         assertThat(deckCardRepository.count()).isEqualTo(deckCardCount);
     }
@@ -105,6 +117,15 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
         byte[] bytes =
                 getClass().getResourceAsStream("/fixtures/deck-imports/" + name).readAllBytes();
         return new MockMultipartFile("file", name, "text/plain", bytes);
+    }
+
+    private void previewFor(String subject) throws Exception {
+        mockMvc.perform(
+                        multipart("/decks/imports/preview")
+                                .file(fixture("deckassemble.txt"))
+                                .param("format", "DECKASSEMBLE_TEXT")
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk());
     }
 
     private void createPrinting(String name, String setCode, String collectorNumber) {
