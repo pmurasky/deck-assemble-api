@@ -60,6 +60,18 @@ class CardReferenceResolverTest {
     }
 
     @Test
+    void shouldReturnUnmatchedForUnknownExactPrintingReference() {
+        when(printingRepository
+                        .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
+                                "lightning bolt", "LEA", "999"))
+                .thenReturn(List.of());
+
+        var result = resolver.resolve(new CardReference(null, "lightning bolt", "LEA", "999"));
+
+        assertThat(result).isEqualTo(new CardReferenceResolution.Unmatched());
+    }
+
+    @Test
     void shouldFallBackToExactPrintingReferenceWhenScryfallIdIsUnknown() {
         var printing = printing("Lightning Bolt", "lea", "161");
         when(printingRepository.findByScryfallCardId(UNKNOWN_SCRYFALL_ID.toString()))
