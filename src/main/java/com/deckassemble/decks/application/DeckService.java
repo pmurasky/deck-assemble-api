@@ -12,8 +12,6 @@ import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.recommendations.domain.CommanderSpellbookClient;
-import com.deckassemble.shared.security.CurrentUser;
-import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +34,7 @@ public class DeckService {
 
     private final DeckRepository deckRepository;
     private final DeckCardRepository deckCardRepository;
-    private final CurrentUser currentUser;
-    private final ProfileService profileService;
+    private final DeckAccessGuard deckAccessGuard;
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
     private final OwnershipChecker ownershipChecker;
@@ -50,8 +47,7 @@ public class DeckService {
     public DeckService(
             DeckRepository deckRepository,
             DeckCardRepository deckCardRepository,
-            CurrentUser currentUser,
-            ProfileService profileService,
+            DeckAccessGuard deckAccessGuard,
             CardCatalogService cardCatalogService,
             CommanderLegalityEvaluator commanderLegalityEvaluator,
             OwnershipChecker ownershipChecker,
@@ -60,8 +56,7 @@ public class DeckService {
             CommanderSpellbookClient commanderSpellbookClient) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
-        this.currentUser = currentUser;
-        this.profileService = profileService;
+        this.deckAccessGuard = deckAccessGuard;
         this.cardCatalogService = cardCatalogService;
         this.commanderLegalityEvaluator = commanderLegalityEvaluator;
         this.ownershipChecker = ownershipChecker;
@@ -406,24 +401,18 @@ public class DeckService {
         return responseFor(deckCard);
     }
 
+    private Long profileId() {
+        return deckAccessGuard.profileId();
+    }
+
     private Deck owned(long deckId) {
-        return deckRepository
-                .findByIdAndProfileId(deckId, profileId())
-                .orElseThrow(DeckNotFoundException::new);
+        return deckAccessGuard.owned(deckId);
     }
 
     private DeckCard ownedCard(long deckId, long deckCardId) {
         return deckCardRepository
                 .findByIdAndDeckId(deckCardId, deckId)
                 .orElseThrow(DeckCardNotFoundException::new);
-    }
-
-    private Long profileId() {
-        String subject =
-                currentUser
-                        .subject()
-                        .orElseThrow(() -> new IllegalStateException("No authenticated user"));
-        return profileService.getOrCreate(subject).getId();
     }
 
     private DeckCardResponse responseFor(DeckCard card) {

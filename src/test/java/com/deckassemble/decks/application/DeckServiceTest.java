@@ -506,8 +506,7 @@ class DeckServiceTest {
         return new DeckService(
                 deckRepository,
                 deckCardRepository,
-                currentUser,
-                profileService,
+                new DeckAccessGuard(currentUser, profileService, deckRepository),
                 cardCatalogService,
                 commanderLegalityEvaluator,
                 ownershipChecker,
