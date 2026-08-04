@@ -31,6 +31,16 @@ class DeckImportServiceTest {
     }
 
     @ParameterizedTest
+    @MethodSource("invalidTextQuantities")
+    void shouldReturnInvalidRowForMalformedTextQuantity(
+            DeckImportParser parser, String rowTemplate, String quantity) {
+        var row = parser.parse(rowTemplate.formatted(quantity)).rows().getFirst();
+
+        assertThat(row.quantity()).isZero();
+        assertThat(row.error()).isNotNull();
+    }
+
+    @ParameterizedTest
     @MethodSource("formats")
     void shouldParseQuantitiesAndSectionsForEverySupportedFormat(
             DeckImportParser parser, String fixture) throws IOException {
@@ -63,5 +73,15 @@ class DeckImportServiceTest {
                 Arguments.of(new ArchidektCsvDeckImportParser(), "archidekt.csv"),
                 Arguments.of(new ArenaTextDeckImportParser(), "arena.txt"),
                 Arguments.of(new MtgoTextDeckImportParser(), "mtgo.txt"));
+    }
+
+    private static Stream<Arguments> invalidTextQuantities() {
+        return Stream.of(
+                Arguments.of(new DeckAssembleTextDeckImportParser(), "%s Card|SET|1", "2147483648"),
+                Arguments.of(new DeckAssembleTextDeckImportParser(), "%s Card|SET|1", "invalid"),
+                Arguments.of(new ArenaTextDeckImportParser(), "%s Card (SET) 1", "2147483648"),
+                Arguments.of(new ArenaTextDeckImportParser(), "%s Card (SET) 1", "invalid"),
+                Arguments.of(new MtgoTextDeckImportParser(), "%s Card [SET:1]", "2147483648"),
+                Arguments.of(new MtgoTextDeckImportParser(), "%s Card [SET:1]", "invalid"));
     }
 }

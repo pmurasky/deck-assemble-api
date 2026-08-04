@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
@@ -61,13 +62,16 @@ public class DeckAssembleTextDeckImportParser implements DeckImportParser {
             int lineNumber, DeckCard.Section section, String line, Pattern rowPattern) {
         var matcher = rowPattern.matcher(line);
         if (!matcher.matches()) {
-            return new ParsedRow(
-                    lineNumber,
-                    0,
-                    section,
-                    new CardReference(null, line, null, null),
-                    "Invalid row");
+            return invalidRow(lineNumber, section, line, "Invalid row");
         }
+        try {
+            return validRow(lineNumber, section, matcher);
+        } catch (NumberFormatException exception) {
+            return invalidRow(lineNumber, section, line, "Invalid quantity");
+        }
+    }
+
+    private static ParsedRow validRow(int lineNumber, DeckCard.Section section, Matcher matcher) {
         var reference =
                 new CardReference(
                         null,
@@ -76,6 +80,12 @@ public class DeckAssembleTextDeckImportParser implements DeckImportParser {
                         matcher.group("collector"));
         return new ParsedRow(
                 lineNumber, Integer.parseInt(matcher.group("quantity")), section, reference, null);
+    }
+
+    private static ParsedRow invalidRow(
+            int lineNumber, DeckCard.Section section, String line, String error) {
+        return new ParsedRow(
+                lineNumber, 0, section, new CardReference(null, line, null, null), error);
     }
 
     private static DeckCard.@Nullable Section heading(String line) {
