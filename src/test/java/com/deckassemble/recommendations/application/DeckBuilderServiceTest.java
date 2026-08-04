@@ -14,6 +14,7 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.collections.application.CollectionService;
+import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -56,6 +57,7 @@ class DeckBuilderServiceTest {
     @Mock private com.deckassemble.shared.security.CurrentUser currentUser;
     @Mock private ProfileService profileService;
     @Mock private com.deckassemble.cards.application.CardPriceService cardPriceService;
+    @Mock private com.deckassemble.decks.domain.DeckRepository deckRepository;
 
     private DeckBuilderService builderService;
 
@@ -63,7 +65,7 @@ class DeckBuilderServiceTest {
     void setUp() {
         builderService =
                 new DeckBuilderService(
-                        cardCatalogService,
+                        new DeckAccessGuard(currentUser, profileService, deckRepository),
                         new CommanderResolver(cardCatalogService),
                         new DeckCandidateSelector(
                                 cardCatalogService,
@@ -72,12 +74,12 @@ class DeckBuilderServiceTest {
                                 cardCategorizer,
                                 cardPriceService),
                         new BasicLandPadder(cardCatalogService),
-                        deckService,
-                        deckCardService,
-                        deckBuildRepository,
-                        JsonMapper.builder().build(),
-                        currentUser,
-                        profileService);
+                        new DeckBuildRecorder(
+                                deckService,
+                                deckCardService,
+                                deckBuildRepository,
+                                cardCatalogService,
+                                JsonMapper.builder().build()));
     }
 
     @Test
