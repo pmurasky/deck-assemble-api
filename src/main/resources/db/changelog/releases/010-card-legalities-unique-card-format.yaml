@@ -2,10 +2,22 @@ databaseChangeLog:
   - changeSet:
       id: 010-card-legalities-unique-card-format
       author: sisyphus
+      # Tolerate databases where this changeSet already ran with the pre-dedup checksum.
+      validCheckSum:
+        - ANY
       changes:
         - dropIndex:
             tableName: card_legalities
             indexName: idx_card_legalities_card_format
+        # Imports before 2026-07-26 triple-inserted legalities; purge all but the
+        # lowest-id row per (card_id, format_code) so the unique constraint applies.
+        - sql:
+            sql: >-
+              DELETE FROM card_legalities a
+              USING card_legalities b
+              WHERE a.card_id = b.card_id
+                AND a.format_code = b.format_code
+                AND a.id > b.id
         - addUniqueConstraint:
             tableName: card_legalities
             constraintName: uk_card_legalities_card_format
