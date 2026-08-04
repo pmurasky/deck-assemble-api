@@ -10,6 +10,7 @@ import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,9 @@ public class CommanderSuggestionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommanderSuggestionService.class);
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    // ponytail: fixed in-memory TTL; evict on collection mutation if staleness ever matters.
+    private static final long CACHE_TTL_MINUTES = 15;
+    private static final long CACHE_TTL_MILLIS = Duration.ofMinutes(CACHE_TTL_MINUTES).toMillis();
     private static final Comparator<CommanderSuggestion> SUGGESTION_ORDER =
             Comparator.comparing(CommanderSuggestion::coveragePercent)
                     .reversed()
@@ -45,6 +50,7 @@ public class CommanderSuggestionService {
     private final EdhrecCommanderService edhrecCommanderService;
     private final CurrentUser currentUser;
     private final ProfileService profileService;
+    private final Map<Long, CachedSuggestions> cache = new ConcurrentHashMap<>();
 
     // checkstyle:ParameterNumber suppressed: this service coordinates existing module boundaries.
     @SuppressWarnings("checkstyle:ParameterNumber")
@@ -64,8 +70,15 @@ public class CommanderSuggestionService {
     }
 
     public List<CommanderSuggestion> suggest() {
-        var ownedCards = ownedCards();
-        return suggestions(scoresByCommander(ownedCards.values()), ownedCards.keySet());
+        var profileId = profileId();
+        var cached = cache.get(profileId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.suggestions();
+        }
+        var ownedCards = ownedCards(profileId);
+        var result = suggestions(scoresByCommander(ownedCards.values()), ownedCards.keySet());
+        cache.put(profileId, new CachedSuggestions(result, System.currentTimeMillis()));
+        return result;
     }
 
     private List<CommanderSuggestion> suggestions(
@@ -89,8 +102,7 @@ public class CommanderSuggestionService {
                 .toList();
     }
 
-    private Map<String, Card> ownedCards() {
-        var profileId = profileId();
+    private Map<String, Card> ownedCards(long profileId) {
         var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
         var cardsByOracle = new LinkedHashMap<String, Card>();
         cardCatalogService
@@ -242,6 +254,12 @@ public class CommanderSuggestionService {
     }
 
     private record MissingCard(@Nullable Long printingId) {}
+
+    private record CachedSuggestions(List<CommanderSuggestion> suggestions, long createdAtMillis) {
+        private boolean isExpired() {
+            return createdAtMillis + CACHE_TTL_MILLIS < System.currentTimeMillis();
+        }
+    }
 
     private record CommanderEvaluation(
             Card commander, Map<String, CardScore> scores, List<MissingCard> missing) {}

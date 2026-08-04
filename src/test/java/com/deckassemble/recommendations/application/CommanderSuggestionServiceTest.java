@@ -1,6 +1,8 @@
 package com.deckassemble.recommendations.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
@@ -110,6 +112,27 @@ class CommanderSuggestionServiceTest {
                 .thenReturn(Map.of(10L, nonCommander));
 
         assertThat(service.suggest()).isEmpty();
+    }
+
+    @Test
+    void shouldCacheSuggestionsPerProfile() {
+        var commander = commander(1L, "Commander", "commander", 1);
+        stubUser();
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
+                .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.getCardScores("commander", "Commander"))
+                .thenReturn(Map.of("Staple", new CardScore(0.5, 10L)));
+        when(cardCatalogService.getCardsByNames(Set.of("Staple"))).thenReturn(List.of());
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of())).thenReturn(Map.of());
+        when(cardPriceService.latestPrices(List.of())).thenReturn(Map.of());
+
+        var first = service.suggest();
+        var second = service.suggest();
+
+        assertThat(second).isSameAs(first);
+        verify(collectionService, times(1)).getOwnedPrintingIds(PROFILE_ID);
+        verify(edhrecCommanderService, times(1)).getCardScores("commander", "Commander");
     }
 
     private void stubUser() {
