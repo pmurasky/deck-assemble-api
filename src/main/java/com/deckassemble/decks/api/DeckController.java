@@ -5,6 +5,7 @@ import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCardUpdateRequest;
 import com.deckassemble.decks.application.DeckComboResponse;
+import com.deckassemble.decks.application.DeckComboService;
 import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckResponse;
@@ -31,10 +32,15 @@ public class DeckController {
 
     private final DeckService deckService;
     private final DeckCardService deckCardService;
+    private final DeckComboService deckComboService;
 
-    public DeckController(DeckService deckService, DeckCardService deckCardService) {
+    public DeckController(
+            DeckService deckService,
+            DeckCardService deckCardService,
+            DeckComboService deckComboService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
+        this.deckComboService = deckComboService;
     }
 
     @GetMapping
@@ -60,7 +66,7 @@ public class DeckController {
 
     @GetMapping("/{deckId}/combos")
     public DeckComboResponse combos(@PathVariable long deckId) {
-        return deckService.getCombos(deckId);
+        return deckComboService.getCombos(deckId);
     }
 
     @PatchMapping("/{deckId}")

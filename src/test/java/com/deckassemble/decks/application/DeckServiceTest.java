@@ -14,8 +14,6 @@ import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
-import com.deckassemble.recommendations.domain.CommanderSpellbookClient;
-import com.deckassemble.recommendations.domain.SpellbookCombo;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
@@ -28,7 +26,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClientException;
 
 @ExtendWith(MockitoExtension.class)
 class DeckServiceTest {
@@ -44,7 +41,6 @@ class DeckServiceTest {
     @Mock private OwnershipChecker ownershipChecker;
     @Mock private CollectionService collectionService;
     @Mock private com.deckassemble.cards.application.CardPriceService cardPriceService;
-    @Mock private CommanderSpellbookClient commanderSpellbookClient;
 
     @Test
     void shouldListDecksForCurrentProfile() {
@@ -298,51 +294,6 @@ class DeckServiceTest {
     }
 
     @Test
-    void shouldReturnIncludedSpellbookCombosForDeck() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        when(deckCardRepository.findByDeckId(1L))
-                .thenReturn(List.of(new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK)));
-        when(cardCatalogService.getCardsByPrintingIds(List.of(10L)))
-                .thenReturn(
-                        java.util.Map.of(
-                                10L, new com.deckassemble.cards.domain.Card("oracle", "Sol Ring")));
-        when(commanderSpellbookClient.findCombos("1 Sol Ring"))
-                .thenReturn(
-                        List.of(
-                                new SpellbookCombo(
-                                        "combo-1",
-                                        List.of("Sol Ring", "Hullbreaker Horror"),
-                                        List.of("Infinite mana"),
-                                        "Loop artifacts.",
-                                        "None")));
-
-        DeckComboResponse result = service().getCombos(1L);
-
-        assertThat(result.available()).isTrue();
-        assertThat(result.combos()).extracting(SpellbookCombo::id).containsExactly("combo-1");
-    }
-
-    @Test
-    void shouldReportUnavailableWhenSpellbookFails() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        when(deckCardRepository.findByDeckId(1L))
-                .thenReturn(List.of(new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK)));
-        when(cardCatalogService.getCardsByPrintingIds(List.of(10L)))
-                .thenReturn(
-                        java.util.Map.of(
-                                10L, new com.deckassemble.cards.domain.Card("oracle", "Sol Ring")));
-        when(commanderSpellbookClient.findCombos("1 Sol Ring"))
-                .thenThrow(new RestClientException("down"));
-
-        DeckComboResponse result = service().getCombos(1L);
-
-        assertThat(result.available()).isFalse();
-        assertThat(result.combos()).isEmpty();
-    }
-
-    @Test
     void shouldEmbedCommanderCardInDeckResponse() {
         stubUser();
         Deck deck = deck(1L);
@@ -381,8 +332,7 @@ class DeckServiceTest {
                 commanderLegalityEvaluator,
                 ownershipChecker,
                 collectionService,
-                cardPriceService,
-                commanderSpellbookClient);
+                cardPriceService);
     }
 
     private void stubUser() {
