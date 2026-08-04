@@ -1,17 +1,27 @@
 package com.deckassemble.decks.application.importing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardReference;
 import com.deckassemble.cards.application.CardReferenceResolution;
 import com.deckassemble.cards.application.CardReferenceResolver;
+import com.deckassemble.decks.application.DeckAccessGuard;
+import com.deckassemble.decks.application.DeckCardService;
+import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.domain.DeckCard;
+import com.deckassemble.decks.domain.DeckImportPreview;
+import com.deckassemble.decks.domain.DeckImportPreviewRepository;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -22,12 +32,62 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class DeckImportServiceTest {
 
     private static final UUID SCRYFALL_ID = UUID.fromString("03fcf7d4-8a1b-4e2f-89f1-12c840e27721");
     @Mock private CardReferenceResolver resolver;
+    @Mock private DeckImportPreviewRepository previewRepository;
+    @Mock private DeckAccessGuard accessGuard;
+    @Mock private DeckService deckService;
+    @Mock private DeckCardService deckCardService;
+
+    @Test
+    void shouldBlockCommitWhileUnresolvedRowsRemain() {
+        var mapper = JsonMapper.builder().build();
+        var row =
+                new DeckImportService.Row(
+                        1,
+                        1,
+                        DeckCard.Section.MAIN_DECK,
+                        new CardReference(null, "Missing", "TST", "1"));
+        var rows =
+                new DeckImportService.PreviewRows(
+                        List.of(),
+                        List.of(),
+                        List.of(new DeckImportService.UnmatchedRow(row)),
+                        List.of());
+        var preview =
+                new DeckImportPreview(
+                        UUID.randomUUID(),
+                        1L,
+                        Instant.now().plusSeconds(60),
+                        "a".repeat(64),
+                        mapper.writeValueAsString(rows));
+        when(accessGuard.profileId()).thenReturn(1L);
+        when(previewRepository.findByProfileIdAndIdempotencyKey(1L, "key"))
+                .thenReturn(Optional.empty());
+        when(previewRepository.findLockedByTokenAndProfileId(preview.getToken(), 1L))
+                .thenReturn(Optional.of(preview));
+        var service =
+                new DeckImportService(
+                        List.of(),
+                        resolver,
+                        new DeckImportService.Dependencies(
+                                previewRepository,
+                                accessGuard,
+                                mapper,
+                                deckService,
+                                deckCardService));
+
+        assertThatThrownBy(() -> service.commit(preview.getToken(), "Deck", Set.of(), "key"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Unresolved import rows");
+        verifyNoInteractions(deckService, deckCardService);
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {"scryfall_id", "Scryfall ID"})

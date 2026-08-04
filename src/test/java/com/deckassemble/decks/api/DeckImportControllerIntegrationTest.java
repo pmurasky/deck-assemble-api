@@ -3,6 +3,7 @@ package com.deckassemble.decks.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -35,6 +37,69 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private DeckCardRepository deckCardRepository;
     @Autowired private DeckImportPreviewRepository previewRepository;
     @Autowired private ProfileRepository profileRepository;
+
+    @Test
+    void shouldCommitResolvedRowsOnlyOnceForDuplicateIdempotencyKey() throws Exception {
+        String subject = "auth0|deck-import-commit";
+        long deckCount = deckRepository.count();
+        long deckCardCount = deckCardRepository.count();
+        createPrinting("Idempotent Card", "IDM", "1");
+        previewFor(subject, "1 Idempotent Card|IDM|1");
+        var token = previewRepository.findAll().getLast().getToken();
+        String request = "{\"previewToken\":\"%s\",\"name\":\"Imported Deck\"}".formatted(token);
+
+        commit(subject, "commit-key", request)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.deck.name").value("Imported Deck"))
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.skipped").value(0));
+        commit(subject, "commit-key", request).andExpect(status().isCreated());
+
+        assertThat(deckRepository.count()).isEqualTo(deckCount + 1);
+        assertThat(deckCardRepository.count()).isEqualTo(deckCardCount + 1);
+    }
+
+    @Test
+    void shouldRequireExplicitExclusionOfUnresolvedRows() throws Exception {
+        String subject = "auth0|deck-import-exclusions";
+        createPrinting("Atraxa, Praetors' Voice", "2X2", "170");
+        previewFor(subject);
+        var token = previewRepository.findAll().getLast().getToken();
+
+        commit(subject, "blocked-key", request(token, "Blocked Deck", ""))
+                .andExpect(status().isConflict());
+        commit(
+                        subject,
+                        "excluded-key",
+                        request(token, "Imported Deck", ",\"excludedLineNumbers\":[4,6,8,999]"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.skipped").value(3));
+    }
+
+    @Test
+    void shouldHideForeignAndExpiredPreviews() throws Exception {
+        String ownerSubject = "auth0|deck-import-owner";
+        previewFor(ownerSubject);
+        var preview = previewRepository.findAll().getLast();
+        var owner = profileRepository.findByAuthProviderSubject(ownerSubject).orElseThrow();
+        var expired =
+                previewRepository.save(
+                        new com.deckassemble.decks.domain.DeckImportPreview(
+                                java.util.UUID.randomUUID(),
+                                owner.getId(),
+                                Instant.now().minusSeconds(1),
+                                preview.getSourceSha256(),
+                                preview.getCanonicalRows()));
+
+        commit(
+                        "auth0|deck-import-foreign",
+                        "foreign-key",
+                        request(preview.getToken(), "Foreign Deck", ""))
+                .andExpect(status().isNotFound());
+        commit(ownerSubject, "expired-key", request(expired.getToken(), "Expired Deck", ""))
+                .andExpect(status().isNotFound());
+    }
 
     @Test
     void shouldPreviewImportWithoutMutatingDecksOrCards() throws Exception {
@@ -128,10 +193,51 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    private void previewFor(String subject, String source) throws Exception {
+        mockMvc.perform(
+                        multipart("/decks/imports/preview")
+                                .file(
+                                        new MockMultipartFile(
+                                                "file",
+                                                "deck.txt",
+                                                "text/plain",
+                                                source.getBytes(StandardCharsets.UTF_8)))
+                                .param("format", "DECKASSEMBLE_TEXT")
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions commit(
+            String subject, String idempotencyKey, String request) throws Exception {
+        return mockMvc.perform(
+                post("/decks/imports")
+                        .header("Idempotency-Key", idempotencyKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request)
+                        .with(jwt().jwt(jwt -> jwt.subject(subject))));
+    }
+
+    private String request(java.util.UUID token, String name, String extraFields) {
+        return "{\"previewToken\":\"%s\",\"name\":\"%s\"%s}".formatted(token, name, extraFields);
+    }
+
     private void createPrinting(String name, String setCode, String collectorNumber) {
-        Card card = cardRepository.save(new Card("oracle-" + setCode, name));
-        MagicSet set = magicSetRepository.save(new MagicSet("set-" + setCode, setCode, setCode));
-        CardPrinting printing = new CardPrinting(card, set, "printing-" + setCode);
+        if (!printingRepository
+                .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
+                        name, setCode, collectorNumber)
+                .isEmpty()) {
+            return;
+        }
+        String uniqueId = java.util.UUID.randomUUID().toString();
+        Card card = cardRepository.save(new Card("oracle-" + uniqueId, name));
+        MagicSet set =
+                magicSetRepository
+                        .findBySetCode(setCode)
+                        .orElseGet(
+                                () ->
+                                        magicSetRepository.save(
+                                                new MagicSet("set-" + setCode, setCode, setCode)));
+        CardPrinting printing = new CardPrinting(card, set, "printing-" + uniqueId);
         printing.setCollectorNumber(collectorNumber);
         printingRepository.save(printing);
     }

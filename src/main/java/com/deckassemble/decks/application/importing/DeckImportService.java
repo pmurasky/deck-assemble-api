@@ -4,6 +4,11 @@ import com.deckassemble.cards.application.CardReference;
 import com.deckassemble.cards.application.CardReferenceResolution;
 import com.deckassemble.cards.application.CardReferenceResolver;
 import com.deckassemble.decks.application.DeckAccessGuard;
+import com.deckassemble.decks.application.DeckCardAddRequest;
+import com.deckassemble.decks.application.DeckCardService;
+import com.deckassemble.decks.application.DeckCreateRequest;
+import com.deckassemble.decks.application.DeckResponse;
+import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckImportPreview;
 import com.deckassemble.decks.domain.DeckImportPreviewRepository;
@@ -16,13 +21,17 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
-/** Parses, resolves, and persists deck import previews without mutating decks. */
+/** Previews and atomically commits external deck imports. */
 @Service
 public class DeckImportService {
 
@@ -31,40 +40,169 @@ public class DeckImportService {
     private static final Duration PREVIEW_TTL = Duration.ofMinutes(30);
     private final Map<String, DeckImportParser> parsers;
     private final CardReferenceResolver resolver;
-    private final DeckImportPreviewRepository previewRepository;
-    private final DeckAccessGuard accessGuard;
-    private final ObjectMapper objectMapper;
+    private final Dependencies dependencies;
 
     public DeckImportService(
             List<DeckImportParser> parsers,
             CardReferenceResolver resolver,
-            DeckImportPreviewRepository previewRepository,
-            DeckAccessGuard accessGuard,
-            ObjectMapper objectMapper) {
+            Dependencies dependencies) {
         this.parsers =
                 parsers.stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         DeckImportParser::format, parser -> parser));
         this.resolver = resolver;
-        this.previewRepository = previewRepository;
-        this.accessGuard = accessGuard;
-        this.objectMapper = objectMapper;
+        this.dependencies = dependencies;
     }
 
     public Preview preview(String format, byte[] source) {
         DeckImportParser.ParsedDeck parsed = parse(format, source);
         PreviewRows rows = PreviewRows.resolve(parsed.rows(), resolver);
         UUID token = UUID.randomUUID();
-        previewRepository.save(
-                new DeckImportPreview(
-                        token,
-                        accessGuard.profileId(),
-                        Instant.now().plus(PREVIEW_TTL),
-                        sha256(source),
-                        objectMapper.writeValueAsString(rows)));
+        dependencies
+                .previewRepository()
+                .save(
+                        new DeckImportPreview(
+                                token,
+                                dependencies.accessGuard().profileId(),
+                                Instant.now().plus(PREVIEW_TTL),
+                                sha256(source),
+                                dependencies.objectMapper().writeValueAsString(rows)));
         return new Preview(token, parsed.metadata(), rows, Totals.from(rows));
     }
+
+    @Transactional
+    public CommitResult commit(
+            UUID token, String name, Set<Integer> excludedLineNumbers, String idempotencyKey) {
+        long profileId = dependencies.accessGuard().profileId();
+        var replay =
+                dependencies
+                        .previewRepository()
+                        .findByProfileIdAndIdempotencyKey(profileId, idempotencyKey);
+        if (replay.isPresent()) {
+            return resultFor(replay.orElseThrow(), excludedLineNumbers);
+        }
+        DeckImportPreview preview = ownedPreview(token, profileId);
+        PreviewRows rows = rowsFrom(preview);
+        if (preview.getStatus() != DeckImportPreview.Status.PENDING) {
+            return replayCommitted(preview, excludedLineNumbers, idempotencyKey);
+        }
+        rejectUnresolved(rows, excludedLineNumbers);
+        return commitPreview(preview, rows, name, excludedLineNumbers, idempotencyKey);
+    }
+
+    private CommitResult commitPreview(
+            DeckImportPreview preview,
+            PreviewRows rows,
+            String name,
+            Set<Integer> excluded,
+            String idempotencyKey) {
+        DeckResponse deck = dependencies.deckService().create(deckRequest(name));
+        int imported = addSelected(deck.id(), rows.resolved(), excluded);
+        preview.markCommitted(idempotencyKey, deck.id());
+        dependencies.previewRepository().save(preview);
+        return new CommitResult(deck, imported, excludedCount(rows, excluded));
+    }
+
+    private DeckImportPreview ownedPreview(UUID token, long profileId) {
+        DeckImportPreview preview =
+                dependencies
+                        .previewRepository()
+                        .findLockedByTokenAndProfileId(token, profileId)
+                        .orElseThrow(() -> notFound("Import preview not found"));
+        if (preview.getExpiresAt().isBefore(Instant.now())) {
+            throw notFound("Import preview not found");
+        }
+        return preview;
+    }
+
+    private PreviewRows rowsFrom(DeckImportPreview preview) {
+        return dependencies.objectMapper().readValue(preview.getCanonicalRows(), PreviewRows.class);
+    }
+
+    private void rejectUnresolved(PreviewRows rows, Set<Integer> excluded) {
+        var unresolved =
+                java.util.stream.Stream.of(
+                                rows.ambiguous().stream().map(AmbiguousRow::row),
+                                rows.unmatched().stream().map(UnmatchedRow::row),
+                                rows.invalid().stream().map(InvalidRow::row))
+                        .flatMap(java.util.function.Function.identity())
+                        .filter(row -> !excluded.contains(row.lineNumber()))
+                        .findAny();
+        if (unresolved.isPresent()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Unresolved import rows must be excluded");
+        }
+    }
+
+    private int addSelected(long deckId, List<ResolvedRow> rows, Set<Integer> excluded) {
+        var selected =
+                rows.stream().filter(row -> !excluded.contains(row.row().lineNumber())).toList();
+        selected.forEach(
+                row ->
+                        dependencies
+                                .deckCardService()
+                                .addCard(
+                                        deckId,
+                                        new DeckCardAddRequest(
+                                                row.printingId(),
+                                                row.row().quantity(),
+                                                row.row().section())));
+        return selected.size();
+    }
+
+    private CommitResult resultFor(DeckImportPreview preview, Set<Integer> excluded) {
+        Long deckId = preview.getCommittedDeckId();
+        if (deckId == null) {
+            throw new IllegalStateException("Committed import has no deck");
+        }
+        PreviewRows rows = rowsFrom(preview);
+        int imported =
+                (int)
+                        rows.resolved().stream()
+                                .filter(row -> !excluded.contains(row.row().lineNumber()))
+                                .count();
+        return new CommitResult(
+                dependencies.deckService().getById(deckId),
+                imported,
+                excludedCount(rows, excluded));
+    }
+
+    private CommitResult replayCommitted(
+            DeckImportPreview preview, Set<Integer> excluded, String idempotencyKey) {
+        if (!Objects.equals(preview.getIdempotencyKey(), idempotencyKey)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Import preview is committed");
+        }
+        return resultFor(preview, excluded);
+    }
+
+    private static int excludedCount(PreviewRows rows, Set<Integer> excluded) {
+        return (int)
+                java.util.stream.Stream.of(
+                                rows.resolved().stream().map(ResolvedRow::row),
+                                rows.ambiguous().stream().map(AmbiguousRow::row),
+                                rows.unmatched().stream().map(UnmatchedRow::row),
+                                rows.invalid().stream().map(InvalidRow::row))
+                        .flatMap(java.util.function.Function.identity())
+                        .filter(row -> excluded.contains(row.lineNumber()))
+                        .count();
+    }
+
+    private static DeckCreateRequest deckRequest(String name) {
+        return new DeckCreateRequest(name, "COMMANDER", null, null, null, false, null, null, null);
+    }
+
+    private static ResponseStatusException notFound(String reason) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, reason);
+    }
+
+    @Component
+    public record Dependencies(
+            DeckImportPreviewRepository previewRepository,
+            DeckAccessGuard accessGuard,
+            ObjectMapper objectMapper,
+            DeckService deckService,
+            DeckCardService deckCardService) {}
 
     private DeckImportParser.ParsedDeck parse(String format, byte[] source) {
         if (source.length > MAX_FILE_BYTES) {
@@ -94,6 +232,8 @@ public class DeckImportService {
 
     public record Preview(
             UUID token, Map<String, String> metadata, PreviewRows rows, Totals totals) {}
+
+    public record CommitResult(DeckResponse deck, int imported, int skipped) {}
 
     public record PreviewRows(
             List<ResolvedRow> resolved,
