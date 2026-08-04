@@ -89,12 +89,10 @@ class DeckImportServiceTest {
     @MethodSource("formats")
     void shouldParseQuantitiesAndSectionsForEverySupportedFormat(
             DeckImportParser parser, String fixture) throws IOException {
-        String source =
-                new String(
-                        getClass()
-                                .getResourceAsStream("/fixtures/deck-imports/" + fixture)
-                                .readAllBytes(),
-                        StandardCharsets.UTF_8);
+        String source;
+        try (var stream = getClass().getResourceAsStream("/fixtures/deck-imports/" + fixture)) {
+            source = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
 
         var rows = parser.parse(source).rows();
 

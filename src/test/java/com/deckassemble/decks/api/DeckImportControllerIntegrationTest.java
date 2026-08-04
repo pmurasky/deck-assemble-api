@@ -114,9 +114,9 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private MockMultipartFile fixture(String name) throws Exception {
-        byte[] bytes =
-                getClass().getResourceAsStream("/fixtures/deck-imports/" + name).readAllBytes();
-        return new MockMultipartFile("file", name, "text/plain", bytes);
+        try (var stream = getClass().getResourceAsStream("/fixtures/deck-imports/" + name)) {
+            return new MockMultipartFile("file", name, "text/plain", stream.readAllBytes());
+        }
     }
 
     private void previewFor(String subject) throws Exception {
