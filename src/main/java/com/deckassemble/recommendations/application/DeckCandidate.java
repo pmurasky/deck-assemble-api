@@ -2,6 +2,7 @@ package com.deckassemble.recommendations.application;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.recommendations.application.CardCategorizer.Category;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 public record DeckCandidate(
@@ -17,5 +18,33 @@ public record DeckCandidate(
 
     public long inclusionValue() {
         return score != null && score.inclusion() != null ? score.inclusion() : 0L;
+    }
+
+    public static boolean isEligible(
+            Card card, Set<String> commanderOracles, Set<String> identity) {
+        return !commanderOracles.contains(card.getScryfallOracleId())
+                && Boolean.TRUE.equals(card.getActive())
+                && isCommanderLegal(card)
+                && withinIdentity(card, identity);
+    }
+
+    private static boolean isCommanderLegal(Card card) {
+        return card.getLegalities().stream()
+                .anyMatch(
+                        legality ->
+                                "commander".equalsIgnoreCase(legality.getFormatCode())
+                                        && "legal".equalsIgnoreCase(legality.getLegalityStatus()));
+    }
+
+    private static boolean withinIdentity(Card card, Set<String> identity) {
+        if (card.getColorIdentity() == null || card.getColorIdentity().isBlank()) {
+            return true;
+        }
+        for (var color : card.getColorIdentity().split(",")) {
+            if (!color.isBlank() && !identity.contains(color.trim())) {
+                return false;
+            }
+        }
+        return true;
     }
 }

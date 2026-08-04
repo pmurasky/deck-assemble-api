@@ -64,17 +64,19 @@ class DeckBuilderServiceTest {
         builderService =
                 new DeckBuilderService(
                         cardCatalogService,
-                        collectionService,
-                        edhrecCommanderService,
-                        cardCategorizer,
                         new CommanderResolver(cardCatalogService),
+                        new DeckCandidateSelector(
+                                cardCatalogService,
+                                collectionService,
+                                edhrecCommanderService,
+                                cardCategorizer,
+                                cardPriceService),
                         deckService,
                         deckCardService,
                         deckBuildRepository,
                         JsonMapper.builder().build(),
                         currentUser,
-                        profileService,
-                        cardPriceService);
+                        profileService);
     }
 
     @Test
