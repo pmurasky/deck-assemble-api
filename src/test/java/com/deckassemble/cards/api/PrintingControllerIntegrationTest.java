@@ -40,15 +40,20 @@ class PrintingControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(2))
                 .andExpect(jsonPath("$.content[0].printingId").value(standard.getId()))
-                .andExpect(jsonPath("$.content[0].imageUrl").value("https://img.example/serum-38.png"))
+                .andExpect(
+                        jsonPath("$.content[0].imageUrl").value("https://img.example/serum-38.png"))
                 .andExpect(jsonPath("$.content[1].printingId").value(showcase.getId()))
-                .andExpect(jsonPath("$.content[1].imageUrl").value("https://img.example/serum-299.png"));
+                .andExpect(
+                        jsonPath("$.content[1].imageUrl")
+                                .value("https://img.example/serum-299.png"));
     }
 
     @Test
     void shouldFilterPrintingsBySetCode() throws Exception {
-        MagicSet msh = magicSetRepository.save(new MagicSet("set-fantastic-a", "s2a", "Fantastic Set A"));
-        MagicSet msc = magicSetRepository.save(new MagicSet("set-fantastic-b", "s2b", "Fantastic Set B"));
+        MagicSet msh =
+                magicSetRepository.save(new MagicSet("set-fantastic-a", "s2a", "Fantastic Set A"));
+        MagicSet msc =
+                magicSetRepository.save(new MagicSet("set-fantastic-b", "s2b", "Fantastic Set B"));
         Card card = cardRepository.save(new Card("oracle-fantastic", "Mister Fantastic"));
         cardPrintingRepository.save(new CardPrinting(card, msh, "fantastic-66"));
         cardPrintingRepository.save(new CardPrinting(card, msc, "fantastic-2"));
