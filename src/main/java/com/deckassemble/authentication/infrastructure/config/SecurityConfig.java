@@ -42,6 +42,8 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers(HttpMethod.GET, "/sets", "/sets/**")
                                 .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/printings")
+                                .permitAll()
                                 .requestMatchers(HttpMethod.GET, "/card-imports/latest")
                                 .permitAll()
                                 .anyRequest()

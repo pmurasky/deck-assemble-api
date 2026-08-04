@@ -5,6 +5,11 @@ import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.CommanderPairingRules;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.From;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -109,69 +114,68 @@ public class CardCatalogService {
 
     private Specification<Card> specification(
             String query,
-            String setCode,
-            String colorIdentity,
-            String type,
-            Boolean commanderEligible) {
-        Specification<Card> result = activeSpec().and(nameSpec(query));
+            @Nullable String setCode,
+            @Nullable String colorIdentity,
+            @Nullable String type,
+            @Nullable Boolean commanderEligible) {
+        return (root, criteria, builder) ->
+                cardPredicate(
+                        root, query, setCode, colorIdentity, type, commanderEligible, criteria,
+                        builder);
+    }
+
+    // Suppressed: filter set mirrors the search signature; each is an independent optional filter.
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    private Predicate cardPredicate(
+            From<?, Card> card,
+            String query,
+            @Nullable String setCode,
+            @Nullable String colorIdentity,
+            @Nullable String type,
+            @Nullable Boolean commanderEligible,
+            CriteriaQuery<?> criteria,
+            CriteriaBuilder builder) {
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(builder.isTrue(card.get("active")));
+        predicates.add(
+                builder.like(builder.lower(card.get("name")), "%" + query.toLowerCase() + "%"));
         if (colorIdentity != null) {
-            result = result.and(colorIdentitySpec(colorIdentity));
+            predicates.add(builder.like(card.get("colorIdentity"), "%" + colorIdentity + "%"));
         }
         if (setCode != null) {
-            result = result.and(setCodeSpec(setCode));
+            predicates.add(setCodePredicate(card, setCode, criteria, builder));
         }
         if (type != null) {
-            result = result.and(typeLineSpec(type));
+            predicates.add(
+                    builder.like(builder.lower(card.get("typeLine")), "%" + type.toLowerCase() + "%"));
         }
         if (Boolean.TRUE.equals(commanderEligible)) {
-            result = result.and(commanderEligibleSpec());
+            predicates.add(commanderEligiblePredicate(card, builder));
         }
-        return result;
+        return builder.and(predicates.toArray(new Predicate[0]));
     }
 
-    private Specification<Card> commanderEligibleSpec() {
-        return (root, criteria, builder) -> {
-            var typeLine = builder.lower(root.get("typeLine"));
-            var legendaryCreature =
-                    builder.and(
-                            builder.like(typeLine, "%legendary%"),
-                            builder.like(typeLine, "%creature%"));
-            var canBeCommander =
-                    builder.like(builder.lower(root.get("oracleText")), "%can be your commander%");
-            return builder.or(legendaryCreature, canBeCommander);
-        };
+    private Predicate commanderEligiblePredicate(From<?, Card> card, CriteriaBuilder builder) {
+        var typeLine = builder.lower(card.get("typeLine"));
+        var legendaryCreature =
+                builder.and(
+                        builder.like(typeLine, "%legendary%"),
+                        builder.like(typeLine, "%creature%"));
+        var canBeCommander =
+                builder.like(builder.lower(card.get("oracleText")), "%can be your commander%");
+        return builder.or(legendaryCreature, canBeCommander);
     }
 
-    private Specification<Card> activeSpec() {
-        return (root, criteria, builder) -> builder.isTrue(root.get("active"));
-    }
-
-    private Specification<Card> nameSpec(String query) {
-        return (root, criteria, builder) ->
-                builder.like(builder.lower(root.get("name")), "%" + query.toLowerCase() + "%");
-    }
-
-    private Specification<Card> colorIdentitySpec(String colorIdentity) {
-        return (root, criteria, builder) ->
-                builder.like(root.get("colorIdentity"), "%" + colorIdentity + "%");
-    }
-
-    private Specification<Card> typeLineSpec(String type) {
-        return (root, criteria, builder) ->
-                builder.like(builder.lower(root.get("typeLine")), "%" + type.toLowerCase() + "%");
-    }
-
-    private Specification<Card> setCodeSpec(String setCode) {
-        return (root, criteria, builder) -> {
-            var subquery = criteria.subquery(Long.class);
-            var printings = subquery.from(CardPrinting.class);
-            return builder.exists(
-                    subquery.select(printings.get("id"))
-                            .where(
-                                    builder.equal(printings.get("card").get("id"), root.get("id")),
-                                    builder.equal(
-                                            printings.get("magicSet").get("setCode"), setCode)));
-        };
+    private Predicate setCodePredicate(
+            From<?, Card> card, String setCode, CriteriaQuery<?> criteria, CriteriaBuilder builder) {
+        var subquery = criteria.subquery(Long.class);
+        var printings = subquery.from(CardPrinting.class);
+        return builder.exists(
+                subquery.select(printings.get("id"))
+                        .where(
+                                builder.equal(printings.get("card").get("id"), card.get("id")),
+                                builder.equal(
+                                        printings.get("magicSet").get("setCode"), setCode)));
     }
 
     public Map<Long, String> getOracleIdsByPrintingIds(Collection<Long> cardPrintingIds) {
@@ -313,5 +317,54 @@ public class CardCatalogService {
         return cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
                 .map(CardPrintingResponse::from)
                 .toList();
+    }
+
+    // Suppressed: mirrors the controller's search signature; each parameter is an independent
+    // optional filter consumed by the specification builder (same rationale as search()).
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
+    @Transactional(readOnly = true)
+    public Page<CardSummaryResponse> searchPrintings(
+            String query,
+            @Nullable String setCode,
+            @Nullable String colorIdentity,
+            @Nullable String type,
+            @Nullable Boolean commanderEligible,
+            @Nullable Long partnerForCardId,
+            Pageable pageable) {
+        Specification<CardPrinting> spec =
+                (root, criteria, builder) ->
+                        builder.and(
+                                builder.isTrue(root.get("active")),
+                                cardPredicate(
+                                        root.join("card"), query, null, colorIdentity, type,
+                                        commanderEligible, criteria, builder));
+        if (setCode != null) {
+            spec = spec.and(ownSetCodeSpec(setCode));
+        }
+        if (partnerForCardId != null) {
+            spec = spec.and(partnerCandidatesSpec(specification(query, setCode, colorIdentity, type, commanderEligible), getCard(partnerForCardId)));
+        }
+        return cardPrintingRepository
+                .findAll(spec, pageable)
+                .map(printing -> CardSummaryResponse.from(printing.getCard(), printing));
+    }
+
+    private Specification<CardPrinting> ownSetCodeSpec(String setCode) {
+        return (root, criteria, builder) ->
+                builder.equal(root.get("magicSet").get("setCode"), setCode);
+    }
+
+    // ponytail: candidate IDs are fetched then matched via IN; partner candidate sets are small
+    // (backgrounds ~30, named partners exactly 1), so DB pagination stays correct and cheap.
+    private Specification<CardPrinting> partnerCandidatesSpec(Specification<Card> cardSpec, Card primary) {
+        List<Long> candidateIds =
+                cardRepository.findAll(cardSpec).stream()
+                        .filter(card -> pairingRules.canPair(primary, card))
+                        .map(Card::getId)
+                        .toList();
+        return (root, criteria, builder) ->
+                candidateIds.isEmpty()
+                        ? builder.disjunction()
+                        : root.join("card").get("id").in(candidateIds);
     }
 }
