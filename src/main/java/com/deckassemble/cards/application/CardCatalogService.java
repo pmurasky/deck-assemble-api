@@ -126,6 +126,15 @@ public class CardCatalogService {
     }
 
     @Transactional(readOnly = true)
+    public Map<Long, CardPrinting> getPrintingsByIds(Collection<Long> cardPrintingIds) {
+        if (cardPrintingIds.isEmpty()) {
+            return Map.of();
+        }
+        return cardPrintingRepository.findAllById(cardPrintingIds).stream()
+                .collect(Collectors.toUnmodifiableMap(CardPrinting::getId, printing -> printing));
+    }
+
+    @Transactional(readOnly = true)
     public Card getCard(long cardId) {
         return cardRepository
                 .findById(cardId)

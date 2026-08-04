@@ -1,11 +1,15 @@
 package com.deckassemble.decks.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,7 +22,10 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.decks.application.exporting.DeckExportFormat;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -125,6 +132,70 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                                 .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-other"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldExportDeterministicAttachmentWithExactPrintingFields() throws Exception {
+        String subject = "auth0|deck-export";
+        long deckId = createDeck(subject, "Unsafe ../ Deck");
+        Card card = cardRepository.save(new Card("oracle-export", "Original Card Name"));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-export", "TST", "Test Set"));
+        CardPrinting printing = new CardPrinting(card, set, "00000000-0000-0000-0000-000000000099");
+        printing.setCollectorNumber("007");
+        printing.setFlavorName("Flavor Name");
+        long printingId = cardPrintingRepository.save(printing).getId();
+        addCard(subject, deckId, printingId, 2);
+
+        MvcResult first = export(subject, deckId, "GENERIC_CSV");
+        MvcResult second = export(subject, deckId, "GENERIC_CSV");
+
+        String expected =
+                "quantity,name,set,collector_number,section,scryfall_id\n"
+                        + "2,Flavor Name,TST,007,main,00000000-0000-0000-0000-000000000099\n";
+        assertThat(first.getResponse().getContentAsString()).isEqualTo(expected);
+        assertThat(second.getResponse().getContentAsByteArray())
+                .containsExactly(first.getResponse().getContentAsByteArray());
+    }
+
+    @Test
+    void shouldHideAnotherUsersDeckExport() throws Exception {
+        long deckId = createDeck("auth0|deck-export-private");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/exports", deckId)
+                                .param("format", "ARENA_TEXT")
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-export-other"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectUnsupportedDeckExportFormat() throws Exception {
+        long deckId = createDeck("auth0|deck-export-format");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/exports", deckId)
+                                .param("format", "UNKNOWN")
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-export-format"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @ParameterizedTest
+    @EnumSource(DeckExportFormat.class)
+    void shouldServeEveryDeckExportFormat(DeckExportFormat format) throws Exception {
+        String subject = "auth0|deck-export-" + format;
+        long deckId = createDeck(subject);
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/exports", deckId)
+                                .param("format", format.name())
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(format.mediaType()))
+                .andExpect(
+                        header().string(
+                                        "Content-Disposition",
+                                        containsString(format.filenameSuffix())));
     }
 
     @Test
@@ -247,16 +318,47 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private long createDeck(String subject) throws Exception {
+        return createDeck(subject, "Deck");
+    }
+
+    private long createDeck(String subject, String name) throws Exception {
         MvcResult result =
                 mockMvc.perform(
                                 post("/decks")
                                         .with(jwt().jwt(jwt -> jwt.subject(subject)))
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(
-                                                "{\"name\":\"Deck\",\"formatCode\":\"COMMANDER\"}"))
+                                                "{\"name\":\"%s\",\"formatCode\":\"COMMANDER\"}"
+                                                        .formatted(name)))
                         .andExpect(status().isCreated())
                         .andReturn();
         return idFrom(result);
+    }
+
+    private void addCard(String subject, long deckId, long printingId, int quantity)
+            throws Exception {
+        mockMvc.perform(
+                        post("/decks/{deckId}/cards", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"cardPrintingId\":%d,\"quantity\":%d}"
+                                                .formatted(printingId, quantity)))
+                .andExpect(status().isCreated());
+    }
+
+    private MvcResult export(String subject, long deckId, String format) throws Exception {
+        return mockMvc.perform(
+                        get("/decks/{deckId}/exports", deckId)
+                                .param("format", format)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("text/csv"))
+                .andExpect(
+                        header().string(
+                                        "Content-Disposition",
+                                        "attachment; filename=\"Unsafe-Deck-generic.csv\""))
+                .andReturn();
     }
 
     private long idFrom(MvcResult result) {
