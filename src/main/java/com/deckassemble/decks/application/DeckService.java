@@ -12,8 +12,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// Justified: orchestration service coordinating deck collaborators; decomposition tracked in #3.
-@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 @Service
 @Transactional
 public class DeckService {
@@ -24,8 +22,6 @@ public class DeckService {
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
 
-    // Suppressed: collaborators are what this orchestration service needs; Spring injects them.
-    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckService(
             DeckRepository deckRepository,
             DeckCardRepository deckCardRepository,
