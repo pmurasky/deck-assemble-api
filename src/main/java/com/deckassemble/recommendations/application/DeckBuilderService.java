@@ -16,9 +16,7 @@ import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -32,17 +30,10 @@ public class DeckBuilderService {
 
     private static final String COMMANDER_FORMAT = "COMMANDER";
     private static final int DECK_SIZE = 100;
-    private static final List<String> COLOR_ORDER = List.of("W", "U", "B", "R", "G");
-    private static final Map<String, String> COLOR_TO_BASIC =
-            Map.of(
-                    "W", "Plains",
-                    "U", "Island",
-                    "B", "Swamp",
-                    "R", "Mountain",
-                    "G", "Forest");
     private final CardCatalogService cardCatalogService;
     private final CommanderResolver commanderResolver;
     private final DeckCandidateSelector deckCandidateSelector;
+    private final BasicLandPadder basicLandPadder;
     private final DeckService deckService;
     private final DeckCardService deckCardService;
     private final DeckBuildRepository deckBuildRepository;
@@ -57,6 +48,7 @@ public class DeckBuilderService {
             CardCatalogService cardCatalogService,
             CommanderResolver commanderResolver,
             DeckCandidateSelector deckCandidateSelector,
+            BasicLandPadder basicLandPadder,
             DeckService deckService,
             DeckCardService deckCardService,
             DeckBuildRepository deckBuildRepository,
@@ -66,6 +58,7 @@ public class DeckBuilderService {
         this.cardCatalogService = cardCatalogService;
         this.commanderResolver = commanderResolver;
         this.deckCandidateSelector = deckCandidateSelector;
+        this.basicLandPadder = basicLandPadder;
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckBuildRepository = deckBuildRepository;
@@ -109,47 +102,7 @@ public class DeckBuilderService {
             int targetSize,
             List<String> gaps) {
         var picked = DeckDraftPicker.pick(candidates, targetSize);
-        return padWithBasics(picked, identity, targetSize, gaps);
-    }
-
-    private List<DeckCandidate> padWithBasics(
-            List<DeckCandidate> picked, Set<String> identity, int targetSize, List<String> gaps) {
-        var cards = new ArrayList<>(picked);
-        var missing = targetSize - picked.size();
-        if (missing == 0) {
-            return cards;
-        }
-        var basics = basicLands(identity);
-        if (basics.isEmpty()) {
-            gaps.add(missing + " slots could not be filled from your collection");
-            return cards;
-        }
-        var names = new ArrayList<>(basics.keySet());
-        for (var i = 0; i < missing; i++) {
-            cards.add(basics.get(names.get(i % names.size())));
-        }
-        return cards;
-    }
-
-    private Map<String, DeckCandidate> basicLands(Set<String> identity) {
-        var names =
-                COLOR_ORDER.stream().filter(identity::contains).map(COLOR_TO_BASIC::get).toList();
-        var cardsByName = new LinkedHashMap<String, Card>();
-        cardCatalogService
-                .getCardsByNames(names)
-                .forEach(card -> cardsByName.put(card.getName(), card));
-        var printingIds =
-                cardCatalogService.getLatestPrintingIdByCardIds(
-                        cardsByName.values().stream().map(Card::getId).toList());
-        var basics = new LinkedHashMap<String, DeckCandidate>();
-        for (var name : names) {
-            var card = cardsByName.get(name);
-            var printingId = card != null ? printingIds.get(card.getId()) : null;
-            if (card != null && printingId != null) {
-                basics.put(name, new DeckCandidate(printingId, card, Category.LAND, null));
-            }
-        }
-        return basics;
+        return basicLandPadder.pad(picked, identity, targetSize, gaps);
     }
 
     private DeckResponse createDeck(DeckBuildRequest request, List<Card> commanders) {

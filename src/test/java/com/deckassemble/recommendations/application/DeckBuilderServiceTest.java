@@ -71,6 +71,7 @@ class DeckBuilderServiceTest {
                                 edhrecCommanderService,
                                 cardCategorizer,
                                 cardPriceService),
+                        new BasicLandPadder(cardCatalogService),
                         deckService,
                         deckCardService,
                         deckBuildRepository,
