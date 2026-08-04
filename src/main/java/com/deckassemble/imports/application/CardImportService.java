@@ -133,14 +133,27 @@ public class CardImportService {
     }
 
     private void replaceLegalities(Card card, CardImportData source) {
-        card.getLegalities().clear();
+        var legalities = card.getLegalities();
         if (source.legalities() == null) {
+            legalities.clear();
             return;
         }
+        legalities.removeIf(
+                legality -> !source.legalities().containsKey(legality.getFormatCode()));
         source.legalities()
                 .forEach(
                         (format, status) ->
-                                card.getLegalities().add(new CardLegality(card, format, status)));
+                                legalities.stream()
+                                        .filter(
+                                                legality ->
+                                                        legality.getFormatCode().equals(format))
+                                        .findFirst()
+                                        .ifPresentOrElse(
+                                                legality -> legality.updateStatus(status),
+                                                () ->
+                                                        legalities.add(
+                                                                new CardLegality(
+                                                                        card, format, status))));
     }
 
     private void replaceFaces(CardPrinting printing, CardImportData source) {

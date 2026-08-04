@@ -75,6 +75,10 @@ public class CardLegality {
         return legalityStatus;
     }
 
+    public void updateStatus(String legalityStatus) {
+        this.legalityStatus = legalityStatus;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

@@ -23,6 +23,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -137,5 +138,96 @@ class CardImportServiceTest {
                                 assertThat(values)
                                         .extracting(CardPrintingFace::getImageUri)
                                         .containsExactly("front", "back"));
+    }
+
+    @Test
+    void shouldMergeLegalitiesInPlaceWhenReimportingAnExistingCard() {
+        CardImportData first = importData(Map.of("commander", "legal"));
+        CardImportData second = importData(Map.of("commander", "banned", "legacy", "legal"));
+        when(scryfallClient.searchCards("set:mar"))
+                .thenReturn(new CardSearchPage(List.of(first), false, null))
+                .thenReturn(new CardSearchPage(List.of(second), false, null));
+        AtomicReference<Card> savedCard = new AtomicReference<>();
+        when(cardRepository.findByScryfallOracleId("oracle-id"))
+                .thenReturn(Optional.empty())
+                .thenAnswer(invocation -> Optional.of(savedCard.get()));
+        when(cardRepository.save(any(Card.class)))
+                .thenAnswer(
+                        invocation -> {
+                            savedCard.set(invocation.getArgument(0));
+                            return invocation.getArgument(0);
+                        });
+        when(magicSetRepository.findBySetCode("mar")).thenReturn(Optional.empty());
+        when(magicSetRepository.save(any(MagicSet.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(cardPrintingRepository.findByScryfallCardId("printing-id"))
+                .thenReturn(Optional.empty());
+        when(cardPrintingRepository.save(any(CardPrinting.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(runRecorder.start("set:mar", "admin-sub")).thenReturn(7L);
+        when(currentUser.subject()).thenReturn(Optional.of("admin-sub"));
+        CardImportService service =
+                new CardImportService(
+                        scryfallClient,
+                        cardRepository,
+                        magicSetRepository,
+                        cardPrintingRepository,
+                        cardPrintingFaceRepository,
+                        runRecorder,
+                        currentUser);
+
+        service.importQuery("set:mar");
+        var commanderLegality =
+                savedCard.get().getLegalities().stream()
+                        .filter(legality -> legality.getFormatCode().equals("commander"))
+                        .findFirst()
+                        .orElseThrow();
+
+        service.importQuery("set:mar");
+
+        assertThat(savedCard.get().getLegalities())
+                .extracting(
+                        legality ->
+                                legality.getFormatCode() + ":" + legality.getLegalityStatus())
+                .containsExactlyInAnyOrder("commander:banned", "legacy:legal");
+        assertThat(savedCard.get().getLegalities())
+                .as("re-import must update the existing legality row, not insert a duplicate")
+                .contains(commanderLegality);
+    }
+
+    private CardImportData importData(Map<String, String> legalities) {
+        return new CardImportData(
+                "printing-id",
+                "oracle-id",
+                "Spider-Man",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                null,
+                false,
+                "set-id",
+                "mar",
+                "Marvel",
+                "1",
+                "rare",
+                null,
+                null,
+                new CardImportImages("small", "normal", "large"),
+                List.of(new CardImportFace("Spider-Man", "front")),
+                null,
+                false,
+                false,
+                false,
+                false,
+                "en",
+                legalities,
+                true);
     }
 }
