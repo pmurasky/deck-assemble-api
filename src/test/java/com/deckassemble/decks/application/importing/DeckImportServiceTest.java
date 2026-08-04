@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,10 +29,11 @@ class DeckImportServiceTest {
     private static final UUID SCRYFALL_ID = UUID.fromString("03fcf7d4-8a1b-4e2f-89f1-12c840e27721");
     @Mock private CardReferenceResolver resolver;
 
-    @Test
-    void shouldParseScryfallIdAndExactTupleFromCsv() {
+    @ParameterizedTest
+    @ValueSource(strings = {"scryfall_id", "Scryfall ID"})
+    void shouldParseScryfallIdAndExactTupleFromCsv(String identifierHeader) {
         String source =
-                "quantity,name,set,collector_number,section,scryfall_id\n"
+                "quantity,name,set,collector_number,section,%s\n".formatted(identifierHeader)
                         + "1,Wrong Name,BAD,0,main,03fcf7d4-8a1b-4e2f-89f1-12c840e27721";
 
         var reference =
