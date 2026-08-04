@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardSummaryResponse;
-import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
@@ -38,8 +37,6 @@ class DeckServiceTest {
     @Mock private ProfileService profileService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CommanderLegalityEvaluator commanderLegalityEvaluator;
-    @Mock private OwnershipChecker ownershipChecker;
-    @Mock private CollectionService collectionService;
 
     @Test
     void shouldListDecksForCurrentProfile() {
@@ -159,91 +156,6 @@ class DeckServiceTest {
     }
 
     @Test
-    void shouldFlipWishlistToOwnedWhenSyncing() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
-        card.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
-        ReflectionTestUtils.setField(card, "id", 7L);
-        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of(10L));
-
-        var result = service().syncOwnership(1L);
-
-        assertThat(result.changedCount()).isEqualTo(1);
-        assertThat(result.changes().get(0).fromStatus()).isEqualTo("WISHLIST");
-        assertThat(result.changes().get(0).toStatus()).isEqualTo("OWNED");
-        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.OWNED);
-        verify(deckCardRepository).save(card);
-    }
-
-    @Test
-    void shouldFlipOwnedToWishlistWhenCardNoLongerOwned() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
-        ReflectionTestUtils.setField(card, "id", 7L);
-        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of());
-
-        var result = service().syncOwnership(1L);
-
-        assertThat(result.changedCount()).isEqualTo(1);
-        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.WISHLIST);
-    }
-
-    @Test
-    void shouldKeepProxyStatusWhenSyncing() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
-        card.setOwnershipStatus(DeckCard.OwnershipStatus.PROXY);
-        ReflectionTestUtils.setField(card, "id", 7L);
-        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of());
-
-        var result = service().syncOwnership(1L);
-
-        assertThat(result.changedCount()).isZero();
-        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.PROXY);
-        verify(deckCardRepository, org.mockito.Mockito.never()).save(any(DeckCard.class));
-    }
-
-    @Test
-    void shouldAddToCollectionAndFlipWishlistWhenAcquiring() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
-        card.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
-        ReflectionTestUtils.setField(card, "id", 7L);
-        when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
-
-        var result = service().acquireCard(1L, 7L);
-
-        verify(collectionService).addToDefaultCollection(10L, 1, 0);
-        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.OWNED);
-        verify(deckCardRepository).save(card);
-        assertThat(result.ownershipStatus()).isEqualTo("OWNED");
-    }
-
-    @Test
-    void shouldNotResaveWhenAcquiringAlreadyOwnedCard() {
-        stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
-        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
-        ReflectionTestUtils.setField(card, "id", 7L);
-        when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
-
-        service().acquireCard(1L, 7L);
-
-        verify(collectionService).addToDefaultCollection(10L, 1, 0);
-        verify(deckCardRepository, org.mockito.Mockito.never()).save(any(DeckCard.class));
-    }
-
-    @Test
     void shouldRejectUnauthenticatedUser() {
         when(currentUser.subject()).thenReturn(Optional.empty());
 
@@ -286,9 +198,7 @@ class DeckServiceTest {
                 deckCardRepository,
                 new DeckAccessGuard(currentUser, profileService, deckRepository),
                 cardCatalogService,
-                commanderLegalityEvaluator,
-                ownershipChecker,
-                collectionService);
+                commanderLegalityEvaluator);
     }
 
     private void stubUser() {

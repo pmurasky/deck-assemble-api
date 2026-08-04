@@ -8,6 +8,7 @@ import com.deckassemble.decks.application.DeckComboResponse;
 import com.deckassemble.decks.application.DeckComboService;
 import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckLegalityResponse;
+import com.deckassemble.decks.application.DeckOwnershipService;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.application.DeckUpdateRequest;
@@ -35,16 +36,19 @@ public class DeckController {
     private final DeckCardService deckCardService;
     private final DeckComboService deckComboService;
     private final DeckWishlistService deckWishlistService;
+    private final DeckOwnershipService deckOwnershipService;
 
     public DeckController(
             DeckService deckService,
             DeckCardService deckCardService,
             DeckComboService deckComboService,
-            DeckWishlistService deckWishlistService) {
+            DeckWishlistService deckWishlistService,
+            DeckOwnershipService deckOwnershipService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
         this.deckWishlistService = deckWishlistService;
+        this.deckOwnershipService = deckOwnershipService;
     }
 
     @GetMapping
@@ -98,7 +102,7 @@ public class DeckController {
 
     @PostMapping("/{deckId}/sync-ownership")
     public OwnershipSyncResponse syncOwnership(@PathVariable long deckId) {
-        return deckService.syncOwnership(deckId);
+        return deckOwnershipService.syncOwnership(deckId);
     }
 
     @GetMapping("/{deckId}/wishlist")
@@ -130,7 +134,7 @@ public class DeckController {
 
     @PostMapping("/{deckId}/cards/{deckCardId}/acquire")
     public DeckCardResponse acquireCard(@PathVariable long deckId, @PathVariable long deckCardId) {
-        return deckService.acquireCard(deckId, deckCardId);
+        return deckOwnershipService.acquireCard(deckId, deckCardId);
     }
 
     @DeleteMapping("/{deckId}/cards/{deckCardId}")
