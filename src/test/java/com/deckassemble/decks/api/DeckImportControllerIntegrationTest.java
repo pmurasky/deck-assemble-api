@@ -21,11 +21,15 @@ import com.deckassemble.users.domain.ProfileRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
 
@@ -51,9 +55,23 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
         commit(subject, "commit-key", request)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.deck.name").value("Imported Deck"))
+                .andExpect(jsonPath("$.deck.cardCount").value(1))
                 .andExpect(jsonPath("$.imported").value(1))
                 .andExpect(jsonPath("$.skipped").value(0));
-        commit(subject, "commit-key", request).andExpect(status().isCreated());
+        commit(subject, "commit-key", request)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.deck.cardCount").value(1))
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.skipped").value(0));
+        commit(
+                        subject,
+                        "commit-key",
+                        request(token, "Changed Retry", ",\"excludedLineNumbers\":[1]"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.deck.name").value("Imported Deck"))
+                .andExpect(jsonPath("$.deck.cardCount").value(1))
+                .andExpect(jsonPath("$.imported").value(1))
+                .andExpect(jsonPath("$.skipped").value(0));
 
         assertThat(deckRepository.count()).isEqualTo(deckCount + 1);
         assertThat(deckCardRepository.count()).isEqualTo(deckCardCount + 1);
@@ -99,6 +117,72 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isNotFound());
         commit(ownerSubject, "expired-key", request(expired.getToken(), "Expired Deck", ""))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldValidateReplayTokenBeforeUsingExistingIdempotencyKey() throws Exception {
+        String subject = "auth0|deck-import-replay-owner";
+        createPrinting("Replay Card", "RPL", "1");
+        previewFor(subject, "1 Replay Card|RPL|1");
+        var original = previewRepository.findAll().getLast();
+        commit(subject, "replay-key", request(original.getToken(), "Original Deck", ""))
+                .andExpect(status().isCreated());
+        previewFor("auth0|deck-import-replay-foreign", "1 Replay Card|RPL|1");
+        var foreign = previewRepository.findAll().getLast();
+        var owner = profileRepository.findByAuthProviderSubject(subject).orElseThrow();
+        var expired =
+                previewRepository.save(
+                        new com.deckassemble.decks.domain.DeckImportPreview(
+                                java.util.UUID.randomUUID(),
+                                owner.getId(),
+                                Instant.now().minusSeconds(1),
+                                original.getSourceSha256(),
+                                original.getCanonicalRows()));
+
+        commit(subject, "replay-key", request(foreign.getToken(), "Foreign Retry", ""))
+                .andExpect(status().isNotFound());
+        commit(subject, "replay-key", request(expired.getToken(), "Expired Retry", ""))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldConvergeConcurrentSameKeyCommitsAcrossDifferentPreviews() throws Exception {
+        String subject = "auth0|deck-import-concurrent";
+        long deckCount = deckRepository.count();
+        createPrinting("Concurrent One", "CCO", "1");
+        createPrinting("Concurrent Two", "CCT", "1");
+        previewFor(subject, "1 Concurrent One|CCO|1");
+        var firstToken = previewRepository.findAll().getLast().getToken();
+        previewFor(subject, "1 Concurrent Two|CCT|1");
+        var secondToken = previewRepository.findAll().getLast().getToken();
+        var ready = new CountDownLatch(2);
+        var start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first =
+                    executor.submit(
+                            () -> concurrentCommit(subject, firstToken, "First", ready, start));
+            var second =
+                    executor.submit(
+                            () -> concurrentCommit(subject, secondToken, "Second", ready, start));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            var firstJson =
+                    JsonMapper.builder()
+                            .build()
+                            .readTree(first.get().getResponse().getContentAsString());
+            var secondJson =
+                    JsonMapper.builder()
+                            .build()
+                            .readTree(second.get().getResponse().getContentAsString());
+
+            assertThat(first.get().getResponse().getStatus()).isEqualTo(201);
+            assertThat(second.get().getResponse().getStatus()).isEqualTo(201);
+            assertThat(firstJson.get("deck").get("id").asLong())
+                    .isEqualTo(secondJson.get("deck").get("id").asLong());
+            assertThat(secondJson).isEqualTo(firstJson);
+            assertThat(deckRepository.count()).isEqualTo(deckCount + 1);
+        }
     }
 
     @Test
@@ -215,6 +299,20 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request)
                         .with(jwt().jwt(jwt -> jwt.subject(subject))));
+    }
+
+    private org.springframework.test.web.servlet.MvcResult concurrentCommit(
+            String subject,
+            java.util.UUID token,
+            String name,
+            CountDownLatch ready,
+            CountDownLatch start)
+            throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent commit start timed out");
+        }
+        return commit(subject, "concurrent-key", request(token, name, "")).andReturn();
     }
 
     private String request(java.util.UUID token, String name, String extraFields) {

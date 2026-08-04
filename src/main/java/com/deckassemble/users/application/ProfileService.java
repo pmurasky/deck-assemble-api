@@ -27,6 +27,12 @@ public class ProfileService {
                 .orElseGet(() -> profileRepository.save(new Profile(subject, subject)));
     }
 
+    public Profile lock(long profileId) {
+        return profileRepository
+                .findLockedById(profileId)
+                .orElseThrow(() -> new IllegalStateException("Profile not found"));
+    }
+
     public Profile update(String subject, ProfileUpdateRequest request) {
         Profile profile =
                 profileRepository

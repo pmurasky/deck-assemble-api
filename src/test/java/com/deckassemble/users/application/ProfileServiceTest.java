@@ -50,6 +50,14 @@ class ProfileServiceTest {
     }
 
     @Test
+    void shouldLockProfileById() {
+        Profile profile = new Profile("sub", "User");
+        when(profileRepository.findLockedById(1L)).thenReturn(Optional.of(profile));
+
+        assertThat(service().lock(1L)).isSameAs(profile);
+    }
+
+    @Test
     void shouldApplyOnlyProvidedFieldsOnUpdate() {
         Profile profile = new Profile("sub", "Original");
         when(profileRepository.findByAuthProviderSubject("sub")).thenReturn(Optional.of(profile));

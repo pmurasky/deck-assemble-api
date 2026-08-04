@@ -29,6 +29,11 @@ public class DeckAccessGuard {
         return profileService.getOrCreate(subject).getId();
     }
 
+    public long lockedProfileId() {
+        long profileId = profileId();
+        return profileService.lock(profileId).getId();
+    }
+
     public Deck owned(long deckId) {
         return deckRepository
                 .findByIdAndProfileId(deckId, profileId())

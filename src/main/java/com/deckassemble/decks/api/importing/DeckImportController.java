@@ -1,5 +1,6 @@
 package com.deckassemble.decks.api.importing;
 
+import com.deckassemble.decks.application.importing.DeckImportCommitService;
 import com.deckassemble.decks.application.importing.DeckImportService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -24,9 +25,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class DeckImportController {
 
     private final DeckImportService importService;
+    private final DeckImportCommitService commitService;
 
-    public DeckImportController(DeckImportService importService) {
+    public DeckImportController(
+            DeckImportService importService, DeckImportCommitService commitService) {
         this.importService = importService;
+        this.commitService = commitService;
     }
 
     @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -41,7 +45,7 @@ public class DeckImportController {
             @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 255) String idempotencyKey,
             @Valid @RequestBody CommitDeckImportRequest request) {
         var result =
-                importService.commit(
+                commitService.commit(
                         request.previewToken(),
                         request.name(),
                         request.excludedLineNumbers(),
