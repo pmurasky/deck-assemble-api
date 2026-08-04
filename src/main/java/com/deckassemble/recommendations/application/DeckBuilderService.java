@@ -4,7 +4,6 @@ import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrice;
-import com.deckassemble.cards.domain.CommanderEligibility;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardService;
@@ -68,6 +67,7 @@ public class DeckBuilderService {
     private final CollectionService collectionService;
     private final EdhrecCommanderService edhrecCommanderService;
     private final CardCategorizer categorizer;
+    private final CommanderResolver commanderResolver;
     private final DeckService deckService;
     private final DeckCardService deckCardService;
     private final DeckBuildRepository deckBuildRepository;
@@ -84,6 +84,7 @@ public class DeckBuilderService {
             CollectionService collectionService,
             EdhrecCommanderService edhrecCommanderService,
             CardCategorizer categorizer,
+            CommanderResolver commanderResolver,
             DeckService deckService,
             DeckCardService deckCardService,
             DeckBuildRepository deckBuildRepository,
@@ -95,6 +96,7 @@ public class DeckBuilderService {
         this.collectionService = collectionService;
         this.edhrecCommanderService = edhrecCommanderService;
         this.categorizer = categorizer;
+        this.commanderResolver = commanderResolver;
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckBuildRepository = deckBuildRepository;
@@ -106,8 +108,8 @@ public class DeckBuilderService {
 
     public DeckBuildResult build(DeckBuildRequest request) {
         var profileId = profileId();
-        var commanders = resolveCommanders(request);
-        var identity = colorIdentity(commanders);
+        var commanders = commanderResolver.resolve(request);
+        var identity = CommanderResolver.colorIdentity(commanders);
         var ownedPrintingIds = collectionService.getOwnedPrintingIds(profileId);
         var candidates = candidates(request, commanders, identity, ownedPrintingIds);
         return assembleDeck(request, commanders, identity, candidates);
@@ -213,37 +215,6 @@ public class DeckBuilderService {
             List<String> gaps) {
         var picked = DeckDraftPicker.pick(candidates, targetSize);
         return padWithBasics(picked, identity, targetSize, gaps);
-    }
-
-    private List<Card> resolveCommanders(DeckBuildRequest request) {
-        var commanders = new ArrayList<Card>();
-        commanders.add(cardCatalogService.getCardWithFaces(request.commanderCardId()));
-        if (request.secondaryCommanderCardId() != null) {
-            commanders.add(cardCatalogService.getCardWithFaces(request.secondaryCommanderCardId()));
-        }
-        commanders.forEach(DeckBuilderService::requireEligible);
-        return commanders;
-    }
-
-    private static void requireEligible(Card card) {
-        if (!CommanderEligibility.isEligible(card)) {
-            throw new IllegalArgumentException(
-                    "Card is not eligible as commander: " + card.getName());
-        }
-    }
-
-    private static Set<String> colorIdentity(List<Card> commanders) {
-        var identity = new HashSet<String>();
-        for (var commander : commanders) {
-            if (commander.getColorIdentity() != null) {
-                for (var color : commander.getColorIdentity().split(",")) {
-                    if (!color.isBlank()) {
-                        identity.add(color.trim());
-                    }
-                }
-            }
-        }
-        return identity;
     }
 
     private List<DeckCandidate> collectOptimalCandidates(

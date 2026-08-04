@@ -67,6 +67,7 @@ class DeckBuilderServiceTest {
                         collectionService,
                         edhrecCommanderService,
                         cardCategorizer,
+                        new CommanderResolver(cardCatalogService),
                         deckService,
                         deckCardService,
                         deckBuildRepository,
