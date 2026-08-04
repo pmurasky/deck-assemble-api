@@ -1,0 +1,8 @@
+[Commander]
+1 Atraxa, Praetors' Voice|2X2|170
+[Main Deck]
+2 Sol Ring|CMM|396
+[Sideboard]
+1 Negate|MOM|68
+[Maybeboard]
+1 Arcane Signet|CMM|380
