@@ -2,6 +2,7 @@ package com.deckassemble.decks.api;
 
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
+import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCardUpdateRequest;
 import com.deckassemble.decks.application.DeckComboResponse;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -29,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeckController {
 
     private final DeckService deckService;
+    private final DeckCardService deckCardService;
 
-    public DeckController(DeckService deckService) {
+    public DeckController(DeckService deckService, DeckCardService deckCardService) {
         this.deckService = deckService;
+        this.deckCardService = deckCardService;
     }
 
     @GetMapping
@@ -95,13 +98,13 @@ public class DeckController {
 
     @GetMapping("/{deckId}/cards")
     public List<DeckCardResponse> listCards(@PathVariable long deckId) {
-        return deckService.listCards(deckId);
+        return deckCardService.listCards(deckId);
     }
 
     @PostMapping("/{deckId}/cards")
     public ResponseEntity<DeckCardResponse> addCard(
             @PathVariable long deckId, @Valid @RequestBody DeckCardAddRequest request) {
-        DeckCardResponse added = deckService.addCard(deckId, request);
+        DeckCardResponse added = deckCardService.addCard(deckId, request);
         return ResponseEntity.created(
                         URI.create("/api/v1/decks/" + deckId + "/cards/" + added.id()))
                 .body(added);
@@ -112,7 +115,7 @@ public class DeckController {
             @PathVariable long deckId,
             @PathVariable long deckCardId,
             @Valid @RequestBody DeckCardUpdateRequest request) {
-        return deckService.updateCard(deckId, deckCardId, request);
+        return deckCardService.updateCard(deckId, deckCardId, request);
     }
 
     @PostMapping("/{deckId}/cards/{deckCardId}/acquire")
@@ -123,7 +126,7 @@ public class DeckController {
     @DeleteMapping("/{deckId}/cards/{deckCardId}")
     public ResponseEntity<Void> removeCard(
             @PathVariable long deckId, @PathVariable long deckCardId) {
-        deckService.removeCard(deckId, deckCardId);
+        deckCardService.removeCard(deckId, deckCardId);
         return ResponseEntity.noContent().build();
     }
 }

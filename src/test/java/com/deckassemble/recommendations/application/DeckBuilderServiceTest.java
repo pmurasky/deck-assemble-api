@@ -51,6 +51,7 @@ class DeckBuilderServiceTest {
     @Mock private EdhrecCommanderService edhrecCommanderService;
     @Mock private CardCategorizer cardCategorizer;
     @Mock private DeckService deckService;
+    @Mock private com.deckassemble.decks.application.DeckCardService deckCardService;
     @Mock private DeckBuildRepository deckBuildRepository;
     @Mock private com.deckassemble.shared.security.CurrentUser currentUser;
     @Mock private ProfileService profileService;
@@ -67,6 +68,7 @@ class DeckBuilderServiceTest {
                         edhrecCommanderService,
                         cardCategorizer,
                         deckService,
+                        deckCardService,
                         deckBuildRepository,
                         JsonMapper.builder().build(),
                         currentUser,
@@ -90,7 +92,8 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         var result =
@@ -105,7 +108,7 @@ class DeckBuilderServiceTest {
         verify(deckService).create(createCaptor.capture());
         assertThat(createCaptor.getValue().commanderCardId()).isEqualTo(COMMANDER_ID);
         assertThat(createCaptor.getValue().useOwnedCardsOnly()).isTrue();
-        verify(deckService, times(100)).addCard(anyLong(), any(DeckCardAddRequest.class));
+        verify(deckCardService, times(100)).addCard(anyLong(), any(DeckCardAddRequest.class));
         verify(deckBuildRepository).save(any(DeckBuild.class));
     }
 
@@ -159,7 +162,8 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         var result =
@@ -190,7 +194,7 @@ class DeckBuilderServiceTest {
                 .thenReturn(Map.of(COMMANDER_ID, 90L, 20L, 77L, island.getId(), 99L));
         when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any()))
+        when(deckCardService.addCard(anyLong(), any()))
                 .thenAnswer(invocation -> cardResponse("WISHLIST"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
@@ -204,7 +208,7 @@ class DeckBuilderServiceTest {
         verify(deckService).create(createCaptor.capture());
         assertThat(createCaptor.getValue().useOwnedCardsOnly()).isFalse();
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
-        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        verify(deckCardService, times(100)).addCard(anyLong(), addCaptor.capture());
         assertThat(addCaptor.getAllValues())
                 .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(77L));
     }
@@ -250,7 +254,7 @@ class DeckBuilderServiceTest {
                                                 null,
                                                 null)));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any()))
+        when(deckCardService.addCard(anyLong(), any()))
                 .thenAnswer(invocation -> cardResponse("WISHLIST"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
@@ -265,7 +269,7 @@ class DeckBuilderServiceTest {
                                 new java.math.BigDecimal("5.00")));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
-        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        verify(deckCardService, times(100)).addCard(anyLong(), addCaptor.capture());
         assertThat(addCaptor.getAllValues())
                 .noneSatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(77L))
                 .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(78L));
@@ -289,13 +293,14 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 4, null, null, null));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
-        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        verify(deckCardService, times(100)).addCard(anyLong(), addCaptor.capture());
         assertThat(addCaptor.getAllValues())
                 .noneSatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L));
     }
@@ -317,13 +322,14 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 7, null, null, null));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
-        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        verify(deckCardService, times(100)).addCard(anyLong(), addCaptor.capture());
         assertThat(addCaptor.getAllValues())
                 .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L));
     }
@@ -353,13 +359,14 @@ class DeckBuilderServiceTest {
         when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
                 .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
         when(deckService.create(any())).thenReturn(deckResponse());
-        when(deckService.addCard(anyLong(), any())).thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 5, null, null, null));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
-        verify(deckService, times(100)).addCard(anyLong(), addCaptor.capture());
+        verify(deckCardService, times(100)).addCard(anyLong(), addCaptor.capture());
         assertThat(addCaptor.getAllValues())
                 .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(11L))
                 .anySatisfy(request -> assertThat(request.cardPrintingId()).isEqualTo(12L))

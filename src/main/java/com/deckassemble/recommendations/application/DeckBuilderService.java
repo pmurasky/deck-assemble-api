@@ -7,6 +7,7 @@ import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.cards.domain.CommanderEligibility;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.application.DeckCardAddRequest;
+import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
@@ -68,6 +69,7 @@ public class DeckBuilderService {
     private final EdhrecCommanderService edhrecCommanderService;
     private final CardCategorizer categorizer;
     private final DeckService deckService;
+    private final DeckCardService deckCardService;
     private final DeckBuildRepository deckBuildRepository;
     private final ObjectMapper objectMapper;
     private final CurrentUser currentUser;
@@ -83,6 +85,7 @@ public class DeckBuilderService {
             EdhrecCommanderService edhrecCommanderService,
             CardCategorizer categorizer,
             DeckService deckService,
+            DeckCardService deckCardService,
             DeckBuildRepository deckBuildRepository,
             ObjectMapper objectMapper,
             CurrentUser currentUser,
@@ -93,6 +96,7 @@ public class DeckBuilderService {
         this.edhrecCommanderService = edhrecCommanderService;
         this.categorizer = categorizer;
         this.deckService = deckService;
+        this.deckCardService = deckCardService;
         this.deckBuildRepository = deckBuildRepository;
         this.objectMapper = objectMapper;
         this.currentUser = currentUser;
@@ -389,7 +393,7 @@ public class DeckBuilderService {
         addCommanders(deckId, commanders, counts, gaps);
         for (var candidate : cards) {
             var status =
-                    deckService
+                    deckCardService
                             .addCard(
                                     deckId,
                                     new DeckCardAddRequest(
@@ -412,7 +416,7 @@ public class DeckBuilderService {
                 continue;
             }
             var status =
-                    deckService
+                    deckCardService
                             .addCard(
                                     deckId,
                                     new DeckCardAddRequest(printingId, 1, Section.COMMANDER))
