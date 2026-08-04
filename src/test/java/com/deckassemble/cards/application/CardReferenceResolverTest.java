@@ -22,10 +22,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class CardReferenceResolverTest {
 
-    private static final UUID CARD_ID = UUID.fromString("d9e6aaf9-9f9b-4fe3-8c80-643f82096db4");
-    private static final UUID PRINTING_ID = UUID.fromString("03fcf7d4-8a1b-4e2f-89f1-12c840e27721");
-    private static final UUID SECOND_PRINTING_ID =
+    private static final long CARD_ID = 1L;
+    private static final long PRINTING_ID = 2L;
+    private static final long SECOND_PRINTING_ID = 3L;
+    private static final UUID SCRYFALL_ID = UUID.fromString("03fcf7d4-8a1b-4e2f-89f1-12c840e27721");
+    private static final UUID SECOND_SCRYFALL_ID =
             UUID.fromString("3efb3cb0-6bd8-4da1-8d76-c992f62c6281");
+    private static final UUID UNKNOWN_SCRYFALL_ID =
+            UUID.fromString("9e16456a-71ee-4db5-9796-66f3e799a94c");
 
     @Mock private CardRepository cardRepository;
     @Mock private CardPrintingRepository printingRepository;
@@ -34,10 +38,10 @@ class CardReferenceResolverTest {
     @Test
     void shouldResolveExactScryfallId() {
         var printing = printing("Lightning Bolt", "lea", "161");
-        when(printingRepository.findByScryfallCardId(PRINTING_ID.toString()))
+        when(printingRepository.findByScryfallCardId(SCRYFALL_ID.toString()))
                 .thenReturn(Optional.of(printing));
 
-        var result = resolver.resolve(new CardReference(PRINTING_ID, "wrong", "bad", "0"));
+        var result = resolver.resolve(new CardReference(SCRYFALL_ID, "wrong", "bad", "0"));
 
         assertThat(result).isEqualTo(new CardReferenceResolution.Matched(CARD_ID, PRINTING_ID));
     }
@@ -56,9 +60,27 @@ class CardReferenceResolverTest {
     }
 
     @Test
+    void shouldFallBackToExactPrintingReferenceWhenScryfallIdIsUnknown() {
+        var printing = printing("Lightning Bolt", "lea", "161");
+        when(printingRepository.findByScryfallCardId(UNKNOWN_SCRYFALL_ID.toString()))
+                .thenReturn(Optional.empty());
+        when(printingRepository
+                        .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
+                                "lightning bolt", "LEA", "161"))
+                .thenReturn(List.of(printing));
+
+        var result =
+                resolver.resolve(
+                        new CardReference(UNKNOWN_SCRYFALL_ID, "lightning bolt", "LEA", "161"));
+
+        assertThat(result).isEqualTo(new CardReferenceResolution.Matched(CARD_ID, PRINTING_ID));
+    }
+
+    @Test
     void shouldReturnAmbiguousForNameOnlyWithMultiplePrintings() {
-        var first = printing(PRINTING_ID, "Lightning Bolt", "lea", "161");
-        var second = printing(SECOND_PRINTING_ID, "Lightning Bolt", "2ed", "157");
+        var first = printing(PRINTING_ID, SCRYFALL_ID, "Lightning Bolt", "lea", "161");
+        var second =
+                printing(SECOND_PRINTING_ID, SECOND_SCRYFALL_ID, "Lightning Bolt", "2ed", "157");
         when(cardRepository.findByNameIgnoreCase("lightning bolt"))
                 .thenReturn(List.of(first.getCard()));
         when(printingRepository.findByCardIdOrderByReleasedAtDesc(1L))
@@ -94,15 +116,16 @@ class CardReferenceResolverTest {
     }
 
     private static CardPrinting printing(String name, String setCode, String collectorNumber) {
-        return printing(PRINTING_ID, name, setCode, collectorNumber);
+        return printing(PRINTING_ID, SCRYFALL_ID, name, setCode, collectorNumber);
     }
 
     private static CardPrinting printing(
-            UUID printingId, String name, String setCode, String collectorNumber) {
-        var card = new Card(CARD_ID.toString(), name);
-        ReflectionTestUtils.setField(card, "id", 1L);
+            long printingId, UUID scryfallId, String name, String setCode, String collectorNumber) {
+        var card = new Card("d9e6aaf9-9f9b-4fe3-8c80-643f82096db4", name);
+        ReflectionTestUtils.setField(card, "id", CARD_ID);
         var set = new MagicSet("set-id", setCode, "Test Set");
-        var printing = new CardPrinting(card, set, printingId.toString());
+        var printing = new CardPrinting(card, set, scryfallId.toString());
+        ReflectionTestUtils.setField(printing, "id", printingId);
         printing.setCollectorNumber(collectorNumber);
         return printing;
     }

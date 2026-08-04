@@ -5,10 +5,9 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 
-/** Resolves supported external card references to Scryfall identifiers. */
+/** Resolves supported external card references to persistence identifiers. */
 @Service
 public class CardReferenceResolver {
 
@@ -66,17 +65,12 @@ public class CardReferenceResolver {
             List<CardPrinting> matches, boolean exactReference) {
         if (matches.size() > 1) {
             return new CardReferenceResolution.Ambiguous(
-                    matches.stream()
-                            .map(CardPrinting::getScryfallCardId)
-                            .map(UUID::fromString)
-                            .toList());
+                    matches.stream().map(CardPrinting::getId).toList());
         }
         if (matches.isEmpty() || !exactReference) {
             return new CardReferenceResolution.Unmatched();
         }
         var printing = matches.getFirst();
-        return new CardReferenceResolution.Matched(
-                UUID.fromString(printing.getCard().getScryfallOracleId()),
-                UUID.fromString(printing.getScryfallCardId()));
+        return new CardReferenceResolution.Matched(printing.getCard().getId(), printing.getId());
     }
 }
