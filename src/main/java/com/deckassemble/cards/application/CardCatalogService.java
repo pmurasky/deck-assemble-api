@@ -5,11 +5,6 @@ import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.CommanderPairingRules;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.From;
-import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +51,9 @@ public class CardCatalogService {
             @Nullable Long partnerForCardId,
             Pageable pageable) {
         Specification<Card> spec =
-                specification(query, setCode, colorIdentity, type, commanderEligible);
+                cardSpec(
+                        new CardSearchFilter(
+                                query, setCode, colorIdentity, type, commanderEligible));
         if (partnerForCardId == null) {
             return cardRepository
                     .findAll(spec, pageable)
@@ -112,101 +109,9 @@ public class CardCatalogService {
                 .orElse(null);
     }
 
-    private Specification<Card> specification(
-            String query,
-            @Nullable String setCode,
-            @Nullable String colorIdentity,
-            @Nullable String type,
-            @Nullable Boolean commanderEligible) {
+    private Specification<Card> cardSpec(CardSearchFilter filter) {
         return (root, criteria, builder) ->
-                cardPredicate(
-                        root,
-                        query,
-                        setCode,
-                        colorIdentity,
-                        type,
-                        commanderEligible,
-                        criteria,
-                        builder);
-    }
-
-    // Suppressed: filter set mirrors the search signature; each is an independent optional filter.
-    @SuppressWarnings("checkstyle:ParameterNumber")
-    private Predicate cardPredicate(
-            From<?, Card> card,
-            String query,
-            @Nullable String setCode,
-            @Nullable String colorIdentity,
-            @Nullable String type,
-            @Nullable Boolean commanderEligible,
-            CriteriaQuery<?> criteria,
-            CriteriaBuilder builder) {
-        List<Predicate> predicates = new ArrayList<>();
-        predicates.add(builder.isTrue(card.get("active")));
-        predicates.add(nameOrFlavorNamePredicate(card, query, criteria, builder));
-        if (colorIdentity != null) {
-            predicates.add(builder.like(card.get("colorIdentity"), "%" + colorIdentity + "%"));
-        }
-        if (setCode != null) {
-            predicates.add(setCodePredicate(card, setCode, criteria, builder));
-        }
-        if (type != null) {
-            predicates.add(
-                    builder.like(
-                            builder.lower(card.get("typeLine")), "%" + type.toLowerCase() + "%"));
-        }
-        if (Boolean.TRUE.equals(commanderEligible)) {
-            predicates.add(commanderEligiblePredicate(card, builder));
-        }
-        return builder.and(predicates.toArray(new Predicate[0]));
-    }
-
-    private Predicate nameOrFlavorNamePredicate(
-            From<?, Card> card, String query, CriteriaQuery<?> criteria, CriteriaBuilder builder) {
-        var queryLike = "%" + query.toLowerCase() + "%";
-        return builder.or(
-                builder.like(builder.lower(card.get("name")), queryLike),
-                flavorNameExists(card, criteria, builder, queryLike));
-    }
-
-    private Predicate flavorNameExists(
-            From<?, Card> card,
-            CriteriaQuery<?> criteria,
-            CriteriaBuilder builder,
-            String queryLike) {
-        var subquery = criteria.subquery(Long.class);
-        var printings = subquery.from(CardPrinting.class);
-        return builder.exists(
-                subquery.select(printings.get("id"))
-                        .where(
-                                builder.equal(printings.get("card").get("id"), card.get("id")),
-                                builder.like(
-                                        builder.lower(printings.get("flavorName")), queryLike)));
-    }
-
-    private Predicate commanderEligiblePredicate(From<?, Card> card, CriteriaBuilder builder) {
-        var typeLine = builder.lower(card.get("typeLine"));
-        var legendaryCreature =
-                builder.and(
-                        builder.like(typeLine, "%legendary%"),
-                        builder.like(typeLine, "%creature%"));
-        var canBeCommander =
-                builder.like(builder.lower(card.get("oracleText")), "%can be your commander%");
-        return builder.or(legendaryCreature, canBeCommander);
-    }
-
-    private Predicate setCodePredicate(
-            From<?, Card> card,
-            String setCode,
-            CriteriaQuery<?> criteria,
-            CriteriaBuilder builder) {
-        var subquery = criteria.subquery(Long.class);
-        var printings = subquery.from(CardPrinting.class);
-        return builder.exists(
-                subquery.select(printings.get("id"))
-                        .where(
-                                builder.equal(printings.get("card").get("id"), card.get("id")),
-                                builder.equal(printings.get("magicSet").get("setCode"), setCode)));
+                CardSearchPredicates.cardPredicate(root, filter, criteria, builder);
     }
 
     public Map<Long, String> getOracleIdsByPrintingIds(Collection<Long> cardPrintingIds) {
@@ -363,32 +268,34 @@ public class CardCatalogService {
             @Nullable Long partnerForCardId,
             Pageable pageable) {
         Specification<CardPrinting> spec =
-                (root, criteria, builder) ->
-                        builder.and(
-                                builder.isTrue(root.get("active")),
-                                cardPredicate(
-                                        root.join("card"),
-                                        query,
-                                        null,
-                                        colorIdentity,
-                                        type,
-                                        commanderEligible,
-                                        criteria,
-                                        builder));
+                printingCardSpec(query, colorIdentity, type, commanderEligible);
         if (setCode != null) {
             spec = spec.and(ownSetCodeSpec(setCode));
         }
         if (partnerForCardId != null) {
+            var partnerFilter =
+                    new CardSearchFilter(query, setCode, colorIdentity, type, commanderEligible);
             spec =
                     spec.and(
                             partnerCandidatesSpec(
-                                    specification(
-                                            query, setCode, colorIdentity, type, commanderEligible),
-                                    getCard(partnerForCardId)));
+                                    cardSpec(partnerFilter), getCard(partnerForCardId)));
         }
         return cardPrintingRepository
                 .findAll(spec, pageable)
                 .map(printing -> CardSummaryResponse.from(printing.getCard(), printing));
+    }
+
+    private Specification<CardPrinting> printingCardSpec(
+            String query,
+            @Nullable String colorIdentity,
+            @Nullable String type,
+            @Nullable Boolean commanderEligible) {
+        var filter = new CardSearchFilter(query, null, colorIdentity, type, commanderEligible);
+        return (root, criteria, builder) ->
+                builder.and(
+                        builder.isTrue(root.get("active")),
+                        CardSearchPredicates.cardPredicate(
+                                root.join("card"), filter, criteria, builder));
     }
 
     private Specification<CardPrinting> ownSetCodeSpec(String setCode) {
