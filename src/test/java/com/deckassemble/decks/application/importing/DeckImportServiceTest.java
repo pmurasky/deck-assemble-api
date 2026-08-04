@@ -5,12 +5,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.deckassemble.decks.domain.DeckCard;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class DeckImportServiceTest {
+
+    @Test
+    void shouldParseScryfallIdAndExactTupleFromCsv() {
+        String source =
+                "quantity,name,set,collector_number,section,scryfall_id\n"
+                        + "1,Wrong Name,BAD,0,main,03fcf7d4-8a1b-4e2f-89f1-12c840e27721";
+
+        var reference =
+                new GenericCsvDeckImportParser().parse(source).rows().getFirst().reference();
+
+        assertThat(reference.scryfallId())
+                .isEqualTo(UUID.fromString("03fcf7d4-8a1b-4e2f-89f1-12c840e27721"));
+        assertThat(reference.name()).isEqualTo("Wrong Name");
+        assertThat(reference.setCode()).isEqualTo("BAD");
+        assertThat(reference.collectorNumber()).isEqualTo("0");
+    }
 
     @ParameterizedTest
     @MethodSource("formats")

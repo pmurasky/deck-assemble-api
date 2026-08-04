@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -47,7 +49,7 @@ public class GenericCsvDeckImportParser implements DeckImportParser {
                     lineNumber,
                     quantity,
                     section(value(values, headers, layout.sectionHeader())),
-                    new CardReference(null, name, set, collector),
+                    new CardReference(scryfallId(values, headers), name, set, collector),
                     null);
         } catch (IllegalArgumentException exception) {
             var reference = new CardReference(null, String.join(",", values), null, null);
@@ -63,6 +65,16 @@ public class GenericCsvDeckImportParser implements DeckImportParser {
                         Collectors.toUnmodifiableMap(
                                 index -> values.get(index).strip().toLowerCase(Locale.ROOT),
                                 index -> index));
+    }
+
+    private static @Nullable UUID scryfallId(List<String> values, Map<String, Integer> headers) {
+        for (String name : List.of("scryfall id", "scryfall_id")) {
+            Integer index = headers.get(name);
+            if (index != null && index < values.size() && !values.get(index).isBlank()) {
+                return UUID.fromString(values.get(index).strip());
+            }
+        }
+        return null;
     }
 
     private static String value(
