@@ -12,6 +12,7 @@ import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.application.DeckUpdateRequest;
 import com.deckassemble.decks.application.DeckWishlistResponse;
+import com.deckassemble.decks.application.DeckWishlistService;
 import com.deckassemble.decks.application.OwnershipSyncResponse;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -33,14 +34,17 @@ public class DeckController {
     private final DeckService deckService;
     private final DeckCardService deckCardService;
     private final DeckComboService deckComboService;
+    private final DeckWishlistService deckWishlistService;
 
     public DeckController(
             DeckService deckService,
             DeckCardService deckCardService,
-            DeckComboService deckComboService) {
+            DeckComboService deckComboService,
+            DeckWishlistService deckWishlistService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
+        this.deckWishlistService = deckWishlistService;
     }
 
     @GetMapping
@@ -99,7 +103,7 @@ public class DeckController {
 
     @GetMapping("/{deckId}/wishlist")
     public DeckWishlistResponse wishlist(@PathVariable long deckId) {
-        return deckService.getWishlist(deckId);
+        return deckWishlistService.getWishlist(deckId);
     }
 
     @GetMapping("/{deckId}/cards")

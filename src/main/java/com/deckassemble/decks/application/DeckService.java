@@ -2,18 +2,13 @@ package com.deckassemble.decks.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardNotFoundException;
-import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.application.CardSummaryResponse;
-import com.deckassemble.cards.domain.Card;
-import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -33,7 +28,6 @@ public class DeckService {
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
     private final OwnershipChecker ownershipChecker;
     private final CollectionService collectionService;
-    private final CardPriceService cardPriceService;
 
     // Suppressed: collaborators are what this orchestration service needs; Spring injects them.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
@@ -44,8 +38,7 @@ public class DeckService {
             CardCatalogService cardCatalogService,
             CommanderLegalityEvaluator commanderLegalityEvaluator,
             OwnershipChecker ownershipChecker,
-            CollectionService collectionService,
-            CardPriceService cardPriceService) {
+            CollectionService collectionService) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.deckAccessGuard = deckAccessGuard;
@@ -53,7 +46,6 @@ public class DeckService {
         this.commanderLegalityEvaluator = commanderLegalityEvaluator;
         this.ownershipChecker = ownershipChecker;
         this.collectionService = collectionService;
-        this.cardPriceService = cardPriceService;
     }
 
     public List<DeckResponse> list() {
@@ -81,52 +73,6 @@ public class DeckService {
     public DeckLegalityResponse legality(long deckId) {
         Deck deck = owned(deckId);
         return commanderLegalityEvaluator.evaluate(deck, deckCardRepository.findByDeckId(deckId));
-    }
-
-    @Transactional(readOnly = true)
-    public DeckWishlistResponse getWishlist(long deckId) {
-        owned(deckId);
-        var wishlistCards =
-                deckCardRepository.findByDeckId(deckId).stream()
-                        .filter(
-                                card ->
-                                        card.getOwnershipStatus()
-                                                == DeckCard.OwnershipStatus.WISHLIST)
-                        .toList();
-        if (wishlistCards.isEmpty()) {
-            return new DeckWishlistResponse(List.of(), null);
-        }
-        var printingIds = wishlistCards.stream().map(DeckCard::getCardPrintingId).toList();
-        var cards = cardCatalogService.getCardsByPrintingIds(printingIds);
-        var prices = cardPriceService.latestPrices(printingIds);
-        var items =
-                wishlistCards.stream().map(card -> toWishlistItem(card, cards, prices)).toList();
-        return new DeckWishlistResponse(items, wishlistTotal(items));
-    }
-
-    private static BigDecimal wishlistTotal(List<DeckWishlistItem> items) {
-        return items.stream()
-                .map(DeckWishlistItem::lineTotalUsd)
-                .filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private static DeckWishlistItem toWishlistItem(
-            DeckCard deckCard, Map<Long, Card> cards, Map<Long, CardPrice> prices) {
-        var price = prices.get(deckCard.getCardPrintingId());
-        var unitPrice = price != null ? price.usd() : null;
-        var lineTotal =
-                unitPrice != null
-                        ? unitPrice.multiply(BigDecimal.valueOf(deckCard.getQuantity()))
-                        : null;
-        var card = cards.get(deckCard.getCardPrintingId());
-        return new DeckWishlistItem(
-                deckCard.getId(),
-                deckCard.getCardPrintingId(),
-                card != null ? card.getName() : "Unknown card",
-                deckCard.getQuantity(),
-                unitPrice,
-                lineTotal);
     }
 
     public DeckResponse update(long deckId, DeckUpdateRequest request) {
