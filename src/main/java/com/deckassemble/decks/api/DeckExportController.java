@@ -1,7 +1,7 @@
 package com.deckassemble.decks.api;
 
 import com.deckassemble.cards.application.CardCatalogService;
-import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.application.CardExportView;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckResponse;
@@ -53,12 +53,12 @@ class DeckExportController {
             @PathVariable long deckId, @RequestParam DeckExportFormat format) {
         DeckResponse deck = deckService.getById(deckId);
         List<DeckCardResponse> cards = deckCardService.listCards(deckId);
-        Map<Long, CardPrinting> printings =
-                cardCatalogService.getPrintingsByIds(
+        Map<Long, CardExportView> views =
+                cardCatalogService.getExportViewsByPrintingIds(
                         cards.stream().map(DeckCardResponse::cardPrintingId).toList());
         String content =
                 Objects.requireNonNull(exporters.get(format), "Missing deck exporter")
-                        .export(cards.stream().map(card -> exportCard(card, printings)).toList());
+                        .export(cards.stream().map(card -> exportCard(card, views)).toList());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(format.mediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, attachment(deck.name(), format))
@@ -66,19 +66,18 @@ class DeckExportController {
     }
 
     private static DeckExporter.ExportCard exportCard(
-            DeckCardResponse card, Map<Long, CardPrinting> printings) {
-        CardPrinting printing = printings.get(card.cardPrintingId());
-        if (printing == null) {
+            DeckCardResponse card, Map<Long, CardExportView> views) {
+        CardExportView view = views.get(card.cardPrintingId());
+        if (view == null) {
             throw new IllegalStateException("Deck references a missing card printing");
         }
+        var printing = view.printing();
         return new DeckExporter.ExportCard(
                 DeckCard.Section.valueOf(card.deckSection()),
                 card.quantity(),
-                printing.getCard().getName(),
-                printing.getFlavorName(),
-                printing.getMagicSet().getSetCode(),
-                printing.getCollectorNumber(),
-                printing.getScryfallCardId());
+                view.displayName(),
+                new DeckExporter.PrintingReference(
+                        printing.setCode(), printing.collectorNumber(), printing.scryfallId()));
     }
 
     private static String attachment(String deckName, DeckExportFormat format) {

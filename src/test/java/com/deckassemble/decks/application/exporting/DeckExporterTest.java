@@ -25,6 +25,12 @@ class DeckExporterTest {
         assertThat(exporter.export(cards())).isEqualTo(expected);
     }
 
+    @ParameterizedTest
+    @MethodSource("escapedCsvValues")
+    void shouldEscapeCsvQuotesAndNewlines(String value, String expected) {
+        assertThat(DeckExporter.csv(value)).isEqualTo(expected);
+    }
+
     private static Stream<Arguments> formats() {
         return Stream.of(
                 Arguments.of(new DeckAssembleTextDeckExporter(), "deckassemble.txt"),
@@ -35,63 +41,53 @@ class DeckExporterTest {
                 Arguments.of(new MtgoTextDeckExporter(), "mtgo.txt"));
     }
 
+    private static Stream<Arguments> escapedCsvValues() {
+        return Stream.of(Arguments.of("A\"B", "\"A\"\"B\""), Arguments.of("A\nB", "\"A\nB\""));
+    }
+
     private static List<DeckExporter.ExportCard> cards() {
         return List.of(
                 new DeckExporter.ExportCard(
                         DeckCard.Section.MAIN_DECK,
                         1,
                         "Sol Ring",
-                        null,
-                        "CMM",
-                        "396",
-                        "00000000-0000-0000-0000-000000000003"),
+                        new DeckExporter.PrintingReference(
+                                "CMM", "396", "00000000-0000-0000-0000-000000000003")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.MAYBE_BOARD,
                         1,
                         "The Wandering Emperor",
-                        null,
-                        "NEO",
-                        "42",
-                        "00000000-0000-0000-0000-000000000006"),
+                        new DeckExporter.PrintingReference(
+                                "NEO", "42", "00000000-0000-0000-0000-000000000006")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.COMMANDER,
                         1,
                         "Atraxa, Grand Unifier",
-                        null,
-                        "MOM",
-                        "196",
-                        "00000000-0000-0000-0000-000000000001"),
+                        new DeckExporter.PrintingReference(
+                                "MOM", "196", "00000000-0000-0000-0000-000000000001")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.MAIN_DECK,
                         1,
-                        "Zilortha, Strength Incarnate",
                         "Godzilla, King of the Monsters",
-                        "IKO",
-                        "275",
-                        "00000000-0000-0000-0000-000000000004"),
+                        new DeckExporter.PrintingReference(
+                                "IKO", "275", "00000000-0000-0000-0000-000000000004")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.SIDEBOARD,
                         1,
                         "Negate",
-                        null,
-                        "MOM",
-                        "68",
-                        "00000000-0000-0000-0000-000000000005"),
+                        new DeckExporter.PrintingReference(
+                                "MOM", "68", "00000000-0000-0000-0000-000000000005")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.MAIN_DECK,
                         2,
                         "Arcane Signet",
-                        null,
-                        "CMM",
-                        "380",
-                        "00000000-0000-0000-0000-000000000002"),
+                        new DeckExporter.PrintingReference(
+                                "CMM", "380", "00000000-0000-0000-0000-000000000002")),
                 new DeckExporter.ExportCard(
                         DeckCard.Section.COMPANION,
                         1,
                         "Jegantha, the Wellspring",
-                        null,
-                        "MUL",
-                        "109",
-                        "00000000-0000-0000-0000-000000000007"));
+                        new DeckExporter.PrintingReference(
+                                "MUL", "109", "00000000-0000-0000-0000-000000000007")));
     }
 }

@@ -43,9 +43,9 @@ public interface DeckExporter {
                         Comparator.comparingInt((ExportCard card) -> card.section().ordinal())
                                 .thenComparing(
                                         ExportCard::displayName, String.CASE_INSENSITIVE_ORDER)
-                                .thenComparing(ExportCard::setCode)
-                                .thenComparing(ExportCard::collectorNumber)
-                                .thenComparing(ExportCard::scryfallId))
+                                .thenComparing(card -> card.printing().setCode())
+                                .thenComparing(card -> card.printing().collectorNumber())
+                                .thenComparing(card -> card.printing().scryfallId()))
                 .toList();
     }
 
@@ -59,14 +59,8 @@ public interface DeckExporter {
     record ExportCard(
             DeckCard.Section section,
             int quantity,
-            String name,
-            @Nullable String flavorName,
-            String setCode,
-            String collectorNumber,
-            String scryfallId) {
+            String displayName,
+            PrintingReference printing) {}
 
-        public String displayName() {
-            return flavorName == null || flavorName.isBlank() ? name : flavorName;
-        }
-    }
+    record PrintingReference(String setCode, String collectorNumber, String scryfallId) {}
 }

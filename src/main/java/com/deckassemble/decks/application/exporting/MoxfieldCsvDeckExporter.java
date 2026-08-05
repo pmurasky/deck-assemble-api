@@ -22,10 +22,10 @@ public class MoxfieldCsvDeckExporter implements DeckExporter {
                 .formatted(
                         card.quantity(),
                         DeckExporter.csv(card.displayName()),
-                        DeckExporter.csv(card.setCode()),
-                        DeckExporter.csv(card.collectorNumber()),
+                        DeckExporter.csv(card.printing().setCode()),
+                        DeckExporter.csv(card.printing().collectorNumber()),
                         board(card.section()),
-                        card.scryfallId());
+                        card.printing().scryfallId());
     }
 
     private static String board(DeckCard.Section section) {

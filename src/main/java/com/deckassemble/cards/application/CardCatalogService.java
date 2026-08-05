@@ -126,12 +126,20 @@ public class CardCatalogService {
     }
 
     @Transactional(readOnly = true)
-    public Map<Long, CardPrinting> getPrintingsByIds(Collection<Long> cardPrintingIds) {
-        if (cardPrintingIds.isEmpty()) {
-            return Map.of();
-        }
+    public Map<Long, CardExportView> getExportViewsByPrintingIds(Collection<Long> cardPrintingIds) {
         return cardPrintingRepository.findAllById(cardPrintingIds).stream()
-                .collect(Collectors.toUnmodifiableMap(CardPrinting::getId, printing -> printing));
+                .collect(
+                        Collectors.toUnmodifiableMap(
+                                CardPrinting::getId,
+                                printing ->
+                                        new CardExportView(
+                                                printing.getId(),
+                                                printing.getCard().getName(),
+                                                printing.getFlavorName(),
+                                                new CardExportView.PrintingReference(
+                                                        printing.getMagicSet().getSetCode(),
+                                                        printing.getCollectorNumber(),
+                                                        printing.getScryfallCardId()))));
     }
 
     @Transactional(readOnly = true)

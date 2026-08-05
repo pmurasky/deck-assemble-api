@@ -312,6 +312,29 @@ class CardCatalogServiceTest {
     }
 
     @Test
+    void shouldMapPrintingsToImmutableExportViews() {
+        Card card = card("Zilortha, Strength Incarnate");
+        var printing = new CardPrinting(card, SET, "scryfall-printing-id");
+        var canonicalPrinting = new CardPrinting(card, SET, "canonical-printing-id");
+        printing.setCollectorNumber("275");
+        printing.setFlavorName("Godzilla, King of the Monsters");
+        canonicalPrinting.setCollectorNumber("276");
+        org.springframework.test.util.ReflectionTestUtils.setField(printing, "id", 9L);
+        org.springframework.test.util.ReflectionTestUtils.setField(canonicalPrinting, "id", 10L);
+        when(cardPrintingRepository.findAllById(List.of(9L, 10L)))
+                .thenReturn(List.of(printing, canonicalPrinting));
+
+        var views = service().getExportViewsByPrintingIds(List.of(9L, 10L));
+
+        assertThat(views.get(9L).canonicalName()).isEqualTo("Zilortha, Strength Incarnate");
+        assertThat(views.get(9L).displayName()).isEqualTo("Godzilla, King of the Monsters");
+        assertThat(views.get(10L).displayName()).isEqualTo("Zilortha, Strength Incarnate");
+        assertThat(views.get(9L).printing())
+                .isEqualTo(
+                        new CardExportView.PrintingReference("tst", "275", "scryfall-printing-id"));
+    }
+
+    @Test
     void shouldMapCardsToLatestPrintingIds() {
         Card card = card("Forest");
         var printing = new CardPrinting(card, SET, "sc-2");

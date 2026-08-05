@@ -22,10 +22,10 @@ public class ArchidektCsvDeckExporter implements DeckExporter {
                 .formatted(
                         card.quantity(),
                         DeckExporter.csv(card.displayName()),
-                        DeckExporter.csv(card.setCode()),
-                        DeckExporter.csv(card.collectorNumber()),
+                        DeckExporter.csv(card.printing().setCode()),
+                        DeckExporter.csv(card.printing().collectorNumber()),
                         category(card.section()),
-                        card.scryfallId());
+                        card.printing().scryfallId());
     }
 
     private static String category(DeckCard.Section section) {

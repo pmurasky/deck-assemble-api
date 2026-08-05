@@ -22,10 +22,10 @@ public class GenericCsvDeckExporter implements DeckExporter {
                 .formatted(
                         card.quantity(),
                         DeckExporter.csv(card.displayName()),
-                        DeckExporter.csv(card.setCode()),
-                        DeckExporter.csv(card.collectorNumber()),
+                        DeckExporter.csv(card.printing().setCode()),
+                        DeckExporter.csv(card.printing().collectorNumber()),
                         section(card.section()),
-                        card.scryfallId());
+                        card.printing().scryfallId());
     }
 
     private static String section(DeckCard.Section section) {

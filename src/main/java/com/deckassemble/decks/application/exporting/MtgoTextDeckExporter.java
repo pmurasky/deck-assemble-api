@@ -17,8 +17,8 @@ public class MtgoTextDeckExporter implements DeckExporter {
                 .formatted(
                         card.quantity(),
                         card.displayName(),
-                        card.setCode(),
-                        card.collectorNumber());
+                        card.printing().setCode(),
+                        card.printing().collectorNumber());
     }
 
     @Override
