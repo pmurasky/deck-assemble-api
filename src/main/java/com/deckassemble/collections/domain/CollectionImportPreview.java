@@ -74,6 +74,10 @@ public class CollectionImportPreview {
         this.status = Status.COMMITTED;
     }
 
+    public void storeCanonicalRows(String canonicalRows) {
+        this.canonicalRows = canonicalRows;
+    }
+
     public Long getId() {
         return id;
     }
