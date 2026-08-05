@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CardPrintingRepository
         extends JpaRepository<CardPrinting, Long>, JpaSpecificationExecutor<CardPrinting> {
@@ -23,7 +25,16 @@ public interface CardPrintingRepository
 
     Optional<CardPrinting> findByScryfallCardId(String scryfallCardId);
 
-    List<CardPrinting>
-            findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                    String name, String setCode, String collectorNumber);
+    @Query(
+            """
+            SELECT printing FROM CardPrinting printing
+            WHERE LOWER(printing.magicSet.setCode) = LOWER(:setCode)
+              AND LOWER(printing.collectorNumber) = LOWER(:collectorNumber)
+              AND (LOWER(printing.card.name) = LOWER(:name)
+                   OR LOWER(printing.flavorName) = LOWER(:name))
+            """)
+    List<CardPrinting> findExactPrintingReference(
+            @Param("name") String name,
+            @Param("setCode") String setCode,
+            @Param("collectorNumber") String collectorNumber);
 }

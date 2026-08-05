@@ -14,6 +14,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -49,9 +51,7 @@ class CardReferenceResolverTest {
     @Test
     void shouldResolveExactNameSetAndCollectorNumber() {
         var printing = printing("Lightning Bolt", "lea", "161");
-        when(printingRepository
-                        .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                                "lightning bolt", "LEA", "161"))
+        when(printingRepository.findExactPrintingReference("lightning bolt", "LEA", "161"))
                 .thenReturn(List.of(printing));
 
         var result = resolver.resolve(new CardReference(null, "lightning bolt", "LEA", "161"));
@@ -60,10 +60,23 @@ class CardReferenceResolverTest {
     }
 
     @Test
+    void shouldResolveExactFlavorNameSetAndCollectorNumber() {
+        var printing = printing("Zilortha, Strength Incarnate", "iko", "275");
+        printing.setFlavorName("Godzilla, King of the Monsters");
+        when(printingRepository.findExactPrintingReference(
+                        "Godzilla, King of the Monsters", "IKO", "275"))
+                .thenReturn(List.of(printing));
+
+        var result =
+                resolver.resolve(
+                        new CardReference(null, "Godzilla, King of the Monsters", "IKO", "275"));
+
+        assertThat(result).isEqualTo(new CardReferenceResolution.Matched(CARD_ID, PRINTING_ID));
+    }
+
+    @Test
     void shouldReturnUnmatchedForUnknownExactPrintingReference() {
-        when(printingRepository
-                        .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                                "lightning bolt", "LEA", "999"))
+        when(printingRepository.findExactPrintingReference("lightning bolt", "LEA", "999"))
                 .thenReturn(List.of());
 
         var result = resolver.resolve(new CardReference(null, "lightning bolt", "LEA", "999"));
@@ -76,9 +89,7 @@ class CardReferenceResolverTest {
         var printing = printing("Lightning Bolt", "lea", "161");
         when(printingRepository.findByScryfallCardId(UNKNOWN_SCRYFALL_ID.toString()))
                 .thenReturn(Optional.empty());
-        when(printingRepository
-                        .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                                "lightning bolt", "LEA", "161"))
+        when(printingRepository.findExactPrintingReference("lightning bolt", "LEA", "161"))
                 .thenReturn(List.of(printing));
 
         var result =
@@ -122,6 +133,19 @@ class CardReferenceResolverTest {
     @Test
     void shouldReturnUnmatchedForEmptyReference() {
         var result = resolver.resolve(new CardReference(null, null, null, null));
+
+        assertThat(result).isEqualTo(new CardReferenceResolution.Unmatched());
+        verifyNoInteractions(cardRepository, printingRepository);
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            value = {"LEA,NULL", "NULL,161"},
+            nullValues = "NULL")
+    void shouldReturnUnmatchedForPartialPrintingReference(String setCode, String collectorNumber) {
+        var result =
+                resolver.resolve(
+                        new CardReference(null, "Lightning Bolt", setCode, collectorNumber));
 
         assertThat(result).isEqualTo(new CardReferenceResolution.Unmatched());
         verifyNoInteractions(cardRepository, printingRepository);

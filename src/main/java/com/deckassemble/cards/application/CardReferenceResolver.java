@@ -38,11 +38,8 @@ public class CardReferenceResolver {
         }
         if (reference.setCode() != null && reference.collectorNumber() != null) {
             var matches =
-                    printingRepository
-                            .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                                    reference.name(),
-                                    reference.setCode(),
-                                    reference.collectorNumber());
+                    printingRepository.findExactPrintingReference(
+                            reference.name(), reference.setCode(), reference.collectorNumber());
             return resolution(matches, true);
         }
         if (reference.setCode() == null && reference.collectorNumber() == null) {

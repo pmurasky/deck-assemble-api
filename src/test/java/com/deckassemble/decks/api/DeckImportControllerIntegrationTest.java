@@ -73,6 +73,34 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldResolveFlavorNamedTextImportToExactPrinting() throws Exception {
+        String uniqueId = java.util.UUID.randomUUID().toString();
+        Card card = cardRepository.save(new Card("oracle-" + uniqueId, "Zilortha"));
+        MagicSet set =
+                magicSetRepository.save(new MagicSet("set-" + uniqueId, "FLV", "Flavor Set"));
+        CardPrinting printing = new CardPrinting(card, set, "printing-" + uniqueId);
+        printing.setCollectorNumber("275");
+        printing.setFlavorName("Godzilla, King of the Monsters");
+        long printingId = printingRepository.save(printing).getId();
+        var file =
+                new MockMultipartFile(
+                        "file",
+                        "deck.txt",
+                        "text/plain",
+                        "1 Godzilla, King of the Monsters|FLV|275"
+                                .getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(
+                        multipart("/decks/imports/preview")
+                                .file(file)
+                                .param("format", "DECKASSEMBLE_TEXT")
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|flavor-import"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totals.resolved").value(1))
+                .andExpect(jsonPath("$.resolvedRows[0].printingId").value(printingId));
+    }
+
+    @Test
     void shouldRejectOversizedImportFile() throws Exception {
         byte[] oversized = new byte[1024 * 1024 + 1];
 
@@ -130,8 +158,7 @@ class DeckImportControllerIntegrationTest extends AbstractIntegrationTest {
 
     private void createPrinting(String name, String setCode, String collectorNumber) {
         if (!printingRepository
-                .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                        name, setCode, collectorNumber)
+                .findExactPrintingReference(name, setCode, collectorNumber)
                 .isEmpty()) {
             return;
         }

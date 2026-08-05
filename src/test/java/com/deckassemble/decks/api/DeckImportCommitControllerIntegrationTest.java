@@ -218,8 +218,7 @@ class DeckImportCommitControllerIntegrationTest extends AbstractIntegrationTest 
 
     private void createPrinting(String name, String setCode, String collectorNumber) {
         if (!printingRepository
-                .findByCardNameIgnoreCaseAndMagicSetSetCodeIgnoreCaseAndCollectorNumberIgnoreCase(
-                        name, setCode, collectorNumber)
+                .findExactPrintingReference(name, setCode, collectorNumber)
                 .isEmpty()) {
             return;
         }
