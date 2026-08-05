@@ -27,7 +27,7 @@ public class CardCategorizer {
         return categorizeText(typeLine.toString(), oracleText.toString());
     }
 
-    private static Category categorizeText(String types, String text) {
+    public static Category categorizeText(String types, String text) {
         if (types.contains("land")) {
             return Category.LAND;
         }

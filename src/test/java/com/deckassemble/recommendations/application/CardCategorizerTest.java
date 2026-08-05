@@ -64,6 +64,13 @@ class CardCategorizerTest {
         assertThat(categorizer.categorize(card)).isEqualTo(Category.DRAW);
     }
 
+    @Test
+    void shouldCategorizeFromRawTextWithoutCardEntity() {
+        assertThat(CardCategorizer.categorizeText("instant", "draw two cards."))
+                .isEqualTo(Category.DRAW);
+        assertThat(CardCategorizer.categorizeText("land", "")).isEqualTo(Category.LAND);
+    }
+
     private static Card card(String typeLine, String oracleText) {
         var card = new Card("oracle-1", "Test Card");
         card.getFaces().add(face(card, 0, typeLine, oracleText));
