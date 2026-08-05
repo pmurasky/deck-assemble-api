@@ -26,6 +26,8 @@ public class DeckAssembleTextDeckImportParser implements DeckImportParser {
                     Map.entry("main deck", DeckCard.Section.MAIN_DECK),
                     Map.entry("mainboard", DeckCard.Section.MAIN_DECK),
                     Map.entry("sideboard", DeckCard.Section.SIDEBOARD),
+                    Map.entry("companion", DeckCard.Section.COMPANION),
+                    Map.entry("companions", DeckCard.Section.COMPANION),
                     Map.entry("maybeboard", DeckCard.Section.MAYBE_BOARD),
                     Map.entry("maybe board", DeckCard.Section.MAYBE_BOARD));
 

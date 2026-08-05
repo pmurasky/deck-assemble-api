@@ -93,6 +93,7 @@ public class GenericCsvDeckImportParser implements DeckImportParser {
         return switch (normalized) {
             case "commander", "commanders" -> DeckCard.Section.COMMANDER;
             case "sideboard" -> DeckCard.Section.SIDEBOARD;
+            case "companion", "companions" -> DeckCard.Section.COMPANION;
             case "maybeboard" -> DeckCard.Section.MAYBE_BOARD;
             default -> DeckCard.Section.MAIN_DECK;
         };
