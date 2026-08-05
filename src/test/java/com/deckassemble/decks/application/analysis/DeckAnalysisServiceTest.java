@@ -75,9 +75,27 @@ class DeckAnalysisServiceTest {
         when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of(10L, 11L, 12L)))
                 .thenReturn(
                         Map.of(
-                                10L, view(10L, "Lightning Bolt", "{R}", "1", "Instant", "Deals 3 damage.", false),
-                                11L, view(11L, "Forest", null, "0", "Basic Land — Forest", "{T}: Add {G}.", false),
-                                12L, view(12L, "Sol Ring", "{1}", "1", "Artifact", "{T}: Add {C}{C}.", true)));
+                                10L,
+                                        view(
+                                                10L,
+                                                "Lightning Bolt",
+                                                "1",
+                                                false,
+                                                face("{R}", "Instant", "Deals 3 damage.")),
+                                11L,
+                                        view(
+                                                11L,
+                                                "Forest",
+                                                "0",
+                                                false,
+                                                face(null, "Basic Land — Forest", "{T}: Add {G}.")),
+                                12L,
+                                        view(
+                                                12L,
+                                                "Sol Ring",
+                                                "1",
+                                                true,
+                                                face("{1}", "Artifact", "{T}: Add {C}{C}."))));
         when(cardPriceService.latestPrices(List.of(10L, 11L, 12L)))
                 .thenReturn(
                         Map.of(
@@ -97,23 +115,19 @@ class DeckAnalysisServiceTest {
         // Then composition, value, and summaries are all populated
         assertThat(analysis.manaCurve()).containsExactly(Map.entry("1", 3));
         assertThat(analysis.typeDistribution())
-                .containsExactlyInAnyOrderEntriesOf(
-                        Map.of("INSTANT", 2, "LAND", 4, "ARTIFACT", 1));
+                .containsExactlyInAnyOrderEntriesOf(Map.of("INSTANT", 2, "LAND", 4, "ARTIFACT", 1));
         assertThat(analysis.colorDemand()).containsExactly(Map.entry("R", 2));
         assertThat(analysis.colorProduction())
                 .containsExactlyInAnyOrderEntriesOf(Map.of("G", 4, "C", 1));
         assertThat(analysis.landCount()).isEqualTo(4);
         assertThat(analysis.averageManaValue()).isEqualTo(1.0);
         assertThat(analysis.ownershipBreakdown())
-                .containsExactlyInAnyOrderEntriesOf(
-                        Map.of("OWNED", 2, "WISHLIST", 4, "PROXY", 1));
+                .containsExactlyInAnyOrderEntriesOf(Map.of("OWNED", 2, "WISHLIST", 4, "PROXY", 1));
         assertThat(analysis.valueByCurrency()).containsExactly(Map.entry("usd", usd("9.00")));
-        assertThat(analysis.missingCostByCurrency())
-                .containsExactly(Map.entry("usd", usd("5.00")));
+        assertThat(analysis.missingCostByCurrency()).containsExactly(Map.entry("usd", usd("5.00")));
         assertThat(analysis.unpricedCardCount()).isEqualTo(4);
         assertThat(analysis.functionalCategories())
-                .containsExactlyInAnyOrderEntriesOf(
-                        Map.of("LAND", 4, "RAMP", 1, "SYNERGY", 2));
+                .containsExactlyInAnyOrderEntriesOf(Map.of("LAND", 4, "RAMP", 1, "SYNERGY", 2));
         assertThat(analysis.gameChangers()).containsExactly("Sol Ring");
         assertThat(analysis.legality().legal()).isFalse();
         assertThat(analysis.combos().count()).isEqualTo(1);
@@ -133,10 +147,22 @@ class DeckAnalysisServiceTest {
         when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of(10L, 11L, 12L, 13L)))
                 .thenReturn(
                         Map.of(
-                                10L, view(10L, "Commander", "{3}", "3", "Legendary Creature — Human", "", false),
-                                11L, view(11L, "Side", "{2}", "2", "Instant", "", false),
-                                12L, view(12L, "Companion", "{4}", "4", "Creature — Beast", "", false),
-                                13L, view(13L, "Maybe", "{5}", "5", "Sorcery", "", false)));
+                                10L,
+                                        view(
+                                                10L,
+                                                "Commander",
+                                                "3",
+                                                false,
+                                                face("{3}", "Legendary Creature — Human", "")),
+                                11L, view(11L, "Side", "2", false, face("{2}", "Instant", "")),
+                                12L,
+                                        view(
+                                                12L,
+                                                "Companion",
+                                                "4",
+                                                false,
+                                                face("{4}", "Creature — Beast", "")),
+                                13L, view(13L, "Maybe", "5", false, face("{5}", "Sorcery", ""))));
         when(cardPriceService.latestPrices(List.of(10L))).thenReturn(Map.of());
         when(deckComboService.getCombos(1L)).thenReturn(new DeckComboResponse(true, List.of()));
 
@@ -149,9 +175,30 @@ class DeckAnalysisServiceTest {
         assertThat(analysis.unpricedCardCount()).isEqualTo(1);
     }
 
+    @Test
+    void shouldSkipCardsWithoutCatalogViews() {
+        // Given a deck card whose printing no longer resolves to a catalog view
+        stubLegality();
+        when(deckCardService.listCards(1L))
+                .thenReturn(List.of(deckCard(10L, 2, "MAIN_DECK", "OWNED")));
+        when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of(10L))).thenReturn(Map.of());
+        when(cardPriceService.latestPrices(List.of())).thenReturn(Map.of());
+        when(deckComboService.getCombos(1L)).thenReturn(new DeckComboResponse(true, List.of()));
+
+        // When
+        DeckAnalysisResponse analysis = service().analyze(1L);
+
+        // Then the stale card is tolerated and excluded
+        assertThat(analysis.manaCurve()).isEmpty();
+        assertThat(analysis.unpricedCardCount()).isZero();
+    }
+
     private DeckAnalysisService service() {
         return new DeckAnalysisService(
-                deckService, deckCardService, deckComboService, cardCatalogService,
+                deckService,
+                deckCardService,
+                deckComboService,
+                cardCatalogService,
                 cardPriceService);
     }
 
@@ -173,20 +220,22 @@ class DeckAnalysisServiceTest {
     private static CardAnalysisView view(
             Long printingId,
             String name,
-            String manaCost,
             String manaValue,
-            String typeLine,
-            String oracleText,
-            boolean gameChanger) {
+            boolean gameChanger,
+            CardAnalysisView.Face face) {
         return new CardAnalysisView(
                 printingId,
                 name,
                 null,
                 new BigDecimal(manaValue),
-                typeLine,
+                face.typeLine(),
                 null,
                 gameChanger,
-                List.of(new CardAnalysisView.Face(manaCost, typeLine, oracleText)));
+                List.of(face));
+    }
+
+    private static CardAnalysisView.Face face(String manaCost, String typeLine, String oracleText) {
+        return new CardAnalysisView.Face(manaCost, typeLine, oracleText);
     }
 
     private static BigDecimal usd(String amount) {

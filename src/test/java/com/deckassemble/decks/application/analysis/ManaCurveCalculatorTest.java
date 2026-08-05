@@ -45,8 +45,7 @@ class ManaCurveCalculatorTest {
 
         // When / Then X contributes nothing beyond the printed mana value
         assertThat(ManaCurveCalculator.curve(entries)).containsExactly(Map.entry("2", 1));
-        assertThat(ManaCurveCalculator.colorDemand(entries))
-                .containsExactly(Map.entry("U", 2));
+        assertThat(ManaCurveCalculator.colorDemand(entries)).containsExactly(Map.entry("U", 2));
     }
 
     @Test
@@ -103,6 +102,26 @@ class ManaCurveCalculatorTest {
 
         // When / Then lands do not drag the average down
         assertThat(ManaCurveCalculator.averageManaValue(entries)).isEqualTo(2.0);
+    }
+
+    @Test
+    void shouldTreatNullManaValueAsZero() {
+        // Given a non-land card without a recorded mana value
+        CardAnalysisView noValue =
+                new CardAnalysisView(
+                        1L,
+                        "Ancestral Recall",
+                        "{U}",
+                        null,
+                        "Instant",
+                        null,
+                        false,
+                        List.of(new CardAnalysisView.Face("{U}", "Instant", "Draw three cards.")));
+        List<AnalysisEntry> entries = List.of(entry(1, noValue));
+
+        // When / Then it lands in the zero bucket and does not skew the average
+        assertThat(ManaCurveCalculator.curve(entries)).containsExactly(Map.entry("0", 1));
+        assertThat(ManaCurveCalculator.averageManaValue(entries)).isEqualTo(0.0);
     }
 
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {

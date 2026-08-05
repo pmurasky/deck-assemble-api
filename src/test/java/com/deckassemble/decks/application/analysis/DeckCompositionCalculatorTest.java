@@ -32,8 +32,7 @@ class DeckCompositionCalculatorTest {
         // When / Then multi-type cards count in each matching bucket
         assertThat(DeckCompositionCalculator.typeDistribution(entries))
                 .containsExactlyInAnyOrderEntriesOf(
-                        java.util.Map.of(
-                                "CREATURE", 3, "INSTANT", 1, "ARTIFACT", 1, "LAND", 3));
+                        java.util.Map.of("CREATURE", 3, "INSTANT", 1, "ARTIFACT", 1, "LAND", 3));
     }
 
     @Test
@@ -41,7 +40,12 @@ class DeckCompositionCalculatorTest {
         // Given a ramp spell, a draw spell, a wipe, removal, a land, and a synergy piece
         List<AnalysisEntry> entries =
                 List.of(
-                        entry(1, card("Rampant Growth", "Sorcery", "Search your library for a basic land card.")),
+                        entry(
+                                1,
+                                card(
+                                        "Rampant Growth",
+                                        "Sorcery",
+                                        "Search your library for a basic land card.")),
                         entry(2, card("Opt", "Instant", "Draw a card.")),
                         entry(1, card("Wrath", "Sorcery", "Destroy all creatures.")),
                         entry(1, card("Swords", "Instant", "Exile target creature.")),
@@ -52,8 +56,8 @@ class DeckCompositionCalculatorTest {
         assertThat(DeckCompositionCalculator.functionalCategories(entries))
                 .containsExactlyInAnyOrderEntriesOf(
                         java.util.Map.of(
-                                "RAMP", 1, "DRAW", 2, "WIPE", 1, "REMOVAL", 1, "LAND", 4,
-                                "SYNERGY", 1));
+                                "RAMP", 1, "DRAW", 2, "WIPE", 1, "REMOVAL", 1, "LAND", 4, "SYNERGY",
+                                1));
     }
 
     @Test
@@ -84,6 +88,26 @@ class DeckCompositionCalculatorTest {
 
         // When / Then
         assertThat(DeckCompositionCalculator.gameChangers(entries)).containsExactly("Sol Ring");
+    }
+
+    @Test
+    void shouldBucketUnrecognizedTypesAsOther() {
+        // Given a card whose type matches no standard bucket
+        List<AnalysisEntry> entries = List.of(entry(1, card("Conspiracy", "Conspiracy", "")));
+
+        // When / Then
+        assertThat(DeckCompositionCalculator.typeDistribution(entries))
+                .containsExactly(java.util.Map.entry("OTHER", 1));
+    }
+
+    @Test
+    void shouldNotListCreatorsThatMakeNoTokens() {
+        // Given a card whose oracle text creates something other than a token
+        List<AnalysisEntry> entries =
+                List.of(entry(1, card("Clone Crafter", "Creature — Wizard", "Create a copy.")));
+
+        // When / Then
+        assertThat(DeckCompositionCalculator.tokenProducers(entries)).isEmpty();
     }
 
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {

@@ -38,6 +38,7 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private CardLegalityRepository cardLegalityRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
+
     @Autowired
     private com.deckassemble.cards.domain.CardPriceSnapshotRepository cardPriceSnapshotRepository;
 
@@ -330,15 +331,16 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
         long deckId = createDeck(subject);
         long boltPrinting =
                 createAnalysisPrinting(
-                        "bolt", "Lightning Bolt", "{R}", "1", "Instant",
-                        "Lightning Bolt deals 3 damage to any target.", false);
+                        "Lightning Bolt",
+                        "{R}",
+                        "1",
+                        "Sorcery",
+                        "Lightning Bolt deals 3 damage to any target.");
         long forestPrinting =
-                createAnalysisPrinting(
-                        "forest", "Forest", null, "0", "Basic Land — Forest", "{T}: Add {G}.",
-                        false);
+                createAnalysisPrinting("Forest", null, "0", "Basic Land — Forest", "{T}: Add {G}.");
         long ringPrinting =
-                createAnalysisPrinting(
-                        "ring", "Sol Ring", "{1}", "1", "Artifact", "{T}: Add {C}{C}.", true);
+                createAnalysisPrinting("Sol Ring", "{1}", "1", "Artifact", "{T}: Add {C}{C}.");
+        markGameChanger(ringPrinting);
         addCard(subject, deckId, boltPrinting, 2);
         addCard(subject, deckId, forestPrinting, 4);
         addCard(subject, deckId, ringPrinting, 1);
@@ -349,12 +351,16 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                                 new java.math.BigDecimal("2.00"), null,
                                 new java.math.BigDecimal("1.50"), null),
                         java.time.Instant.now()));
-        org.mockito.Mockito.when(commanderSpellbookClient.findCombos(org.mockito.ArgumentMatchers.any()))
+        org.mockito.Mockito.when(
+                        commanderSpellbookClient.findCombos(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(
                         java.util.List.of(
                                 new com.deckassemble.recommendations.domain.SpellbookCombo(
-                                        "c1", java.util.List.of("A", "B"), java.util.List.of(),
-                                        "desc", "")));
+                                        "c1",
+                                        java.util.List.of("A", "B"),
+                                        java.util.List.of(),
+                                        "desc",
+                                        "")));
 
         // When / Then the analysis reconciles composition, value, legality, and combos
         mockMvc.perform(
@@ -362,7 +368,7 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                                 .with(jwt().jwt(jwt -> jwt.subject(subject))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.manaCurve['1']").value(3))
-                .andExpect(jsonPath("$.typeDistribution.INSTANT").value(2))
+                .andExpect(jsonPath("$.typeDistribution.SORCERY").value(2))
                 .andExpect(jsonPath("$.typeDistribution.LAND").value(4))
                 .andExpect(jsonPath("$.colorDemand.R").value(2))
                 .andExpect(jsonPath("$.colorProduction.G").value(4))
@@ -451,29 +457,30 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private long createAnalysisPrinting(
-            String identifier,
-            String name,
-            String manaCost,
-            String manaValue,
-            String typeLine,
-            String oracleText,
-            boolean gameChanger) {
+            String name, String manaCost, String manaValue, String typeLine, String oracleText) {
+        String identifier = name.toLowerCase(java.util.Locale.ROOT).replace(' ', '-');
+        String setCode = identifier.substring(0, Math.min(identifier.length(), 10));
         Card card = new Card("oracle-" + identifier, name);
         card.setManaCost(manaCost);
         card.setManaValue(new java.math.BigDecimal(manaValue));
         card.setTypeLine(typeLine);
         card.setOracleText(oracleText);
-        card.setGameChanger(gameChanger);
         var face = new com.deckassemble.cards.domain.CardFace(card, 0, name);
         face.setManaCost(manaCost);
         face.setTypeLine(typeLine);
         face.setOracleText(oracleText);
         card.getFaces().add(face);
         card = cardRepository.save(card);
-        MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, identifier, "S"));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, setCode, "S"));
         return cardPrintingRepository
                 .save(new CardPrinting(card, set, "printing-" + identifier))
                 .getId();
+    }
+
+    private void markGameChanger(long printingId) {
+        CardPrinting printing = cardPrintingRepository.findById(printingId).orElseThrow();
+        printing.getCard().setGameChanger(true);
+        cardRepository.save(printing.getCard());
     }
 
     private long createLegalCommander(String identifier, String name, String oracleText) {

@@ -28,8 +28,7 @@ class ManaProductionCalculatorTest {
         // When / Then
         assertThat(ManaProductionCalculator.landCount(entries)).isEqualTo(6);
         assertThat(ManaProductionCalculator.production(entries))
-                .containsExactlyInAnyOrderEntriesOf(
-                        java.util.Map.of("G", 4, "U", 2));
+                .containsExactlyInAnyOrderEntriesOf(java.util.Map.of("G", 4, "U", 2));
     }
 
     @Test
@@ -99,6 +98,35 @@ class ManaProductionCalculatorTest {
         // When / Then
         assertThat(ManaProductionCalculator.production(entries))
                 .containsExactly(java.util.Map.entry("C", 1));
+    }
+
+    @Test
+    void shouldTreatAnyOneColorAsAllFiveColors() {
+        // Given a card that adds one mana of any one color
+        List<AnalysisEntry> entries =
+                List.of(
+                        entry(
+                                1,
+                                card(
+                                        "Birds of Paradise",
+                                        "Creature — Bird",
+                                        "{T}: Add one mana of any one color.")));
+
+        // When / Then
+        assertThat(ManaProductionCalculator.production(entries))
+                .containsExactlyInAnyOrderEntriesOf(
+                        java.util.Map.of("W", 1, "U", 1, "B", 1, "R", 1, "G", 1));
+    }
+
+    @Test
+    void shouldIgnoreGenericSymbolsInAddClauses() {
+        // Given a card adding generic and colored mana
+        List<AnalysisEntry> entries =
+                List.of(entry(1, card("Mana Bloom", "Artifact", "{T}: Add {2}{G}.")));
+
+        // When / Then only the colored symbol counts
+        assertThat(ManaProductionCalculator.production(entries))
+                .containsExactly(java.util.Map.entry("G", 1));
     }
 
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {

@@ -35,8 +35,7 @@ class DeckValueCalculatorTest {
 
         // Then
         assertThat(value.valueByCurrency())
-                .containsExactlyInAnyOrderEntriesOf(
-                        Map.of("usd", usd("6.00"), "eur", usd("4.50")));
+                .containsExactlyInAnyOrderEntriesOf(Map.of("usd", usd("6.00"), "eur", usd("4.50")));
         assertThat(value.unpricedCount()).isZero();
     }
 
@@ -58,10 +57,7 @@ class DeckValueCalculatorTest {
     void shouldCountOnlyNonOwnedCardsTowardMissingCost() {
         // Given an owned card, a wishlist card, and a proxy, all priced
         List<AnalysisEntry> entries =
-                List.of(
-                        entry(1L, 1, "OWNED"),
-                        entry(2L, 2, "WISHLIST"),
-                        entry(3L, 1, "PROXY"));
+                List.of(entry(1L, 1, "OWNED"), entry(2L, 2, "WISHLIST"), entry(3L, 1, "PROXY"));
         Map<Long, CardPrice> prices =
                 Map.of(
                         1L, new CardPrice(usd("10.00"), null, null, null),
@@ -73,8 +69,56 @@ class DeckValueCalculatorTest {
 
         // Then total covers everything; missing cost covers only wishlist and proxy
         assertThat(value.valueByCurrency()).containsExactly(Map.entry("usd", usd("23.00")));
-        assertThat(value.missingCostByCurrency())
-                .containsExactly(Map.entry("usd", usd("13.00")));
+        assertThat(value.missingCostByCurrency()).containsExactly(Map.entry("usd", usd("13.00")));
+    }
+
+    @Test
+    void shouldValueFoilAndTixCurrencies() {
+        // Given a card priced only in usdFoil and tix
+        List<AnalysisEntry> entries = List.of(entry(1L, 2, "OWNED"));
+        Map<Long, CardPrice> prices =
+                Map.of(1L, new CardPrice(null, usd("4.00"), null, usd("0.50")));
+
+        // When
+        DeckValueCalculator.DeckValue value = DeckValueCalculator.value(entries, prices);
+
+        // Then the card counts as priced and both currencies accumulate
+        assertThat(value.valueByCurrency())
+                .containsExactlyInAnyOrderEntriesOf(
+                        Map.of("usdFoil", usd("8.00"), "tix", usd("1.00")));
+        assertThat(value.unpricedCount()).isZero();
+    }
+
+    @Test
+    void shouldTreatAllNullPriceFieldsAsUnpriced() {
+        // Given a snapshot row with no currency populated
+        List<AnalysisEntry> entries = List.of(entry(1L, 2, "OWNED"));
+        Map<Long, CardPrice> prices = Map.of(1L, new CardPrice(null, null, null, null));
+
+        // When
+        DeckValueCalculator.DeckValue value = DeckValueCalculator.value(entries, prices);
+
+        // Then
+        assertThat(value.valueByCurrency()).isEmpty();
+        assertThat(value.unpricedCount()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldValueEurOnlyAndTixOnlyPrices() {
+        // Given cards priced in exactly one currency each
+        List<AnalysisEntry> entries = List.of(entry(1L, 1, "OWNED"), entry(2L, 1, "OWNED"));
+        Map<Long, CardPrice> prices =
+                Map.of(
+                        1L, new CardPrice(null, null, usd("3.00"), null),
+                        2L, new CardPrice(null, null, null, usd("0.25")));
+
+        // When
+        DeckValueCalculator.DeckValue value = DeckValueCalculator.value(entries, prices);
+
+        // Then both count as priced in their own currency
+        assertThat(value.valueByCurrency())
+                .containsExactlyInAnyOrderEntriesOf(Map.of("eur", usd("3.00"), "tix", usd("0.25")));
+        assertThat(value.unpricedCount()).isZero();
     }
 
     private static AnalysisEntry entry(Long printingId, int quantity, String ownership) {
@@ -83,7 +127,13 @@ class DeckValueCalculatorTest {
                 quantity,
                 ownership,
                 new CardAnalysisView(
-                        printingId, "Card", null, BigDecimal.ZERO, "Instant", null, false,
+                        printingId,
+                        "Card",
+                        null,
+                        BigDecimal.ZERO,
+                        "Instant",
+                        null,
+                        false,
                         List.of()));
     }
 
