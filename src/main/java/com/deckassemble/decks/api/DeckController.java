@@ -41,6 +41,9 @@ public class DeckController {
     private final DeckOwnershipService deckOwnershipService;
     private final DeckAnalysisService deckAnalysisService;
 
+    // Suppressed: cohesive deck aggregate controller; each collaborator serves deck subresources
+    // (cards, combos, wishlist, ownership, analysis) under /decks/{deckId}.
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckController(
             DeckService deckService,
             DeckCardService deckCardService,

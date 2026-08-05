@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /** Full deck analysis: composition, mana, ownership, value, legality, and combos. */
+// Justified: method-local map, never shared across threads.
+@SuppressWarnings("PMD.UseConcurrentHashMap")
 public record DeckAnalysisResponse(
         Map<String, Integer> manaCurve,
         Map<String, Integer> typeDistribution,

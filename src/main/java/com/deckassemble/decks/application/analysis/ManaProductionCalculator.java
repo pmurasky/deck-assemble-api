@@ -8,6 +8,8 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /** Pure color production and land counting from oracle text. */
+// Justified: method-local maps, never shared across threads.
+@SuppressWarnings("PMD.UseConcurrentHashMap")
 public final class ManaProductionCalculator {
 
     private static final Pattern ADD_CLAUSE = Pattern.compile("add\\b[^.\\n]*");
@@ -48,7 +50,8 @@ public final class ManaProductionCalculator {
             return ALL_COLORS;
         }
         Set<String> colors = new TreeSet<>();
-        SYMBOL.matcher(clause).results()
+        SYMBOL.matcher(clause)
+                .results()
                 .flatMap(match -> match.group(1).chars().mapToObj(symbol -> (char) symbol))
                 .map(Character::toUpperCase)
                 .filter(symbol -> COLOR_SYMBOLS.indexOf(symbol) >= 0)

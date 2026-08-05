@@ -8,6 +8,8 @@ import java.util.TreeMap;
 import org.jspecify.annotations.Nullable;
 
 /** Pure deck value and missing-cost calculations over latest price snapshots. */
+// Justified: method-local maps, never shared across threads.
+@SuppressWarnings("PMD.UseConcurrentHashMap")
 public final class DeckValueCalculator {
 
     private static final String OWNED = "OWNED";
@@ -32,8 +34,7 @@ public final class DeckValueCalculator {
         return new DeckValue(value, missing, unpriced);
     }
 
-    private static void accumulate(
-            Map<String, BigDecimal> totals, CardPrice price, int quantity) {
+    private static void accumulate(Map<String, BigDecimal> totals, CardPrice price, int quantity) {
         add(totals, "usd", price.usd(), quantity);
         add(totals, "usdFoil", price.usdFoil(), quantity);
         add(totals, "eur", price.eur(), quantity);

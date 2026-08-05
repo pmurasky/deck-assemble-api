@@ -10,6 +10,8 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /** Pure mana curve, color demand, and average mana value calculations. */
+// Justified: method-local maps, never shared across threads.
+@SuppressWarnings("PMD.UseConcurrentHashMap")
 public final class ManaCurveCalculator {
 
     private static final Pattern SYMBOL = Pattern.compile("\\{([^}]*)\\}");
@@ -44,7 +46,10 @@ public final class ManaCurveCalculator {
         for (AnalysisEntry entry : entries) {
             if (!entry.isLand()) {
                 count += entry.quantity();
-                total = total.add(manaValueOf(entry.card()).multiply(BigDecimal.valueOf(entry.quantity())));
+                total =
+                        total.add(
+                                manaValueOf(entry.card())
+                                        .multiply(BigDecimal.valueOf(entry.quantity())));
             }
         }
         return count == 0 ? 0.0 : total.doubleValue() / count;
@@ -52,9 +57,7 @@ public final class ManaCurveCalculator {
 
     private static String bucket(@Nullable BigDecimal manaValue) {
         int value = manaValue == null ? 0 : manaValue.intValue();
-        return value >= HIGH_CURVE_THRESHOLD
-                ? HIGH_CURVE_THRESHOLD + "+"
-                : String.valueOf(value);
+        return value >= HIGH_CURVE_THRESHOLD ? HIGH_CURVE_THRESHOLD + "+" : String.valueOf(value);
     }
 
     private static BigDecimal manaValueOf(CardAnalysisView card) {
@@ -62,7 +65,8 @@ public final class ManaCurveCalculator {
     }
 
     private static Stream<String> colorPips(String manaCost) {
-        return SYMBOL.matcher(manaCost).results()
+        return SYMBOL.matcher(manaCost)
+                .results()
                 .flatMap(match -> match.group(1).chars().mapToObj(symbol -> (char) symbol))
                 .map(Character::toUpperCase)
                 .filter(symbol -> COLOR_SYMBOLS.indexOf(symbol) >= 0)

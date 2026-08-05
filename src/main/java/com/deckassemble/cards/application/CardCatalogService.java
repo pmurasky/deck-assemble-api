@@ -151,9 +151,7 @@ public class CardCatalogService {
         var printings = cardPrintingRepository.findAllById(cardPrintingIds);
         printings.forEach(printing -> Hibernate.initialize(printing.getCard().getFaces()));
         return printings.stream()
-                .collect(
-                        Collectors.toUnmodifiableMap(
-                                CardPrinting::getId, CardAnalysisView::from));
+                .collect(Collectors.toUnmodifiableMap(CardPrinting::getId, CardAnalysisView::from));
     }
 
     @Transactional(readOnly = true)

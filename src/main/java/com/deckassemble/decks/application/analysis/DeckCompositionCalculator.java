@@ -8,11 +8,18 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /** Pure type distribution, functional category, token, and game changer rollups. */
+// Justified: method-local maps, never shared across threads.
+@SuppressWarnings("PMD.UseConcurrentHashMap")
 public final class DeckCompositionCalculator {
 
     private static final List<String> TYPE_BUCKETS =
             List.of(
-                    "CREATURE", "INSTANT", "SORCERY", "ARTIFACT", "ENCHANTMENT", "PLANESWALKER",
+                    "CREATURE",
+                    "INSTANT",
+                    "SORCERY",
+                    "ARTIFACT",
+                    "ENCHANTMENT",
+                    "PLANESWALKER",
                     "LAND");
 
     private DeckCompositionCalculator() {}
