@@ -15,6 +15,8 @@ import com.deckassemble.decks.application.DeckUpdateRequest;
 import com.deckassemble.decks.application.DeckWishlistResponse;
 import com.deckassemble.decks.application.DeckWishlistService;
 import com.deckassemble.decks.application.OwnershipSyncResponse;
+import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
+import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -37,18 +39,21 @@ public class DeckController {
     private final DeckComboService deckComboService;
     private final DeckWishlistService deckWishlistService;
     private final DeckOwnershipService deckOwnershipService;
+    private final DeckAnalysisService deckAnalysisService;
 
     public DeckController(
             DeckService deckService,
             DeckCardService deckCardService,
             DeckComboService deckComboService,
             DeckWishlistService deckWishlistService,
-            DeckOwnershipService deckOwnershipService) {
+            DeckOwnershipService deckOwnershipService,
+            DeckAnalysisService deckAnalysisService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
         this.deckWishlistService = deckWishlistService;
         this.deckOwnershipService = deckOwnershipService;
+        this.deckAnalysisService = deckAnalysisService;
     }
 
     @GetMapping
@@ -75,6 +80,11 @@ public class DeckController {
     @GetMapping("/{deckId}/combos")
     public DeckComboResponse combos(@PathVariable long deckId) {
         return deckComboService.getCombos(deckId);
+    }
+
+    @GetMapping("/{deckId}/analysis")
+    public DeckAnalysisResponse analysis(@PathVariable long deckId) {
+        return deckAnalysisService.analyze(deckId);
     }
 
     @PatchMapping("/{deckId}")

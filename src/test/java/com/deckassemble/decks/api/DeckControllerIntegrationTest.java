@@ -38,6 +38,12 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private CardLegalityRepository cardLegalityRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
+    @Autowired
+    private com.deckassemble.cards.domain.CardPriceSnapshotRepository cardPriceSnapshotRepository;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.deckassemble.recommendations.domain.CommanderSpellbookClient
+            commanderSpellbookClient;
 
     @Test
     void shouldCreateUpdateDuplicateArchiveAndDeleteDeck() throws Exception {
@@ -317,6 +323,75 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].card.name").value("Hydrated Commander"));
     }
 
+    @Test
+    void shouldReturnAnalysisForOwnedDeck() throws Exception {
+        // Given a deck with spells, lands, a game changer, and one priced printing
+        String subject = "auth0|deck-analysis";
+        long deckId = createDeck(subject);
+        long boltPrinting =
+                createAnalysisPrinting(
+                        "bolt", "Lightning Bolt", "{R}", "1", "Instant",
+                        "Lightning Bolt deals 3 damage to any target.", false);
+        long forestPrinting =
+                createAnalysisPrinting(
+                        "forest", "Forest", null, "0", "Basic Land — Forest", "{T}: Add {G}.",
+                        false);
+        long ringPrinting =
+                createAnalysisPrinting(
+                        "ring", "Sol Ring", "{1}", "1", "Artifact", "{T}: Add {C}{C}.", true);
+        addCard(subject, deckId, boltPrinting, 2);
+        addCard(subject, deckId, forestPrinting, 4);
+        addCard(subject, deckId, ringPrinting, 1);
+        cardPriceSnapshotRepository.save(
+                new com.deckassemble.cards.domain.CardPriceSnapshot(
+                        boltPrinting,
+                        new com.deckassemble.cards.domain.CardPrice(
+                                new java.math.BigDecimal("2.00"), null,
+                                new java.math.BigDecimal("1.50"), null),
+                        java.time.Instant.now()));
+        org.mockito.Mockito.when(commanderSpellbookClient.findCombos(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(
+                        java.util.List.of(
+                                new com.deckassemble.recommendations.domain.SpellbookCombo(
+                                        "c1", java.util.List.of("A", "B"), java.util.List.of(),
+                                        "desc", "")));
+
+        // When / Then the analysis reconciles composition, value, legality, and combos
+        mockMvc.perform(
+                        get("/decks/{deckId}/analysis", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.manaCurve['1']").value(3))
+                .andExpect(jsonPath("$.typeDistribution.INSTANT").value(2))
+                .andExpect(jsonPath("$.typeDistribution.LAND").value(4))
+                .andExpect(jsonPath("$.colorDemand.R").value(2))
+                .andExpect(jsonPath("$.colorProduction.G").value(4))
+                .andExpect(jsonPath("$.colorProduction.C").value(1))
+                .andExpect(jsonPath("$.landCount").value(4))
+                .andExpect(jsonPath("$.averageManaValue").value(1.0))
+                .andExpect(jsonPath("$.ownershipBreakdown.WISHLIST").value(7))
+                .andExpect(jsonPath("$.valueByCurrency.usd").value(4.0))
+                .andExpect(jsonPath("$.missingCostByCurrency.usd").value(4.0))
+                .andExpect(jsonPath("$.unpricedCardCount").value(5))
+                .andExpect(jsonPath("$.functionalCategories.LAND").value(4))
+                .andExpect(jsonPath("$.functionalCategories.RAMP").value(1))
+                .andExpect(jsonPath("$.gameChangers[0]").value("Sol Ring"))
+                .andExpect(jsonPath("$.legality.legal").value(false))
+                .andExpect(jsonPath("$.combos.available").value(true))
+                .andExpect(jsonPath("$.combos.count").value(1));
+    }
+
+    @Test
+    void shouldHideAnotherUsersDeckAnalysis() throws Exception {
+        long deckId = createDeck("auth0|deck-analysis-private");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/analysis", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-analysis-other"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
     private long createDeck(String subject) throws Exception {
         return createDeck(subject, "Deck");
     }
@@ -370,6 +445,32 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
         Card card = cardRepository.save(new Card("oracle-" + identifier, "Deck Card"));
         MagicSet set =
                 magicSetRepository.save(new MagicSet("set-" + identifier, identifier, "Deck Set"));
+        return cardPrintingRepository
+                .save(new CardPrinting(card, set, "printing-" + identifier))
+                .getId();
+    }
+
+    private long createAnalysisPrinting(
+            String identifier,
+            String name,
+            String manaCost,
+            String manaValue,
+            String typeLine,
+            String oracleText,
+            boolean gameChanger) {
+        Card card = new Card("oracle-" + identifier, name);
+        card.setManaCost(manaCost);
+        card.setManaValue(new java.math.BigDecimal(manaValue));
+        card.setTypeLine(typeLine);
+        card.setOracleText(oracleText);
+        card.setGameChanger(gameChanger);
+        var face = new com.deckassemble.cards.domain.CardFace(card, 0, name);
+        face.setManaCost(manaCost);
+        face.setTypeLine(typeLine);
+        face.setOracleText(oracleText);
+        card.getFaces().add(face);
+        card = cardRepository.save(card);
+        MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, identifier, "S"));
         return cardPrintingRepository
                 .save(new CardPrinting(card, set, "printing-" + identifier))
                 .getId();
