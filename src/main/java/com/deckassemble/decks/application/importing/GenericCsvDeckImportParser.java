@@ -2,6 +2,7 @@ package com.deckassemble.decks.application.importing;
 
 import com.deckassemble.cards.application.CardReference;
 import com.deckassemble.decks.domain.DeckCard;
+import com.deckassemble.shared.csv.CsvLineSplitter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -30,10 +31,10 @@ public class GenericCsvDeckImportParser implements DeckImportParser {
         if (lines.isEmpty()) {
             return new ParsedDeck(Map.of("format", format), List.of());
         }
-        Map<String, Integer> headers = headers(csvValues(lines.getFirst()));
+        Map<String, Integer> headers = headers(CsvLineSplitter.split(lines.getFirst()));
         List<ParsedRow> rows = new ArrayList<>();
         for (int index = 1; index < lines.size(); index++) {
-            rows.add(row(index + 1, csvValues(lines.get(index)), headers, layout));
+            rows.add(row(index + 1, CsvLineSplitter.split(lines.get(index)), headers, layout));
         }
         return new ParsedDeck(Map.of("format", format), List.copyOf(rows));
     }
@@ -97,25 +98,6 @@ public class GenericCsvDeckImportParser implements DeckImportParser {
             case "maybeboard" -> DeckCard.Section.MAYBE_BOARD;
             default -> DeckCard.Section.MAIN_DECK;
         };
-    }
-
-    private static List<String> csvValues(String line) {
-        List<String> values = new ArrayList<>();
-        StringBuilder value = new StringBuilder();
-        boolean quoted = false;
-        for (int index = 0; index < line.length(); index++) {
-            char character = line.charAt(index);
-            if (character == '"') {
-                quoted = !quoted;
-            } else if (character == ',' && !quoted) {
-                values.add(value.toString());
-                value.setLength(0);
-            } else {
-                value.append(character);
-            }
-        }
-        values.add(value.toString());
-        return values;
     }
 
     record CsvLayout(String quantityHeader, String setHeader, String sectionHeader) {}
