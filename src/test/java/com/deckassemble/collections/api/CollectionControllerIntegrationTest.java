@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -98,6 +101,51 @@ class CollectionControllerIntegrationTest extends AbstractIntegrationTest {
         MvcResult result = assertCreatedCardSummary(subject, collectionId, printingId);
         assertUpdatedCardSummary(subject, collectionId, idFrom(result));
         assertListedCardSummary(subject, collectionId);
+    }
+
+    @Test
+    void shouldExportCollectionAsDeterministicCsvAttachment() throws Exception {
+        String subject = "auth0|collection-export";
+        long collectionId = createCollection(subject);
+        long zebraId = createPrintingWithCollector("zebra", "Zebra Card", "9");
+        long appleId = createPrintingWithCollector("apple", "Apple, Card", "1");
+        addCard(subject, collectionId, zebraId, 1, 0);
+        addCard(subject, collectionId, appleId, 2, 1);
+
+        mockMvc.perform(
+                        get("/collections/{collectionId}/export", collectionId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv"))
+                .andExpect(
+                        header().string(
+                                        HttpHeaders.CONTENT_DISPOSITION,
+                                        "attachment; filename=\"collection-%d.csv\""
+                                                .formatted(collectionId)))
+                .andExpect(
+                        content()
+                                .string(
+                                        "scryfall_id,name,set,collector_number,quantity,printing_id\n"
+                                                + "printing-apple,\"Apple, Card\",apple,1,3,"
+                                                + appleId
+                                                + "\nprinting-zebra,Zebra Card,zebra,9,1,"
+                                                + zebraId
+                                                + "\n"));
+    }
+
+    @Test
+    void shouldHideAnotherUsersCollectionExport() throws Exception {
+        long collectionId = createCollection("auth0|collection-export-private");
+
+        mockMvc.perform(
+                        get("/collections/{collectionId}/export", collectionId)
+                                .with(
+                                        jwt().jwt(
+                                                        jwt ->
+                                                                jwt.subject(
+                                                                        "auth0|collection-export-other"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COLLECTION_NOT_FOUND"));
     }
 
     @Test
@@ -196,6 +244,30 @@ class CollectionControllerIntegrationTest extends AbstractIntegrationTest {
                 savePrinting(card, "chs", "Chosen Set", "chosen", LocalDate.parse("2020-01-01"));
         savePrinting(card, "lat", "Later Set", "later", LocalDate.parse("2024-01-01"));
         return chosenId;
+    }
+
+    private long createPrintingWithCollector(
+            String identifier, String cardName, String collectorNumber) {
+        Card card = cardRepository.save(new Card("oracle-" + identifier, cardName));
+        MagicSet set =
+                magicSetRepository.save(
+                        new MagicSet("set-" + identifier, identifier, cardName + " Set"));
+        CardPrinting printing = new CardPrinting(card, set, "printing-" + identifier);
+        printing.setCollectorNumber(collectorNumber);
+        return cardPrintingRepository.save(printing).getId();
+    }
+
+    private void addCard(String subject, long collectionId, long printingId, int regular, int foil)
+            throws Exception {
+        String request =
+                "{\"cardPrintingId\":%d,\"regularQuantity\":%d,\"foilQuantity\":%d}"
+                        .formatted(printingId, regular, foil);
+        mockMvc.perform(
+                        post("/collections/{collectionId}/cards", collectionId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(request))
+                .andExpect(status().isCreated());
     }
 
     private long savePrinting(

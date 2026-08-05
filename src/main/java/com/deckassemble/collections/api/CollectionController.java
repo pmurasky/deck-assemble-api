@@ -1,5 +1,7 @@
 package com.deckassemble.collections.api;
 
+import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.CardExportView;
 import com.deckassemble.collections.application.CollectionCardAddRequest;
 import com.deckassemble.collections.application.CollectionCardResponse;
 import com.deckassemble.collections.application.CollectionCardUpdateRequest;
@@ -7,9 +9,13 @@ import com.deckassemble.collections.application.CollectionCreateRequest;
 import com.deckassemble.collections.application.CollectionResponse;
 import com.deckassemble.collections.application.CollectionService;
 import com.deckassemble.collections.application.CollectionUpdateRequest;
+import com.deckassemble.collections.application.exporting.CollectionCsvExporter;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +31,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class CollectionController {
 
     private final CollectionService collectionService;
+    private final CardCatalogService cardCatalogService;
 
-    public CollectionController(CollectionService collectionService) {
+    public CollectionController(
+            CollectionService collectionService, CardCatalogService cardCatalogService) {
         this.collectionService = collectionService;
+        this.cardCatalogService = cardCatalogService;
     }
 
     @GetMapping
@@ -63,6 +72,20 @@ public class CollectionController {
     @GetMapping("/{collectionId}/cards")
     public List<CollectionCardResponse> listCards(@PathVariable long collectionId) {
         return collectionService.listCards(collectionId);
+    }
+
+    @GetMapping("/{collectionId}/export")
+    public ResponseEntity<byte[]> export(@PathVariable long collectionId) {
+        List<CollectionCardResponse> cards = collectionService.listCards(collectionId);
+        Map<Long, CardExportView> views =
+                cardCatalogService.getExportViewsByPrintingIds(
+                        cards.stream().map(CollectionCardResponse::cardPrintingId).toList());
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"collection-%d.csv\"".formatted(collectionId))
+                .body(CollectionCsvExporter.export(cards, views));
     }
 
     @PostMapping("/{collectionId}/cards")
