@@ -335,6 +335,43 @@ class CardCatalogServiceTest {
     }
 
     @Test
+    void shouldMapPrintingsToImmutableAnalysisViews() {
+        // Given a split card with per-face attributes
+        Card card = card("Fire // Ice");
+        card.setManaValue(java.math.BigDecimal.valueOf(4));
+        card.setColorIdentity("UR");
+        card.setGameChanger(true);
+        var fire = new com.deckassemble.cards.domain.CardFace(card, 0, "Fire");
+        fire.setManaCost("{1}{R}");
+        fire.setTypeLine("Instant");
+        fire.setOracleText("Fire deals 2 damage divided as you choose.");
+        var ice = new com.deckassemble.cards.domain.CardFace(card, 1, "Ice");
+        ice.setManaCost("{1}{U}");
+        ice.setTypeLine("Instant");
+        ice.setOracleText("Tap target permanent.\nDraw a card.");
+        card.getFaces().add(fire);
+        card.getFaces().add(ice);
+        var printing = new CardPrinting(card, SET, "scry-9");
+        org.springframework.test.util.ReflectionTestUtils.setField(printing, "id", 9L);
+        when(cardPrintingRepository.findAllById(List.of(9L))).thenReturn(List.of(printing));
+
+        // When
+        var views = service().getAnalysisViewsByPrintingIds(List.of(9L));
+
+        // Then
+        CardAnalysisView view = views.get(9L);
+        assertThat(view.printingId()).isEqualTo(9L);
+        assertThat(view.name()).isEqualTo("Fire // Ice");
+        assertThat(view.manaValue()).isEqualByComparingTo("4");
+        assertThat(view.colorIdentity()).isEqualTo("UR");
+        assertThat(view.gameChanger()).isTrue();
+        assertThat(view.faces()).hasSize(2);
+        assertThat(view.faces().get(0).manaCost()).isEqualTo("{1}{R}");
+        assertThat(view.faces().get(1).oracleText()).contains("Draw a card");
+        assertThat(service().getAnalysisViewsByPrintingIds(List.of())).isEmpty();
+    }
+
+    @Test
     void shouldMapCardsToLatestPrintingIds() {
         Card card = card("Forest");
         var printing = new CardPrinting(card, SET, "sc-2");

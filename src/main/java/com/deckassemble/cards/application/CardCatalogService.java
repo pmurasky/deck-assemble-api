@@ -143,6 +143,20 @@ public class CardCatalogService {
     }
 
     @Transactional(readOnly = true)
+    public Map<Long, CardAnalysisView> getAnalysisViewsByPrintingIds(
+            Collection<Long> cardPrintingIds) {
+        if (cardPrintingIds.isEmpty()) {
+            return Map.of();
+        }
+        var printings = cardPrintingRepository.findAllById(cardPrintingIds);
+        printings.forEach(printing -> Hibernate.initialize(printing.getCard().getFaces()));
+        return printings.stream()
+                .collect(
+                        Collectors.toUnmodifiableMap(
+                                CardPrinting::getId, CardAnalysisView::from));
+    }
+
+    @Transactional(readOnly = true)
     public Card getCard(long cardId) {
         return cardRepository
                 .findById(cardId)
