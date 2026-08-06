@@ -26,6 +26,7 @@ import com.deckassemble.recommendations.domain.DeckBuild;
 import com.deckassemble.recommendations.domain.DeckBuildRepository;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -303,6 +304,8 @@ class DeckBuilderServiceTest {
                 .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
+
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 4, null, null, null));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
@@ -331,6 +334,8 @@ class DeckBuilderServiceTest {
         when(deckCardService.addCard(anyLong(), any()))
                 .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
 
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 7, null, null, null));
 
@@ -369,6 +374,8 @@ class DeckBuilderServiceTest {
                 .thenAnswer(invocation -> cardResponse("OWNED"));
         when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
 
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
+
         builderService.build(new DeckBuildRequest(COMMANDER_ID, null, 5, null, null, null));
 
         var addCaptor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
@@ -385,6 +392,117 @@ class DeckBuilderServiceTest {
         var profile = new Profile("sub", "user");
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
         when(profileService.getOrCreate("sub")).thenReturn(profile);
+    }
+
+    @Test
+    void shouldSumContributionsToCandidateTotals() {
+        var commander = commander();
+        var pool = Map.of(11L, poolCard(11L, "Counterspell"), 12L, poolCard(12L, "Opt"));
+        stubUser();
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(11L, 12L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(11L, 12L))).thenReturn(pool);
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(Map.of("Counterspell", new CardScore(0.9, 1000L)));
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY, Category.SYNERGY);
+        var island = basicLand("Island");
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+
+        assertThat(result.scoredCandidates()).isNotEmpty();
+        for (var candidate : result.scoredCandidates()) {
+            var sum =
+                    candidate.contributions().stream()
+                            .map(ScoreContribution::points)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(candidate.total()).isEqualByComparingTo(sum);
+        }
+        var counterspell = scoredCandidate(result, 11L);
+        assertThat(counterspell.total()).isEqualByComparingTo("0.9");
+        assertThat(counterspell.contributions())
+                .extracting(ScoreContribution::code)
+                .contains(
+                        RecommendationReasonCode.COMMANDER_SYNERGY,
+                        RecommendationReasonCode.OWNED,
+                        RecommendationReasonCode.CATEGORY_NEED);
+        assertThat(scoredCandidate(result, 12L).total()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void shouldCoverAllReasonCodesAcrossScoredCandidates() {
+        var commander = commander();
+        var manaVault = gameChangerCard(20L, "Mana Vault");
+        manaVault.getFaces().get(0).setOracleText("Add {C}{C}. Draw a card.");
+        var cheap = poolCard(21L, "Cheap Card");
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(77L));
+        when(edhrecCommanderService.getCardScores(any(), any()))
+                .thenReturn(
+                        Map.of(
+                                "Mana Vault", new CardScore(0.9, 1000L, Set.of("Combo")),
+                                "Cheap Card", new CardScore(0.8, 90L)));
+        when(cardCatalogService.getCardsByNames(any()))
+                .thenAnswer(
+                        invocation -> {
+                            java.util.Collection<String> names = invocation.getArgument(0);
+                            return names.contains("Island")
+                                    ? List.of(island)
+                                    : List.of(manaVault, cheap);
+                        });
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, 20L, 77L, 21L, 78L, island.getId(), 99L));
+        when(cardCategorizer.categorize(any())).thenReturn(Category.SYNERGY);
+        when(cardPriceService.latestPrices(any()))
+                .thenReturn(
+                        Map.of(
+                                78L,
+                                        new com.deckassemble.cards.domain.CardPrice(
+                                                new BigDecimal("1.00"), null, null, null)));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("WISHLIST"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(
+                                COMMANDER_ID, null, 5, "draw", false, new BigDecimal("5.00")));
+
+        var codes =
+                result.scoredCandidates().stream()
+                        .flatMap(candidate -> candidate.contributions().stream())
+                        .map(ScoreContribution::code)
+                        .collect(java.util.stream.Collectors.toSet());
+        assertThat(codes)
+                .containsExactlyInAnyOrder(RecommendationReasonCode.values());
+        assertThat(scoredCandidate(result, 77L).contributions())
+                .extracting(ScoreContribution::code)
+                .contains(
+                        RecommendationReasonCode.GAME_CHANGER_POLICY,
+                        RecommendationReasonCode.PLAY_STYLE,
+                        RecommendationReasonCode.COMBO,
+                        RecommendationReasonCode.OWNED);
+        assertThat(scoredCandidate(result, 78L).contributions())
+                .extracting(ScoreContribution::code)
+                .contains(RecommendationReasonCode.BUDGET);
+    }
+
+    private static ScoredCandidate scoredCandidate(DeckBuildResult result, long printingId) {
+        return result.scoredCandidates().stream()
+                .filter(candidate -> candidate.printingId() == printingId)
+                .findFirst()
+                .orElseThrow();
     }
 
     private Card commander() {

@@ -6,6 +6,7 @@ import com.deckassemble.recommendations.domain.EdhrecCommanderCacheRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -80,26 +81,35 @@ public class EdhrecCommanderService {
                         .path("json_dict")
                         .path("cardlists");
         for (var cardlist : cardlists) {
+            var header = cardlist.path("header").asString();
             for (var cardview : cardlist.path("cardviews")) {
-                merge(scores, cardview);
+                merge(scores, cardview, header);
             }
         }
         return scores;
     }
 
-    private static void merge(Map<String, CardScore> scores, JsonNode cardview) {
+    private static void merge(Map<String, CardScore> scores, JsonNode cardview, String header) {
         var name = cardview.path("name").asString();
         if (name.isEmpty()) {
             return;
         }
         var existing = scores.get(name);
+        var lists = new HashSet<String>();
+        if (existing != null) {
+            lists.addAll(existing.cardlists());
+        }
+        if (!header.isEmpty()) {
+            lists.add(header);
+        }
         scores.put(
                 name,
                 new CardScore(
                         max(existing == null ? null : existing.synergy(), synergyOf(cardview)),
                         max(
                                 existing == null ? null : existing.inclusion(),
-                                inclusionOf(cardview))));
+                                inclusionOf(cardview)),
+                        lists));
     }
 
     private static @Nullable Double max(@Nullable Double left, @Nullable Double right) {

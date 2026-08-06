@@ -3,14 +3,17 @@ package com.deckassemble.recommendations.application;
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardPriceService;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.collections.application.CollectionService;
+import com.deckassemble.recommendations.application.CardCategorizer.Category;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -68,8 +71,10 @@ public class DeckCandidateSelector {
         var scores = loadScores(commanders.get(0));
         var candidates =
                 ownedOnly(request)
-                        ? collectCandidates(ownedPrintingIds, commanderOracles, identity, scores)
-                        : collectOptimalCandidates(commanderOracles, identity, scores);
+                        ? collectCandidates(
+                                ownedPrintingIds, commanderOracles, identity, scores, request)
+                        : collectOptimalCandidates(
+                                commanderOracles, identity, scores, request, ownedPrintingIds);
         candidates.sort(SCORE_ORDER);
         candidates = withinGameChangerLimit(candidates, request.desiredPowerLevel());
         if (request.budgetLimit() != null) {
@@ -92,10 +97,25 @@ public class DeckCandidateSelector {
         var included = 0;
         for (var candidate : candidates) {
             if (!Boolean.TRUE.equals(candidate.card().getGameChanger()) || included++ < allowed) {
-                kept.add(candidate);
+                kept.add(withGameChangerPolicy(candidate, allowed, desiredPowerLevel));
             }
         }
         return kept;
+    }
+
+    private static DeckCandidate withGameChangerPolicy(
+            DeckCandidate candidate, int allowed, @Nullable Integer desiredPowerLevel) {
+        if (!Boolean.TRUE.equals(candidate.card().getGameChanger())) {
+            return candidate;
+        }
+        Map<String, String> evidence = new HashMap<>();
+        evidence.put("allowedGameChangers", String.valueOf(allowed));
+        if (desiredPowerLevel != null) {
+            evidence.put("desiredPowerLevel", desiredPowerLevel.toString());
+        }
+        return candidate.withContribution(
+                new ScoreContribution(
+                        RecommendationReasonCode.GAME_CHANGER_POLICY, BigDecimal.ZERO, evidence));
     }
 
     private static int allowedGameChangers(@Nullable Integer desiredPowerLevel) {
@@ -120,10 +140,22 @@ public class DeckCandidateSelector {
             var owned = ownedPrintingIds.contains(candidate.printingId());
             if (owned || cost.add(unit).compareTo(budget) <= 0) {
                 cost = owned ? cost : cost.add(unit);
-                kept.add(candidate);
+                kept.add(owned ? candidate : withBudgetEvidence(candidate, unit, cost, budget));
             }
         }
         return kept;
+    }
+
+    private static DeckCandidate withBudgetEvidence(
+            DeckCandidate candidate, BigDecimal unit, BigDecimal cost, BigDecimal budget) {
+        return candidate.withContribution(
+                new ScoreContribution(
+                        RecommendationReasonCode.BUDGET,
+                        BigDecimal.ZERO,
+                        Map.of(
+                                "unitPrice", unit.toPlainString(),
+                                "runningCost", cost.toPlainString(),
+                                "budgetLimit", budget.toPlainString())));
     }
 
     private static BigDecimal unitPrice(@Nullable CardPrice price) {
@@ -131,7 +163,11 @@ public class DeckCandidateSelector {
     }
 
     private List<DeckCandidate> collectOptimalCandidates(
-            Set<String> commanderOracles, Set<String> identity, Map<String, CardScore> scores) {
+            Set<String> commanderOracles,
+            Set<String> identity,
+            Map<String, CardScore> scores,
+            DeckBuildRequest request,
+            Set<Long> ownedPrintingIds) {
         var cardsByName = new HashMap<String, Card>();
         cardCatalogService
                 .getCardsByNames(scores.keySet())
@@ -146,22 +182,118 @@ public class DeckCandidateSelector {
             if (printingId != null
                     && DeckCandidate.isEligible(card, commanderOracles, identity)
                     && seen.add(card.getScryfallOracleId())) {
-                candidates.add(toCandidate(printingId, card, scores));
+                candidates.add(toCandidate(printingId, card, scores, request, ownedPrintingIds));
             }
         }
         return candidates;
     }
 
-    private DeckCandidate toCandidate(long printingId, Card card, Map<String, CardScore> scores) {
-        return new DeckCandidate(
-                printingId, card, categorizer.categorize(card), scores.get(card.getName()));
+    private DeckCandidate toCandidate(
+            long printingId,
+            Card card,
+            Map<String, CardScore> scores,
+            DeckBuildRequest request,
+            Set<Long> ownedPrintingIds) {
+        var category = categorizer.categorize(card);
+        var score = scores.get(card.getName());
+        var contributions =
+                explain(card, category, score, request, ownedPrintingIds.contains(printingId));
+        return new DeckCandidate(printingId, card, category, score, contributions);
+    }
+
+    private static List<ScoreContribution> explain(
+            Card card,
+            Category category,
+            @Nullable CardScore score,
+            DeckBuildRequest request,
+            boolean owned) {
+        var contributions = new ArrayList<ScoreContribution>();
+        contributions.add(categoryNeed(category));
+        if (owned) {
+            contributions.add(ownedMarker());
+        }
+        if (score != null) {
+            contributions.add(commanderSynergy(score));
+        }
+        comboLists(score).forEach(list -> contributions.add(combo(list)));
+        if (matchesPlayStyle(card, request.playStyle())) {
+            contributions.add(playStyleMarker(request.playStyle()));
+        }
+        return List.copyOf(contributions);
+    }
+
+    private static ScoreContribution ownedMarker() {
+        return new ScoreContribution(
+                RecommendationReasonCode.OWNED, BigDecimal.ZERO, Map.of("source", "collection"));
+    }
+
+    private static ScoreContribution playStyleMarker(String playStyle) {
+        return new ScoreContribution(
+                RecommendationReasonCode.PLAY_STYLE,
+                BigDecimal.ZERO,
+                Map.of("playStyle", playStyle));
+    }
+
+    private static ScoreContribution categoryNeed(Category category) {
+        Map<String, String> evidence = new HashMap<>();
+        evidence.put("category", category.name());
+        var quota = DeckDraftPicker.QUOTAS.get(category);
+        if (quota != null) {
+            evidence.put("quota", quota.toString());
+        }
+        return new ScoreContribution(
+                RecommendationReasonCode.CATEGORY_NEED, BigDecimal.ZERO, evidence);
+    }
+
+    private static ScoreContribution commanderSynergy(CardScore score) {
+        var points = score.synergy() == null ? BigDecimal.ZERO : BigDecimal.valueOf(score.synergy());
+        Map<String, String> evidence = new HashMap<>();
+        if (score.synergy() != null) {
+            evidence.put("synergy", score.synergy().toString());
+        }
+        if (score.inclusion() != null) {
+            evidence.put("inclusion", score.inclusion().toString());
+        }
+        return new ScoreContribution(
+                RecommendationReasonCode.COMMANDER_SYNERGY, points, evidence);
+    }
+
+    private static List<String> comboLists(@Nullable CardScore score) {
+        if (score == null) {
+            return List.of();
+        }
+        return score.cardlists().stream()
+                .filter(list -> list.toLowerCase(Locale.ROOT).contains("combo"))
+                .toList();
+    }
+
+    private static ScoreContribution combo(String cardlist) {
+        return new ScoreContribution(
+                RecommendationReasonCode.COMBO,
+                BigDecimal.ZERO,
+                Map.of("edhrecCardlist", cardlist));
+    }
+
+    private static boolean matchesPlayStyle(Card card, @Nullable String playStyle) {
+        if (playStyle == null || playStyle.isBlank()) {
+            return false;
+        }
+        var needle = playStyle.toLowerCase(Locale.ROOT);
+        for (CardFace face : card.getFaces()) {
+            if (face.getOracleText() != null
+                    && face.getOracleText().toLowerCase(Locale.ROOT).contains(needle)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<DeckCandidate> collectCandidates(
             Set<Long> ownedPrintingIds,
             Set<String> commanderOracles,
             Set<String> identity,
-            Map<String, CardScore> scores) {
+            Map<String, CardScore> scores,
+            DeckBuildRequest request) {
         var seen = new HashSet<String>();
         var candidates = new ArrayList<DeckCandidate>();
         for (var entry : cardCatalogService.getCardsByPrintingIds(ownedPrintingIds).entrySet()) {
@@ -169,11 +301,7 @@ public class DeckCandidateSelector {
             if (DeckCandidate.isEligible(card, commanderOracles, identity)
                     && seen.add(card.getScryfallOracleId())) {
                 candidates.add(
-                        new DeckCandidate(
-                                entry.getKey(),
-                                card,
-                                categorizer.categorize(card),
-                                scores.get(card.getName())));
+                        toCandidate(entry.getKey(), card, scores, request, ownedPrintingIds));
             }
         }
         return candidates;

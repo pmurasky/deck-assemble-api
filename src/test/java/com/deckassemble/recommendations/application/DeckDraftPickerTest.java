@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.recommendations.application.CardCategorizer.Category;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class DeckDraftPickerTest {
@@ -64,6 +66,28 @@ class DeckDraftPickerTest {
         var picked = DeckDraftPicker.pick(List.of(first, second), 2);
 
         assertThat(picked).hasSize(1);
+    }
+
+    @Test
+    void shouldPreserveScoreExplanationsWhenPicking() {
+        var contribution =
+                new ScoreContribution(
+                        RecommendationReasonCode.COMMANDER_SYNERGY,
+                        new BigDecimal("0.50"),
+                        Map.of("synergy", "0.5"));
+        var candidate =
+                new DeckCandidate(
+                        nextPrintingId++,
+                        new Card("oracle-x", "X"),
+                        Category.SYNERGY,
+                        new CardScore(0.5, 100L),
+                        List.of(contribution));
+
+        var picked = DeckDraftPicker.pick(List.of(candidate), 1);
+
+        assertThat(picked).hasSize(1);
+        assertThat(picked.get(0).contributions()).containsExactly(contribution);
+        assertThat(picked.get(0).totalScore()).isEqualByComparingTo("0.50");
     }
 
     private long count(List<DeckCandidate> picked, Category category) {

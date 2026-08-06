@@ -61,7 +61,19 @@ public class DeckBuildRecorder {
                 counts[1],
                 gaps,
                 score,
-                deckService.legality(deck.id()));
+                deckService.legality(deck.id()),
+                scoredCandidates(finalCards));
+    }
+
+    private static List<ScoredCandidate> scoredCandidates(List<DeckCandidate> finalCards) {
+        return finalCards.stream()
+                .map(
+                        candidate ->
+                                new ScoredCandidate(
+                                        candidate.printingId(),
+                                        candidate.totalScore(),
+                                        candidate.contributions()))
+                .toList();
     }
 
     private DeckResponse createDeck(DeckBuildRequest request, List<Card> commanders) {

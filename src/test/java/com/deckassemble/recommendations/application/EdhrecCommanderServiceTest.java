@@ -125,8 +125,25 @@ class EdhrecCommanderServiceTest {
     }
 
     @Test
-    void shouldSkipCardviewsWithoutNames() {
+    void shouldCaptureCardlistHeadersOnScores() {
         var payload =
+                """
+                {"container":{"json_dict":{"cardlists":[
+                  {"header":"Combo","cardviews":[{"name":"Sol Ring","synergy":0.4,"inclusion":100}]},
+                  {"header":"Top Cards","cardviews":[{"name":"Sol Ring","synergy":0.6}]}
+                ]}}}""";
+        var fresh = new EdhrecCommanderCache(ORACLE_ID, payload, Instant.now());
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.of(fresh));
+
+        var scores = service.getCardScores(ORACLE_ID, "Atraxa, Praetors' Voice");
+
+        assertThat(scores.get("Sol Ring").synergy()).isEqualTo(0.6);
+        assertThat(scores.get("Sol Ring").cardlists())
+                .containsExactlyInAnyOrder("Combo", "Top Cards");
+    }
+
+    @Test
+    void shouldSkipCardviewsWithoutNames() {        var payload =
                 """
                 {"container":{"json_dict":{"cardlists":[
                   {"cardviews":[{"synergy":0.4},{"name":"Sol Ring","synergy":0.2}]}

@@ -13,4 +13,5 @@ public record DeckBuildResult(
         int wishlistCount,
         List<String> gaps,
         @Nullable BigDecimal score,
-        DeckLegalityResponse legality) {}
+        DeckLegalityResponse legality,
+        List<ScoredCandidate> scoredCandidates) {}
