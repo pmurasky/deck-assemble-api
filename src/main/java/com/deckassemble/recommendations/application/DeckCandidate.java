@@ -19,8 +19,7 @@ public record DeckCandidate(
         contributions = List.copyOf(contributions);
     }
 
-    public DeckCandidate(
-            long printingId, Card card, Category category, @Nullable CardScore score) {
+    public DeckCandidate(long printingId, Card card, Category category, @Nullable CardScore score) {
         this(printingId, card, category, score, List.of());
     }
 

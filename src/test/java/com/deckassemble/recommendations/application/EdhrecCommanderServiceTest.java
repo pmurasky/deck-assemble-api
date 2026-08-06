@@ -143,7 +143,8 @@ class EdhrecCommanderServiceTest {
     }
 
     @Test
-    void shouldSkipCardviewsWithoutNames() {        var payload =
+    void shouldSkipCardviewsWithoutNames() {
+        var payload =
                 """
                 {"container":{"json_dict":{"cardlists":[
                   {"cardviews":[{"synergy":0.4},{"name":"Sol Ring","synergy":0.2}]}

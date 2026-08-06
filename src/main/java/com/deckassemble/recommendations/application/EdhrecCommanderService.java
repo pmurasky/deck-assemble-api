@@ -106,9 +106,7 @@ public class EdhrecCommanderService {
                 name,
                 new CardScore(
                         max(existing == null ? null : existing.synergy(), synergyOf(cardview)),
-                        max(
-                                existing == null ? null : existing.inclusion(),
-                                inclusionOf(cardview)),
+                        max(existing == null ? null : existing.inclusion(), inclusionOf(cardview)),
                         lists));
     }
 

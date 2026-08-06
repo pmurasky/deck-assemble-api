@@ -66,8 +66,7 @@ class RecommendationControllerIntegrationTest extends AbstractIntegrationTest {
                                 "$.scoredCandidates[*].contributions[*].code",
                                 hasItem("CATEGORY_NEED")))
                 .andExpect(
-                        jsonPath(
-                                "$.scoredCandidates[*].contributions[*].code", hasItem("COMBO")))
+                        jsonPath("$.scoredCandidates[*].contributions[*].code", hasItem("COMBO")))
                 .andExpect(
                         jsonPath(
                                 "$.scoredCandidates[*].contributions[*].code",

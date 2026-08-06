@@ -467,8 +467,8 @@ class DeckBuilderServiceTest {
                 .thenReturn(
                         Map.of(
                                 78L,
-                                        new com.deckassemble.cards.domain.CardPrice(
-                                                new BigDecimal("1.00"), null, null, null)));
+                                new com.deckassemble.cards.domain.CardPrice(
+                                        new BigDecimal("1.00"), null, null, null)));
         when(deckService.create(any())).thenReturn(deckResponse());
         when(deckCardService.addCard(anyLong(), any()))
                 .thenAnswer(invocation -> cardResponse("WISHLIST"));
@@ -484,8 +484,7 @@ class DeckBuilderServiceTest {
                         .flatMap(candidate -> candidate.contributions().stream())
                         .map(ScoreContribution::code)
                         .collect(java.util.stream.Collectors.toSet());
-        assertThat(codes)
-                .containsExactlyInAnyOrder(RecommendationReasonCode.values());
+        assertThat(codes).containsExactlyInAnyOrder(RecommendationReasonCode.values());
         assertThat(scoredCandidate(result, 77L).contributions())
                 .extracting(ScoreContribution::code)
                 .contains(
