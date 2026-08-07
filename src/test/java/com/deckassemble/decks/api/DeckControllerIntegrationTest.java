@@ -493,6 +493,111 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.code").value("DECK_CARD_NOT_FOUND"));
     }
 
+    @Test
+    void shouldCompareDeckCompositionAndMetrics() throws Exception {
+        // Given two decks sharing one card identity across printings plus unique cards
+        String subject = "auth0|deck-compare";
+        long deckA = createDeck(subject, "Cmp Deck A");
+        long deckB = createDeck(subject, "Cmp Deck B");
+        long sharedPrintingA =
+                createAnalysisPrinting("Cmp Shared", "{2}", "2", "Sorcery", "Draw two cards.");
+        long sharedPrintingB = createSecondPrintingOf(sharedPrintingA, "cmpshared2");
+        long alphaPrinting =
+                createAnalysisPrinting("Cmp Alpha", "{R}", "1", "Sorcery", "Deal 3 damage.");
+        long betaPrinting =
+                createAnalysisPrinting("Cmp Beta", "{1}", "1", "Artifact", "{T}: Add {C}{C}.");
+        markGameChanger(betaPrinting);
+        addCard(subject, deckA, sharedPrintingA, 1);
+        addCard(subject, deckA, alphaPrinting, 2);
+        addCard(subject, deckB, sharedPrintingB, 3);
+        addCard(subject, deckB, betaPrinting, 1);
+        cardPriceSnapshotRepository.save(
+                new com.deckassemble.cards.domain.CardPriceSnapshot(
+                        alphaPrinting,
+                        new com.deckassemble.cards.domain.CardPrice(
+                                new java.math.BigDecimal("2.00"), null, null, null),
+                        java.time.Instant.now()));
+        org.mockito.Mockito.when(
+                        commanderSpellbookClient.findCombos(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(
+                        java.util.List.of(
+                                new com.deckassemble.recommendations.domain.SpellbookCombo(
+                                        "c1",
+                                        java.util.List.of("A", "B"),
+                                        java.util.List.of(),
+                                        "desc",
+                                        "")));
+
+        // When / Then the comparison reconciles identity equivalence and metric deltas
+        mockMvc.perform(
+                        get("/decks/{deckId}/comparison/{otherDeckId}", deckA, deckB)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.added[0].name").value("Cmp Beta"))
+                .andExpect(jsonPath("$.added[0].quantity").value(1))
+                .andExpect(jsonPath("$.added.length()").value(1))
+                .andExpect(jsonPath("$.removed[0].name").value("Cmp Alpha"))
+                .andExpect(jsonPath("$.removed[0].quantity").value(2))
+                .andExpect(jsonPath("$.removed.length()").value(1))
+                .andExpect(jsonPath("$.quantityChanged[0].name").value("Cmp Shared"))
+                .andExpect(jsonPath("$.quantityChanged[0].fromQuantity").value(1))
+                .andExpect(jsonPath("$.quantityChanged[0].toQuantity").value(3))
+                .andExpect(jsonPath("$.quantityChanged.length()").value(1))
+                .andExpect(jsonPath("$.ownershipDelta.WISHLIST").value(1))
+                .andExpect(jsonPath("$.valueDeltaByCurrency.usd").value(-4.0))
+                .andExpect(jsonPath("$.missingCostDeltaByCurrency.usd").value(-4.0))
+                .andExpect(jsonPath("$.curveDelta['1']").value(-1))
+                .andExpect(jsonPath("$.curveDelta['2']").value(2))
+                .andExpect(jsonPath("$.categoryDelta.RAMP").value(1))
+                .andExpect(jsonPath("$.legality.baseLegal").value(false))
+                .andExpect(jsonPath("$.legality.otherLegal").value(false))
+                .andExpect(jsonPath("$.gameChangersAdded[0]").value("Cmp Beta"))
+                .andExpect(jsonPath("$.gameChangersRemoved").isEmpty())
+                .andExpect(jsonPath("$.combos.baseCount").value(1))
+                .andExpect(jsonPath("$.combos.otherCount").value(1))
+                .andExpect(jsonPath("$.combos.addedComboIds").isEmpty())
+                .andExpect(jsonPath("$.combos.removedComboIds").isEmpty());
+    }
+
+    @Test
+    void shouldHideComparisonWhenEitherDeckIsForeign() throws Exception {
+        long mine = createDeck("auth0|deck-cmp-mine", "Cmp Mine");
+        long foreign = createDeck("auth0|deck-cmp-foreign", "Cmp Foreign");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/comparison/{otherDeckId}", mine, foreign)
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-cmp-mine"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/comparison/{otherDeckId}", foreign, mine)
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-cmp-mine"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldReturnNotFoundForComparisonWithUnknownDeck() throws Exception {
+        String subject = "auth0|deck-cmp-unknown";
+        long deckId = createDeck(subject, "Cmp Known");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/comparison/{otherDeckId}", deckId, 999999L)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    private long createSecondPrintingOf(long printingId, String identifier) {
+        CardPrinting first = cardPrintingRepository.findById(printingId).orElseThrow();
+        String setCode = identifier.substring(0, Math.min(identifier.length(), 10));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, setCode, "Cmp"));
+        return cardPrintingRepository
+                .save(new CardPrinting(first.getCard(), set, "printing-" + identifier))
+                .getId();
+    }
+
     private long createDeckWithCommander(String subject, long commanderCardId) throws Exception {
         MvcResult result =
                 mockMvc.perform(

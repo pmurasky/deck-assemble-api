@@ -1,6 +1,7 @@
 package com.deckassemble.decks.api;
 
 import com.deckassemble.decks.api.alternatives.DeckCardAlternativeResponse;
+import com.deckassemble.decks.api.comparison.DeckComparisonResponse;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
@@ -19,6 +20,7 @@ import com.deckassemble.decks.application.OwnershipSyncResponse;
 import com.deckassemble.decks.application.alternatives.DeckCardAlternativeService;
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
+import com.deckassemble.decks.application.comparison.DeckComparisonService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -46,9 +48,11 @@ public class DeckController {
     private final DeckOwnershipService deckOwnershipService;
     private final DeckAnalysisService deckAnalysisService;
     private final DeckCardAlternativeService deckCardAlternativeService;
+    private final DeckComparisonService deckComparisonService;
 
     // Suppressed: cohesive deck aggregate controller; each collaborator serves deck subresources
-    // (cards, combos, wishlist, ownership, analysis, alternatives) under /decks/{deckId}.
+    // (cards, combos, wishlist, ownership, analysis, alternatives, comparison) under
+    // /decks/{deckId}.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckController(
             DeckService deckService,
@@ -57,7 +61,8 @@ public class DeckController {
             DeckWishlistService deckWishlistService,
             DeckOwnershipService deckOwnershipService,
             DeckAnalysisService deckAnalysisService,
-            DeckCardAlternativeService deckCardAlternativeService) {
+            DeckCardAlternativeService deckCardAlternativeService,
+            DeckComparisonService deckComparisonService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
@@ -65,6 +70,7 @@ public class DeckController {
         this.deckOwnershipService = deckOwnershipService;
         this.deckAnalysisService = deckAnalysisService;
         this.deckCardAlternativeService = deckCardAlternativeService;
+        this.deckComparisonService = deckComparisonService;
     }
 
     @GetMapping
@@ -96,6 +102,12 @@ public class DeckController {
     @GetMapping("/{deckId}/analysis")
     public DeckAnalysisResponse analysis(@PathVariable long deckId) {
         return deckAnalysisService.analyze(deckId);
+    }
+
+    @GetMapping("/{deckId}/comparison/{otherDeckId}")
+    public DeckComparisonResponse comparison(
+            @PathVariable long deckId, @PathVariable long otherDeckId) {
+        return DeckComparisonResponse.from(deckComparisonService.compare(deckId, otherDeckId));
     }
 
     @PatchMapping("/{deckId}")
