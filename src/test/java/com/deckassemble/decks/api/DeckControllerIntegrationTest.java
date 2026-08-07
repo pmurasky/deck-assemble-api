@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardFace;
 import com.deckassemble.cards.domain.CardLegality;
 import com.deckassemble.cards.domain.CardLegalityRepository;
 import com.deckassemble.cards.domain.CardPrinting;
@@ -22,29 +23,52 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.collections.domain.CardCollection;
+import com.deckassemble.collections.domain.CardCollectionRepository;
+import com.deckassemble.collections.domain.CollectionCard;
+import com.deckassemble.collections.domain.CollectionCardRepository;
 import com.deckassemble.decks.application.exporting.DeckExportFormat;
+import com.deckassemble.recommendations.domain.EdhrecClient;
+import com.deckassemble.users.domain.ProfileRepository;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 class DeckControllerIntegrationTest extends AbstractIntegrationTest {
+
+    private static final String ALT_EDHREC_PAYLOAD =
+            """
+            {"container":{"json_dict":{"cardlists":[
+              {"header":"Card Advantage","cardviews":[
+                {"name":"Alt Pool Draw","synergy":0.9,"inclusion":100},
+                {"name":"Alt Unowned Draw","synergy":0.95,"inclusion":200},
+                {"name":"Alt Off Color","synergy":0.99,"inclusion":300}
+              ]}]}}}
+            """;
 
     @Autowired private MockMvc mockMvc;
     @Autowired private CardRepository cardRepository;
     @Autowired private CardLegalityRepository cardLegalityRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
+    @Autowired private ProfileRepository profileRepository;
+    @Autowired private CardCollectionRepository cardCollectionRepository;
+    @Autowired private CollectionCardRepository collectionCardRepository;
 
     @Autowired
     private com.deckassemble.cards.domain.CardPriceSnapshotRepository cardPriceSnapshotRepository;
 
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    @MockitoBean
     private com.deckassemble.recommendations.domain.CommanderSpellbookClient
             commanderSpellbookClient;
+
+    @MockitoBean private EdhrecClient edhrecClient;
 
     @Test
     void shouldCreateUpdateDuplicateArchiveAndDeleteDeck() throws Exception {
@@ -396,6 +420,144 @@ class DeckControllerIntegrationTest extends AbstractIntegrationTest {
                                 .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-analysis-other"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldSuggestOwnedFirstAlternatives() throws Exception {
+        String subject = "auth0|deck-alternatives";
+        long deckId = createDeckWithCommander(subject, createAlternativeCommander());
+        long targetPrinting = createAlternativePrinting("Alt Target Draw", "W");
+        long ownedPrinting = createAlternativePrinting("Alt Pool Draw", "W");
+        createAlternativePrinting("Alt Unowned Draw", "W");
+        createAlternativePrinting("Alt Off Color", "U");
+        ownPrinting(subject, ownedPrinting);
+        long deckCardId = addCardAndReturnId(subject, deckId, targetPrinting);
+        org.mockito.Mockito.when(edhrecClient.fetchCommanderData("alt-commander"))
+                .thenReturn(ALT_EDHREC_PAYLOAD);
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards/{deckCardId}/alternatives", deckId, deckCardId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].name").value("Alt Pool Draw"))
+                .andExpect(jsonPath("$[0].owned").value(true))
+                .andExpect(jsonPath("$[1].name").value("Alt Unowned Draw"))
+                .andExpect(jsonPath("$[1].owned").value(false))
+                .andExpect(jsonPath("$[0].reasons[*].code", hasItem("OWNED")))
+                .andExpect(jsonPath("$[0].reasons[*].code", hasItem("CATEGORY_NEED")))
+                .andExpect(jsonPath("$[0].reasons[*].code", hasItem("MANA_VALUE_DISTANCE")))
+                .andExpect(jsonPath("$[0].reasons[*].code", hasItem("COMMANDER_SYNERGY")))
+                .andExpect(jsonPath("$[0].reasons[*].code", hasItem("PRICE")))
+                .andExpect(jsonPath("$[1].reasons[*].code", hasItem("PRICE")));
+    }
+
+    @Test
+    void shouldHideAnotherUsersDeckCardAlternatives() throws Exception {
+        long deckId = createDeck("auth0|deck-alt-private");
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards/{deckCardId}/alternatives", deckId, 1L)
+                                .with(jwt().jwt(jwt -> jwt.subject("auth0|deck-alt-other"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRejectAlternativesLimitOutOfBounds() throws Exception {
+        String subject = "auth0|deck-alt-limit";
+        long deckId = createDeck(subject);
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards/{deckCardId}/alternatives", deckId, 1L)
+                                .param("limit", "0")
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards/{deckCardId}/alternatives", deckId, 1L)
+                                .param("limit", "51")
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundForUnknownDeckCardAlternative() throws Exception {
+        String subject = "auth0|deck-alt-unknown";
+        long deckId = createDeck(subject);
+
+        mockMvc.perform(
+                        get("/decks/{deckId}/cards/{deckCardId}/alternatives", deckId, 999999L)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_CARD_NOT_FOUND"));
+    }
+
+    private long createDeckWithCommander(String subject, long commanderCardId) throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                post("/decks")
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"name\":\"Alt Deck\",\"formatCode\":\"COMMANDER\","
+                                                        + "\"commanderCardId\":"
+                                                        + commanderCardId
+                                                        + "}"))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        return idFrom(result);
+    }
+
+    private long addCardAndReturnId(String subject, long deckId, long printingId) throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                post("/decks/{deckId}/cards", deckId)
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"cardPrintingId\":" + printingId + "}"))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        return idFrom(result);
+    }
+
+    private void ownPrinting(String subject, long printingId) {
+        var profile = profileRepository.findByAuthProviderSubject(subject).orElseThrow();
+        var collection =
+                cardCollectionRepository.save(
+                        new CardCollection(profile.getId(), "Alt Collection", "", true));
+        collectionCardRepository.save(new CollectionCard(collection.getId(), printingId, 1, 0));
+    }
+
+    private long createAlternativeCommander() {
+        Card card = new Card("oracle-alt-commander", "Alt Commander");
+        card.setColorIdentity("W");
+        card.setTypeLine("Legendary Creature — Human");
+        card = cardRepository.save(card);
+        cardLegalityRepository.save(new CardLegality(card, "commander", "legal"));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-alt-cmd", "altcmd", "Alt Set"));
+        cardPrintingRepository.save(new CardPrinting(card, set, "printing-alt-commander"));
+        return card.getId();
+    }
+
+    private long createAlternativePrinting(String name, String colorIdentity) {
+        String identifier = name.toLowerCase(java.util.Locale.ROOT).replace(' ', '-');
+        Card card = new Card("oracle-" + identifier, name);
+        card.setColorIdentity(colorIdentity);
+        card.setTypeLine("Sorcery");
+        card.setManaValue(new BigDecimal("2"));
+        card.setOracleText("Draw a card.");
+        var face = new CardFace(card, 0, name);
+        face.setTypeLine("Sorcery");
+        face.setOracleText("Draw a card.");
+        card.getFaces().add(face);
+        card = cardRepository.save(card);
+        cardLegalityRepository.save(new CardLegality(card, "commander", "legal"));
+        String setCode = identifier.substring(0, Math.min(identifier.length(), 10));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-" + identifier, setCode, "Alt"));
+        return cardPrintingRepository
+                .save(new CardPrinting(card, set, "printing-" + identifier))
+                .getId();
     }
 
     private long createDeck(String subject) throws Exception {
