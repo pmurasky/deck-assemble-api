@@ -27,12 +27,10 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 
 /** Suggests ranked replacement cards for a deck card, owned alternatives first on request. */
 @Service
-@Transactional(readOnly = true)
 public class DeckCardAlternativeService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeckCardAlternativeService.class);
