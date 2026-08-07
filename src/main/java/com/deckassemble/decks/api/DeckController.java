@@ -2,6 +2,8 @@ package com.deckassemble.decks.api;
 
 import com.deckassemble.decks.api.alternatives.DeckCardAlternativeResponse;
 import com.deckassemble.decks.api.comparison.DeckComparisonResponse;
+import com.deckassemble.decks.api.upgrades.DeckUpgradePlanResponse;
+import com.deckassemble.decks.api.upgrades.DeckUpgradeRequest;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
@@ -21,6 +23,7 @@ import com.deckassemble.decks.application.alternatives.DeckCardAlternativeServic
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import com.deckassemble.decks.application.comparison.DeckComparisonService;
+import com.deckassemble.decks.application.upgrades.DeckUpgradeService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -49,9 +52,10 @@ public class DeckController {
     private final DeckAnalysisService deckAnalysisService;
     private final DeckCardAlternativeService deckCardAlternativeService;
     private final DeckComparisonService deckComparisonService;
+    private final DeckUpgradeService deckUpgradeService;
 
     // Suppressed: cohesive deck aggregate controller; each collaborator serves deck subresources
-    // (cards, combos, wishlist, ownership, analysis, alternatives, comparison) under
+    // (cards, combos, wishlist, ownership, analysis, alternatives, comparison, upgrades) under
     // /decks/{deckId}.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckController(
@@ -62,7 +66,8 @@ public class DeckController {
             DeckOwnershipService deckOwnershipService,
             DeckAnalysisService deckAnalysisService,
             DeckCardAlternativeService deckCardAlternativeService,
-            DeckComparisonService deckComparisonService) {
+            DeckComparisonService deckComparisonService,
+            DeckUpgradeService deckUpgradeService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
@@ -71,6 +76,7 @@ public class DeckController {
         this.deckAnalysisService = deckAnalysisService;
         this.deckCardAlternativeService = deckCardAlternativeService;
         this.deckComparisonService = deckComparisonService;
+        this.deckUpgradeService = deckUpgradeService;
     }
 
     @GetMapping
@@ -179,6 +185,18 @@ public class DeckController {
         return deckCardAlternativeService.suggest(deckId, deckCardId, limit, ownedFirst).stream()
                 .map(DeckCardAlternativeResponse::from)
                 .toList();
+    }
+
+    @PostMapping("/{deckId}/upgrade-plans")
+    public DeckUpgradePlanResponse upgradePlans(
+            @PathVariable long deckId, @Valid @RequestBody DeckUpgradeRequest request) {
+        return DeckUpgradePlanResponse.from(
+                deckUpgradeService.plan(
+                        deckId,
+                        DeckUpgradeService.Objective.valueOf(request.objective().name()),
+                        request.budget(),
+                        request.currency(),
+                        request.maxChanges()));
     }
 
     @DeleteMapping("/{deckId}/cards/{deckCardId}")
