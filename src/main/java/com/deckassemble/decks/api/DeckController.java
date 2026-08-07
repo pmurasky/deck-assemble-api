@@ -1,5 +1,6 @@
 package com.deckassemble.decks.api;
 
+import com.deckassemble.decks.api.alternatives.DeckCardAlternativeResponse;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
@@ -15,9 +16,12 @@ import com.deckassemble.decks.application.DeckUpdateRequest;
 import com.deckassemble.decks.application.DeckWishlistResponse;
 import com.deckassemble.decks.application.DeckWishlistService;
 import com.deckassemble.decks.application.OwnershipSyncResponse;
+import com.deckassemble.decks.application.alternatives.DeckCardAlternativeService;
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,9 +45,10 @@ public class DeckController {
     private final DeckWishlistService deckWishlistService;
     private final DeckOwnershipService deckOwnershipService;
     private final DeckAnalysisService deckAnalysisService;
+    private final DeckCardAlternativeService deckCardAlternativeService;
 
     // Suppressed: cohesive deck aggregate controller; each collaborator serves deck subresources
-    // (cards, combos, wishlist, ownership, analysis) under /decks/{deckId}.
+    // (cards, combos, wishlist, ownership, analysis, alternatives) under /decks/{deckId}.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckController(
             DeckService deckService,
@@ -50,13 +56,15 @@ public class DeckController {
             DeckComboService deckComboService,
             DeckWishlistService deckWishlistService,
             DeckOwnershipService deckOwnershipService,
-            DeckAnalysisService deckAnalysisService) {
+            DeckAnalysisService deckAnalysisService,
+            DeckCardAlternativeService deckCardAlternativeService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
         this.deckWishlistService = deckWishlistService;
         this.deckOwnershipService = deckOwnershipService;
         this.deckAnalysisService = deckAnalysisService;
+        this.deckCardAlternativeService = deckCardAlternativeService;
     }
 
     @GetMapping
@@ -148,6 +156,17 @@ public class DeckController {
     @PostMapping("/{deckId}/cards/{deckCardId}/acquire")
     public DeckCardResponse acquireCard(@PathVariable long deckId, @PathVariable long deckCardId) {
         return deckOwnershipService.acquireCard(deckId, deckCardId);
+    }
+
+    @GetMapping("/{deckId}/cards/{deckCardId}/alternatives")
+    public List<DeckCardAlternativeResponse> alternatives(
+            @PathVariable long deckId,
+            @PathVariable long deckCardId,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int limit,
+            @RequestParam(defaultValue = "true") boolean ownedFirst) {
+        return deckCardAlternativeService.suggest(deckId, deckCardId, limit, ownedFirst).stream()
+                .map(DeckCardAlternativeResponse::from)
+                .toList();
     }
 
     @DeleteMapping("/{deckId}/cards/{deckCardId}")
