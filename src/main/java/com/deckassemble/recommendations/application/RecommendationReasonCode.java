@@ -1,6 +1,6 @@
 package com.deckassemble.recommendations.application;
 
-/** Reason codes explaining why a candidate card received its score in a deck build. */
+/** Reason codes explaining recommendation scores and rankings. */
 public enum RecommendationReasonCode {
     OWNED,
     COMMANDER_SYNERGY,
@@ -8,5 +8,11 @@ public enum RecommendationReasonCode {
     PLAY_STYLE,
     COMBO,
     BUDGET,
-    GAME_CHANGER_POLICY
+    GAME_CHANGER_POLICY,
+    COLLECTION_COVERAGE,
+    MISSING_COUNT,
+    COMPLETION_COST,
+    COMMANDER_RANK,
+    COLOR_SUPPORT,
+    SYNERGY_DATA_FRESHNESS
 }

@@ -15,6 +15,7 @@ import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -135,6 +136,107 @@ class CommanderSuggestionServiceTest {
         verify(edhrecCommanderService, times(1)).getCardScores("commander", "Commander");
     }
 
+    @Test
+    void shouldExplainFactorsDeterminingSuggestionOrder() {
+        var highCoverage = commander(1L, "High Coverage", "high", 4);
+        highCoverage.setColorIdentity("WUBG");
+        var lowCoverage = commander(2L, "Low Coverage", "low", 2);
+        var ownedStaple = card(3L, "Owned Staple", "owned");
+        var missingStaple = card(4L, "Missing Staple", "missing");
+        stubUser();
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L, 11L, 12L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L, 11L, 12L)))
+                .thenReturn(Map.of(10L, highCoverage, 11L, lowCoverage, 12L, ownedStaple));
+        when(edhrecCommanderService.getCardScores("high", "High Coverage"))
+                .thenReturn(Map.of("Owned Staple", new CardScore(0.5, 10L)));
+        when(edhrecCommanderService.getCardScores("low", "Low Coverage"))
+                .thenReturn(Map.of("Missing Staple", new CardScore(0.5, 10L)));
+        when(edhrecCommanderService.fetchedAt("high"))
+                .thenReturn(Optional.of(Instant.parse("2026-08-01T00:00:00Z")));
+        when(edhrecCommanderService.fetchedAt("low"))
+                .thenReturn(Optional.of(Instant.parse("2026-07-20T00:00:00Z")));
+        when(cardCatalogService.getCardsByNames(Set.of("Owned Staple", "Missing Staple")))
+                .thenReturn(List.of(ownedStaple, missingStaple));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of(3L, 4L)))
+                .thenReturn(Map.of(3L, 12L, 4L, 13L));
+        when(cardPriceService.latestPrices(List.of(13L)))
+                .thenReturn(Map.of(13L, new CardPrice(new BigDecimal("7.50"), null, null, null)));
+
+        var suggestions = service.suggest();
+
+        assertThat(suggestions.get(0).explanations())
+                .extracting(ScoreContribution::code)
+                .containsExactly(
+                        RecommendationReasonCode.COLLECTION_COVERAGE,
+                        RecommendationReasonCode.MISSING_COUNT,
+                        RecommendationReasonCode.COMPLETION_COST,
+                        RecommendationReasonCode.COMMANDER_RANK,
+                        RecommendationReasonCode.COLOR_SUPPORT,
+                        RecommendationReasonCode.SYNERGY_DATA_FRESHNESS);
+        var winnerCoverage =
+                explanation(suggestions.get(0), RecommendationReasonCode.COLLECTION_COVERAGE);
+        var loserCoverage =
+                explanation(suggestions.get(1), RecommendationReasonCode.COLLECTION_COVERAGE);
+        assertThat(winnerCoverage.points()).isEqualByComparingTo("100.00");
+        assertThat(loserCoverage.points()).isEqualByComparingTo("0.00");
+        assertThat(winnerCoverage.evidence()).containsEntry("coveragePercent", "100.00");
+        var missing = explanation(suggestions.get(1), RecommendationReasonCode.MISSING_COUNT);
+        assertThat(missing.points()).isEqualByComparingTo("1");
+        assertThat(missing.evidence())
+                .containsEntry("missingCardCount", "1")
+                .containsEntry("unpricedMissingCardCount", "0");
+        var cost = explanation(suggestions.get(1), RecommendationReasonCode.COMPLETION_COST);
+        assertThat(cost.points()).isEqualByComparingTo("7.50");
+        assertThat(cost.evidence()).containsEntry("estimatedCompletionCostUsd", "7.50");
+        assertThat(
+                        explanation(suggestions.get(0), RecommendationReasonCode.COMMANDER_RANK)
+                                .evidence())
+                .containsEntry("commanderRank", "4");
+        assertThat(
+                        explanation(suggestions.get(0), RecommendationReasonCode.COLOR_SUPPORT)
+                                .evidence())
+                .containsEntry("colorIdentity", "WUBG");
+        assertThat(
+                        explanation(
+                                        suggestions.get(0),
+                                        RecommendationReasonCode.SYNERGY_DATA_FRESHNESS)
+                                .evidence())
+                .containsEntry("fetchedAt", "2026-08-01T00:00:00Z");
+    }
+
+    @Test
+    void shouldMarkUnknownFreshnessAndUnrankedWhenMetadataMissing() {
+        var commander = commander(1L, "Commander", "commander", null);
+        stubUser();
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
+                .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.getCardScores("commander", "Commander"))
+                .thenReturn(Map.of("Unknown Staple", new CardScore(0.5, 10L)));
+        when(cardCatalogService.getCardsByNames(Set.of("Unknown Staple"))).thenReturn(List.of());
+        when(cardCatalogService.getLatestPrintingIdByCardIds(List.of())).thenReturn(Map.of());
+        when(cardPriceService.latestPrices(List.of())).thenReturn(Map.of());
+
+        var suggestion = service.suggest().getFirst();
+
+        assertThat(
+                        explanation(suggestion, RecommendationReasonCode.SYNERGY_DATA_FRESHNESS)
+                                .evidence())
+                .containsEntry("fetchedAt", "unknown");
+        assertThat(explanation(suggestion, RecommendationReasonCode.COMMANDER_RANK).evidence())
+                .containsEntry("commanderRank", "unranked");
+        assertThat(explanation(suggestion, RecommendationReasonCode.COLOR_SUPPORT).evidence())
+                .containsEntry("colorIdentity", "colorless");
+    }
+
+    private static ScoreContribution explanation(
+            CommanderSuggestion suggestion, RecommendationReasonCode code) {
+        return suggestion.explanations().stream()
+                .filter(contribution -> contribution.code() == code)
+                .findFirst()
+                .orElseThrow();
+    }
+
     private void stubUser() {
         var profile = new Profile("sub", "user");
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
@@ -142,7 +244,7 @@ class CommanderSuggestionServiceTest {
         when(profileService.getOrCreate("sub")).thenReturn(profile);
     }
 
-    private static Card commander(long id, String name, String oracleId, int rank) {
+    private static Card commander(long id, String name, String oracleId, Integer rank) {
         var card = card(id, name, oracleId);
         card.setCommanderRank(rank);
         var face = new CardFace(card, 0, name);

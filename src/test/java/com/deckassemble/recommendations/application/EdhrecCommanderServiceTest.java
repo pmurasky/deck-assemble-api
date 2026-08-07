@@ -158,6 +158,16 @@ class EdhrecCommanderServiceTest {
     }
 
     @Test
+    void shouldExposeCacheFetchTimestamp() {
+        var fetchedAt = Instant.now().minus(2, ChronoUnit.DAYS);
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID))
+                .thenReturn(
+                        Optional.of(new EdhrecCommanderCache(ORACLE_ID, "cached-json", fetchedAt)));
+
+        assertThat(service.fetchedAt(ORACLE_ID)).contains(fetchedAt);
+    }
+
+    @Test
     void shouldConvertCommanderNamesToSlugs() {
         assertThat(EdhrecCommanderService.toSlug("Atraxa, Praetors' Voice"))
                 .isEqualTo("atraxa-praetors-voice");

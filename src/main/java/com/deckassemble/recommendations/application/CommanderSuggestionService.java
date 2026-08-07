@@ -11,6 +11,7 @@ import com.deckassemble.users.application.ProfileService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -97,7 +98,8 @@ public class CommanderSuggestionService {
                                         evaluation.commander(),
                                         evaluation.scores().size(),
                                         evaluation.missing(),
-                                        prices))
+                                        prices,
+                                        evaluation.fetchedAt()))
                 .sorted(SUGGESTION_ORDER)
                 .toList();
     }
@@ -172,11 +174,13 @@ public class CommanderSuggestionService {
                                         commander,
                                         scores,
                                         missingCards(
-                                                scores,
-                                                cardsByName,
-                                                printingIds,
-                                                ownedOracleIds))));
+                                                scores, cardsByName, printingIds, ownedOracleIds),
+                                        edhrecFetchedAt(commander))));
         return evaluations;
+    }
+
+    private @Nullable Instant edhrecFetchedAt(Card commander) {
+        return edhrecCommanderService.fetchedAt(commander.getScryfallOracleId()).orElse(null);
     }
 
     private List<MissingCard> missingCards(
@@ -208,21 +212,26 @@ public class CommanderSuggestionService {
             Card commander,
             int totalCards,
             List<MissingCard> missing,
-            Map<Long, CardPrice> prices) {
+            Map<Long, CardPrice> prices,
+            @Nullable Instant fetchedAt) {
         var priceSummary = summarizePrices(missing, prices);
         var coverage =
                 BigDecimal.valueOf(totalCards - missing.size())
                         .multiply(HUNDRED)
                         .divide(BigDecimal.valueOf(totalCards), 2, RoundingMode.HALF_UP);
-        return new CommanderSuggestion(
-                commander.getId(),
-                commander.getName(),
-                commander.getColorIdentity(),
-                coverage,
-                missing.size(),
-                priceSummary.cost(),
-                priceSummary.unpricedCount(),
-                commander.getCommanderRank());
+        var suggestion =
+                new CommanderSuggestion(
+                        commander.getId(),
+                        commander.getName(),
+                        commander.getColorIdentity(),
+                        coverage,
+                        missing.size(),
+                        priceSummary.cost(),
+                        priceSummary.unpricedCount(),
+                        commander.getCommanderRank(),
+                        List.of());
+        return suggestion.withExplanations(
+                CommanderSuggestionExplainer.explain(suggestion, fetchedAt));
     }
 
     private static PriceSummary summarizePrices(
@@ -262,7 +271,10 @@ public class CommanderSuggestionService {
     }
 
     private record CommanderEvaluation(
-            Card commander, Map<String, CardScore> scores, List<MissingCard> missing) {}
+            Card commander,
+            Map<String, CardScore> scores,
+            List<MissingCard> missing,
+            @Nullable Instant fetchedAt) {}
 
     private record PriceSummary(BigDecimal cost, int unpricedCount) {}
 }

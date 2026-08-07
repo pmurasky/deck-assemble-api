@@ -438,7 +438,7 @@ class DeckBuilderServiceTest {
     }
 
     @Test
-    void shouldCoverAllReasonCodesAcrossScoredCandidates() {
+    void shouldCoverAllCandidateScoreReasonCodesAcrossScoredCandidates() {
         var commander = commander();
         var manaVault = gameChangerCard(20L, "Mana Vault");
         manaVault.getFaces().get(0).setOracleText("Add {C}{C}. Draw a card.");
@@ -484,7 +484,15 @@ class DeckBuilderServiceTest {
                         .flatMap(candidate -> candidate.contributions().stream())
                         .map(ScoreContribution::code)
                         .collect(java.util.stream.Collectors.toSet());
-        assertThat(codes).containsExactlyInAnyOrder(RecommendationReasonCode.values());
+        assertThat(codes)
+                .containsExactlyInAnyOrder(
+                        RecommendationReasonCode.OWNED,
+                        RecommendationReasonCode.COMMANDER_SYNERGY,
+                        RecommendationReasonCode.CATEGORY_NEED,
+                        RecommendationReasonCode.PLAY_STYLE,
+                        RecommendationReasonCode.COMBO,
+                        RecommendationReasonCode.BUDGET,
+                        RecommendationReasonCode.GAME_CHANGER_POLICY);
         assertThat(scoredCandidate(result, 77L).contributions())
                 .extracting(ScoreContribution::code)
                 .contains(

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,12 @@ public class EdhrecCommanderService {
             cacheRepository.save(new EdhrecCommanderCache(commanderOracleId, payload, fetchedAt));
         }
         return payload;
+    }
+
+    public Optional<Instant> fetchedAt(String commanderOracleId) {
+        return cacheRepository
+                .findByCommanderOracleId(commanderOracleId)
+                .map(EdhrecCommanderCache::getFetchedAt);
     }
 
     // Justified: method-local map, never shared across threads.
