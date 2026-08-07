@@ -73,9 +73,10 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldExcludeIllegalAndOffColorCandidates() {
-        var altDraw = drawCard(10L, "Alt Draw", "oracle-alt-draw", 0.5);
-        var banned = bannedCard(11L, "Banned Draw", "oracle-banned-draw", "W");
-        var blue = drawCard(12L, "Blue Draw", "oracle-blue-draw", 0.5, "2", "U");
+        var altDraw = drawCard(10L, "Alt Draw", "oracle-alt-draw");
+        var banned = bannedCard(11L, "Banned Draw", "oracle-banned-draw");
+        var blue = drawCard(12L, "Blue Draw", "oracle-blue-draw");
+        blue.setColorIdentity("U");
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
@@ -100,14 +101,14 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldOrderOwnedFirstWhenRequested() {
-        var unownedHigh = drawCard(10L, "Unowned High", "oracle-unowned-high", 0.9);
-        var ownedLow = drawCard(11L, "Owned Low", "oracle-owned-low", 0.1);
+        var unownedHigh = drawCard(10L, "Unowned High", "oracle-unowned-high");
+        var ownedLow = drawCard(11L, "Owned Low", "oracle-owned-low");
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
                 List.of(unownedHigh, ownedLow),
                 Map.of(
-                        "Unowned High", new CardScore(0.9, 10L),
+                        "Unowned High", new CardScore(0.9, null),
                         "Owned Low", new CardScore(0.1, 20L)),
                 Map.of(10L, 100L, 11L, 101L));
         stubEnrichment(Set.of(101L), Map.of(), noCombos());
@@ -127,8 +128,8 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldWarnWhenAlternativeBreaksComboWithTarget() {
-        var altPiece = comboCard(10L, "Alt Piece", "oracle-alt-piece", 0.9);
-        var otherPiece = comboCard(11L, "Other Piece", "oracle-other-piece", 0.5);
+        var altPiece = comboCard(10L, "Alt Piece", "oracle-alt-piece");
+        var otherPiece = comboCard(11L, "Other Piece", "oracle-other-piece");
         stubDeckWithCommander();
         stubTarget(comboTarget());
         stubCandidates(
@@ -160,8 +161,8 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldMarkMissingPricesAsUnknown() {
-        var priced = drawCard(10L, "Priced Draw", "oracle-priced-draw", 0.5);
-        var unpriced = drawCard(11L, "Unpriced Draw", "oracle-unpriced-draw", 0.5);
+        var priced = drawCard(10L, "Priced Draw", "oracle-priced-draw");
+        var unpriced = drawCard(11L, "Unpriced Draw", "oracle-unpriced-draw");
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
@@ -190,8 +191,8 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldBreakTiesDeterministicallyByName() {
-        var beta = drawCard(10L, "Beta Draw", "oracle-beta-draw", 0.5);
-        var alpha = drawCard(11L, "Alpha Draw", "oracle-alpha-draw", 0.5);
+        var beta = drawCard(10L, "Beta Draw", "oracle-beta-draw");
+        var alpha = drawCard(11L, "Alpha Draw", "oracle-alpha-draw");
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
@@ -212,8 +213,9 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldRankCloserManaValueHigher() {
-        var close = drawCard(10L, "Close Draw", "oracle-close-draw", 0.5, "2");
-        var far = drawCard(11L, "Far Draw", "oracle-far-draw", 0.5, "6");
+        var close = drawCard(10L, "Close Draw", "oracle-close-draw");
+        var far = drawCard(11L, "Far Draw", "oracle-far-draw");
+        far.setManaValue(new BigDecimal("6"));
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
@@ -237,9 +239,9 @@ class DeckCardAlternativeServiceTest {
 
     @Test
     void shouldLimitResults() {
-        var first = drawCard(10L, "First Draw", "oracle-first-draw", 0.9);
-        var second = drawCard(11L, "Second Draw", "oracle-second-draw", 0.8);
-        var third = drawCard(12L, "Third Draw", "oracle-third-draw", 0.7);
+        var first = drawCard(10L, "First Draw", "oracle-first-draw");
+        var second = drawCard(11L, "Second Draw", "oracle-second-draw");
+        var third = drawCard(12L, "Third Draw", "oracle-third-draw");
         stubDeckWithCommander();
         stubTarget();
         stubCandidates(
@@ -256,6 +258,25 @@ class DeckCardAlternativeServiceTest {
         assertThat(alternatives)
                 .extracting(DeckCardAlternative::name)
                 .containsExactly("First Draw", "Second Draw");
+    }
+
+    @Test
+    void shouldExcludeTargetAndCommanderOracles() {
+        var targetDuplicate = drawCard(10L, "Target Duplicate", "oracle-target-draw");
+        var altDraw = drawCard(11L, "Alt Draw", "oracle-alt-draw");
+        stubDeckWithCommander();
+        stubTarget();
+        stubCandidates(
+                List.of(targetDuplicate, altDraw),
+                Map.of(
+                        "Target Duplicate", new CardScore(0.9, 10L),
+                        "Alt Draw", new CardScore(0.5, 20L)),
+                Map.of(10L, 100L, 11L, 101L));
+        stubEnrichment(Set.of(), Map.of(), noCombos());
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        assertThat(alternatives).extracting(DeckCardAlternative::name).containsExactly("Alt Draw");
     }
 
     @Test
@@ -286,6 +307,104 @@ class DeckCardAlternativeServiceTest {
         assertThat(service.suggest(DECK_ID, DECK_CARD_ID, 10, true)).isEmpty();
     }
 
+    @Test
+    void shouldSkipCandidateWithoutPrinting() {
+        var printed = drawCard(10L, "Printed Draw", "oracle-printed-draw");
+        var unprinted = drawCard(11L, "Unprinted Draw", "oracle-unprinted-draw");
+        stubDeckWithCommander();
+        stubTarget();
+        stubCandidates(
+                List.of(printed, unprinted),
+                Map.of(
+                        "Printed Draw", new CardScore(0.5, 10L),
+                        "Unprinted Draw", new CardScore(0.9, 20L)),
+                Map.of(10L, 100L));
+        stubEnrichment(Set.of(), Map.of(), noCombos());
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        assertThat(alternatives)
+                .extracting(DeckCardAlternative::name)
+                .containsExactly("Printed Draw");
+    }
+
+    @Test
+    void shouldTolerateUnavailableComboCheck() {
+        var altDraw = drawCard(10L, "Alt Draw", "oracle-alt-draw");
+        stubDeckWithCommander();
+        stubTarget();
+        stubCandidates(
+                List.of(altDraw), Map.of("Alt Draw", new CardScore(0.5, 10L)), Map.of(10L, 100L));
+        stubEnrichment(Set.of(), Map.of(), new DeckComboResponse(false, List.of()));
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        assertThat(alternatives).extracting(DeckCardAlternative::name).containsExactly("Alt Draw");
+        assertThat(reasonCodes(alternatives.getFirst()))
+                .doesNotContain(RecommendationReasonCode.COMBO);
+    }
+
+    @Test
+    void shouldIncludePartnerColorsWithSecondCommander() {
+        var blue = drawCard(12L, "Blue Draw", "oracle-blue-draw");
+        blue.setColorIdentity("U");
+        var deck = deckWithCommander();
+        deck.setSecondaryCommanderCardId(3L);
+        when(deckAccessGuard.owned(DECK_ID)).thenReturn(deck);
+        when(cardCatalogService.getCardWithFaces(1L)).thenReturn(commander());
+        when(cardCatalogService.getCardWithFaces(3L)).thenReturn(partner());
+        stubTarget();
+        stubCandidates(
+                List.of(blue), Map.of("Blue Draw", new CardScore(0.5, 10L)), Map.of(12L, 102L));
+        stubEnrichment(Set.of(), Map.of(), noCombos());
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        assertThat(alternatives).extracting(DeckCardAlternative::name).containsExactly("Blue Draw");
+    }
+
+    @Test
+    void shouldSkipCategoryBonusWhenCategoryDiffers() {
+        var ramp =
+                legalCard(
+                        10L,
+                        "Alt Ramp",
+                        "oracle-alt-ramp",
+                        "Sorcery",
+                        "Search your library for a basic land card and put it onto the battlefield"
+                                + " tapped.");
+        ramp.setManaValue(null);
+        stubDeckWithCommander();
+        stubTarget();
+        stubCandidates(
+                List.of(ramp), Map.of("Alt Ramp", new CardScore(0.5, 10L)), Map.of(10L, 100L));
+        stubEnrichment(Set.of(), Map.of(), noCombos());
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        assertThat(alternatives).extracting(DeckCardAlternative::name).containsExactly("Alt Ramp");
+        assertThat(reasonCodes(alternatives.getFirst()))
+                .doesNotContain(RecommendationReasonCode.CATEGORY_NEED);
+    }
+
+    @Test
+    void shouldScoreInclusionOnlyScoreAsZeroSynergy() {
+        var altDraw = drawCard(10L, "Alt Draw", "oracle-alt-draw");
+        stubDeckWithCommander();
+        stubTarget();
+        stubCandidates(
+                List.of(altDraw),
+                Map.of("Alt Draw", new CardScore(null, 1500L)),
+                Map.of(10L, 100L));
+        stubEnrichment(Set.of(), Map.of(), noCombos());
+
+        var alternatives = service.suggest(DECK_ID, DECK_CARD_ID, 10, true);
+
+        var synergy = reason(alternatives.getFirst(), RecommendationReasonCode.COMMANDER_SYNERGY);
+        assertThat(synergy.points()).isZero();
+        assertThat(synergy.evidence()).containsEntry("inclusion", "1500");
+    }
+
     private void stubDeckWithCommander() {
         when(deckAccessGuard.owned(DECK_ID)).thenReturn(deckWithCommander());
         when(cardCatalogService.getCardWithFaces(1L)).thenReturn(commander());
@@ -298,7 +417,7 @@ class DeckCardAlternativeServiceTest {
     }
 
     private void stubTarget() {
-        stubTarget(drawCard(2L, "Target Draw", "oracle-target-draw", 0.0));
+        stubTarget(drawCard(2L, "Target Draw", "oracle-target-draw"));
     }
 
     private void stubTarget(Card card) {
@@ -353,34 +472,20 @@ class DeckCardAlternativeServiceTest {
         return commander;
     }
 
-    private static Card drawCard(long id, String name, String oracleId, double synergy) {
-        return drawCard(id, name, oracleId, synergy, "2");
+    private static Card partner() {
+        var partner = new Card("oracle-partner", "Blue Partner");
+        ReflectionTestUtils.setField(partner, "id", 3L);
+        partner.setColorIdentity("U");
+        return partner;
     }
 
-    private static Card drawCard(
-            long id, String name, String oracleId, double synergy, String manaValue) {
-        return drawCard(id, name, oracleId, synergy, manaValue, "W");
+    private static Card drawCard(long id, String name, String oracleId) {
+        return legalCard(id, name, oracleId, "Sorcery", "Draw a card.");
     }
 
-    private static Card drawCard(
-            long id,
-            String name,
-            String oracleId,
-            double synergy,
-            String manaValue,
-            String colorIdentity) {
-        return legalCard(id, name, oracleId, "Sorcery", "Draw a card.", colorIdentity, manaValue);
-    }
-
-    private static Card comboCard(long id, String name, String oracleId, double synergy) {
+    private static Card comboCard(long id, String name, String oracleId) {
         return legalCard(
-                id,
-                name,
-                oracleId,
-                "Artifact",
-                "Whenever a creature enters, you gain 1 life.",
-                "W",
-                "3");
+                id, name, oracleId, "Artifact", "Whenever a creature enters, you gain 1 life.");
     }
 
     private static Card comboTarget() {
@@ -389,42 +494,28 @@ class DeckCardAlternativeServiceTest {
                 "Combo Piece",
                 "oracle-combo-piece",
                 "Artifact",
-                "Whenever a creature enters, you gain 1 life.",
-                "W",
-                "3");
+                "Whenever a creature enters, you gain 1 life.");
     }
 
-    private static Card bannedCard(long id, String name, String oracleId, String colorIdentity) {
-        var card = card(id, name, oracleId, "Sorcery", "Draw a card.", colorIdentity, "2");
+    private static Card bannedCard(long id, String name, String oracleId) {
+        var card = card(id, name, oracleId, "Sorcery", "Draw a card.");
         card.getLegalities().add(new CardLegality(card, "commander", "banned"));
         return card;
     }
 
     private static Card legalCard(
-            long id,
-            String name,
-            String oracleId,
-            String typeLine,
-            String oracleText,
-            String colorIdentity,
-            String manaValue) {
-        var card = card(id, name, oracleId, typeLine, oracleText, colorIdentity, manaValue);
+            long id, String name, String oracleId, String typeLine, String oracleText) {
+        var card = card(id, name, oracleId, typeLine, oracleText);
         card.getLegalities().add(new CardLegality(card, "commander", "legal"));
         return card;
     }
 
     private static Card card(
-            long id,
-            String name,
-            String oracleId,
-            String typeLine,
-            String oracleText,
-            String colorIdentity,
-            String manaValue) {
+            long id, String name, String oracleId, String typeLine, String oracleText) {
         var card = new Card(oracleId, name);
         ReflectionTestUtils.setField(card, "id", id);
-        card.setColorIdentity(colorIdentity);
-        card.setManaValue(new BigDecimal(manaValue));
+        card.setColorIdentity("W");
+        card.setManaValue(new BigDecimal("2"));
         var face = new CardFace(card, 0, name);
         face.setTypeLine(typeLine);
         face.setOracleText(oracleText);
