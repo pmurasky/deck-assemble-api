@@ -76,10 +76,11 @@ final class CardSearchPredicates {
             addBounds(predicates, card.get("manaValue"), filter.manaValueRange(), builder);
         }
         if (filter.powerRange() != null) {
-            predicates.add(numericTextRangePredicate(card, "power", filter.powerRange()));
+            predicates.add(numericTextRangePredicate(card, "power", filter.powerRange(), builder));
         }
         if (filter.toughnessRange() != null) {
-            predicates.add(numericTextRangePredicate(card, "toughness", filter.toughnessRange()));
+            predicates.add(
+                    numericTextRangePredicate(card, "toughness", filter.toughnessRange(), builder));
         }
     }
 
@@ -97,9 +98,15 @@ final class CardSearchPredicates {
     }
 
     private static Predicate numericTextRangePredicate(
-            From<?, Card> card, String attribute, CardSearchFilter.IntRange range) {
+            From<?, Card> card,
+            String attribute,
+            CardSearchFilter.IntRange range,
+            CriteriaBuilder builder) {
         int min = range.min() == null ? 0 : Math.max(range.min(), 0);
         int max = range.max() == null ? MAX_POWER_TOUGHNESS : range.max();
+        if (min > max) {
+            return builder.disjunction();
+        }
         List<String> values = IntStream.rangeClosed(min, max).mapToObj(String::valueOf).toList();
         return card.get(attribute).in(values);
     }

@@ -398,6 +398,22 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldReturnEmptyResultsForAnInvertedPowerRange() throws Exception {
+        Card card = cardRepository.save(new Card("oracle-inverted-power", "Inverted Power"));
+        card.setPower("7");
+        cardRepository.save(card);
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Inverted Power")
+                                .queryParam("minPower", "15")
+                                .queryParam("maxPower", "5")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
     void shouldRejectAnUnknownFunctionalCategory() throws Exception {
         mockMvc.perform(
                         get("/cards")

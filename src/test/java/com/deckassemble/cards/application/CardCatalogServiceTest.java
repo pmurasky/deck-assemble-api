@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
@@ -16,7 +15,6 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.CommanderPairingRules;
 import com.deckassemble.cards.domain.MagicSet;
-import com.deckassemble.shared.security.CurrentUser;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,9 +37,7 @@ class CardCatalogServiceTest {
 
     @Mock private CardRepository cardRepository;
     @Mock private CardPrintingRepository cardPrintingRepository;
-    @Mock private CurrentUser currentUser;
-    @Mock private CardOwnershipLookup cardOwnershipLookup;
-    @Mock private CardPriceService cardPriceService;
+    @Mock private CardSearchCandidateSpecifications candidateSpecifications;
 
     @Test
     void shouldFilterSearchResultsByPairingWithPrimaryCommander() {
@@ -87,46 +83,63 @@ class CardCatalogServiceTest {
     }
 
     @Test
-    void shouldSkipOwnershipLookupWhenOwnedQuantityFilterNotRequested() {
+    void shouldSkipOwnedQuantitySpecWhenFilterNotRequested() {
         when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service().search(basicFilter(""), null, null, PAGEABLE);
 
-        verifyNoInteractions(currentUser, cardOwnershipLookup);
+        verify(candidateSpecifications, never()).ownedQuantitySpec(any());
     }
 
     @Test
-    void shouldSkipOwnershipLookupWhenAnonymous() {
+    void shouldResolveOwnedQuantitySpecWhenFilterRequested() {
         when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
                 .thenReturn(new PageImpl<>(List.of()));
-        when(currentUser.subject()).thenReturn(Optional.empty());
+        var range = new CardSearchFilter.IntRange(1, null);
+        when(candidateSpecifications.ownedQuantitySpec(range)).thenReturn((r, cq, cb) -> null);
 
-        service().search(basicFilter(""), new CardSearchFilter.IntRange(1, null), null, PAGEABLE);
+        service().search(basicFilter(""), range, null, PAGEABLE);
 
-        verify(cardOwnershipLookup, never()).ownedQuantitiesBySubject(any());
+        verify(candidateSpecifications).ownedQuantitySpec(range);
     }
 
     @Test
-    void shouldLookUpOwnedQuantitiesForAuthenticatedSubjectWhenFilterRequested() {
-        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
-                .thenReturn(new PageImpl<>(List.of()));
-        when(currentUser.subject()).thenReturn(Optional.of("auth0|owner"));
-        when(cardOwnershipLookup.ownedQuantitiesBySubject("auth0|owner")).thenReturn(Map.of());
-
-        service().search(basicFilter(""), new CardSearchFilter.IntRange(1, null), null, PAGEABLE);
-
-        verify(cardOwnershipLookup).ownedQuantitiesBySubject("auth0|owner");
-    }
-
-    @Test
-    void shouldSkipPriceLookupWhenPriceFilterNotRequested() {
+    void shouldSkipPriceRangeSpecWhenFilterNotRequested() {
         when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service().search(basicFilter(""), null, null, PAGEABLE);
 
-        verifyNoInteractions(cardPriceService);
+        verify(candidateSpecifications, never()).priceRangeSpec(any());
+    }
+
+    @Test
+    void shouldResolvePriceRangeSpecWhenFilterRequested() {
+        var priceRange = new CardSearchFilter.PriceRange(java.math.BigDecimal.ONE, null, null);
+        var filter =
+                new CardSearchFilter(
+                        "",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        priceRange,
+                        null,
+                        null,
+                        null);
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(candidateSpecifications.priceRangeSpec(priceRange)).thenReturn((r, cq, cb) -> null);
+
+        service().search(filter, null, null, PAGEABLE);
+
+        verify(candidateSpecifications).priceRangeSpec(priceRange);
     }
 
     @Test
@@ -326,9 +339,7 @@ class CardCatalogServiceTest {
                 cardRepository,
                 cardPrintingRepository,
                 new CommanderPairingRules(),
-                currentUser,
-                cardOwnershipLookup,
-                cardPriceService);
+                candidateSpecifications);
     }
 
     private static CardSearchFilter basicFilter(String query) {
