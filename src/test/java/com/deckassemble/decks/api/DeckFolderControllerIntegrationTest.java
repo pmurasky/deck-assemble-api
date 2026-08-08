@@ -12,17 +12,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.deckassemble.AbstractIntegrationTest;
+import com.deckassemble.decks.application.history.DeckSnapshot;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
+import com.deckassemble.decks.domain.history.DeckRevision;
+import com.deckassemble.decks.domain.history.DeckRevisionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
 class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private DeckRepository deckRepository;
+    @Autowired private DeckRevisionRepository deckRevisionRepository;
+    @Autowired private ObjectMapper objectMapper;
 
     @Test
     void shouldCreateRenameAndRejectCaseInsensitiveDuplicateFolderName() throws Exception {
@@ -104,6 +111,28 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
         assertThat(deckRepository.findById(deckId).orElseThrow().getFolderId()).isNull();
         mockMvc.perform(get("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldRecordFolderChangedRevisionReflectingClearedFolderIdAfterFolderDeletion()
+            throws Exception {
+        String subject = "auth0|folder-delete-history";
+        long deckId = createDeck(subject, "History Deck");
+        long folderId = createFolder(subject, "Folder To Delete");
+        assignFolder(subject, deckId, folderId).andExpect(status().isNoContent());
+
+        mockMvc.perform(
+                        delete("/deck-folders/{folderId}", folderId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isNoContent());
+
+        DeckRevision latest =
+                deckRevisionRepository
+                        .findFirstByDeckIdOrderByRevisionNumberDesc(deckId)
+                        .orElseThrow();
+        assertThat(latest.getChangeType()).isEqualTo(DeckChangeType.FOLDER_CHANGED);
+        DeckSnapshot snapshot = objectMapper.readValue(latest.getSnapshot(), DeckSnapshot.class);
+        assertThat(snapshot.folderId()).isNull();
     }
 
     @Test
