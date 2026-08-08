@@ -14,3 +14,134 @@ databaseChangeLog:
             columns:
               - column:
                   name: card_id
+  - changeSet:
+      id: 013-deck-categories
+      author: opencode
+      comment: >-
+        Task 7 adds durable deck organization: user-renameable categories (deck_categories) with
+        a nullable functional_category anchor so system-seeded defaults keep their legality/
+        recommendation meaning even if a user overrides the display name, plus a many-to-many
+        assignment table linking categories to deck_cards.
+      changes:
+        - createTable:
+            tableName: deck_categories
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_categories
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display_order
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: system_owned
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: functional_category
+                  type: varchar(20)
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: deck_category_assignments
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_category_assignments
+              - column:
+                  name: deck_category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deck_card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: deck_categories
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_categories_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_category_assignments
+            baseColumnNames: deck_category_id
+            referencedTableName: deck_categories
+            referencedColumnNames: id
+            constraintName: fk_deck_category_assignments_category
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_category_assignments
+            baseColumnNames: deck_card_id
+            referencedTableName: deck_cards
+            referencedColumnNames: id
+            constraintName: fk_deck_category_assignments_deck_card
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: deck_categories
+            columnNames: deck_id, name
+            constraintName: uq_deck_categories_deck_name
+        - addUniqueConstraint:
+            tableName: deck_category_assignments
+            columnNames: deck_category_id, deck_card_id
+            constraintName: uq_deck_category_assignments_category_card
+        - createIndex:
+            tableName: deck_category_assignments
+            indexName: idx_deck_category_assignments_deck_card_id
+            columns:
+              - column:
+                  name: deck_card_id

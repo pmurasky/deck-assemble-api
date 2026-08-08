@@ -7,6 +7,7 @@ import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.CollectionNotFoundException;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.organization.DeckCategoryNotFoundException;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -44,6 +45,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DeckCardNotFoundException.class)
     ProblemDetail handleDeckCardNotFound() {
         return notFound("deck-card", "Deck card");
+    }
+
+    @ExceptionHandler(DeckCategoryNotFoundException.class)
+    ProblemDetail handleDeckCategoryNotFound() {
+        return notFound("deck-category", "Deck category");
     }
 
     @ExceptionHandler(InvalidCardSearchFilterException.class)
