@@ -67,15 +67,7 @@ public class DeckUpgradeService {
         int effectiveMaxChanges = maxChanges == null ? DEFAULT_MAX_CHANGES : maxChanges;
         var cards = deckCardService.listCards(deckId);
         var before = deckAnalysisService.analyze(deckId);
-        var selection =
-                new PlanSelection(
-                        objective,
-                        effectiveCurrency,
-                        budget,
-                        gaps(objective, before),
-                        cardCatalogService.getAnalysisViewsByPrintingIds(printingIdsOf(cards)),
-                        cardPriceService.latestPrices(printingIdsOf(cards)),
-                        before);
+        var selection = newSelection(objective, effectiveCurrency, budget, cards, before);
         selectSubstitutions(deckId, targets(cards, selection), selection, effectiveMaxChanges);
         return new DeckUpgradePlan(
                 objective,
@@ -85,6 +77,23 @@ public class DeckUpgradeService {
                 selection.substitutions(),
                 beforeMetrics(before),
                 selection.afterMetrics(before.legality().legal()));
+    }
+
+    private PlanSelection newSelection(
+            Objective objective,
+            String currency,
+            @Nullable BigDecimal budget,
+            List<DeckCardResponse> cards,
+            DeckAnalysisResponse before) {
+        var printingIds = printingIdsOf(cards);
+        return new PlanSelection(
+                objective,
+                currency,
+                budget,
+                gaps(objective, before),
+                cardCatalogService.getAnalysisViewsByPrintingIds(printingIds),
+                cardPriceService.latestPrices(printingIds),
+                before);
     }
 
     private void selectSubstitutions(
@@ -168,6 +177,53 @@ public class DeckUpgradeService {
         if (value != null) {
             target.append(value.toLowerCase(Locale.ROOT)).append('\n');
         }
+    }
+
+    private static @Nullable BigDecimal priceOf(CardPrice price, String currency) {
+        return switch (currency) {
+            case "usdFoil" -> price.usdFoil();
+            case "eur" -> price.eur();
+            case "tix" -> price.tix();
+            default -> price.usd();
+        };
+    }
+
+    private static void mergeCount(Map<String, Integer> map, String key, int delta) {
+        map.merge(key, delta, Integer::sum);
+    }
+
+    private static void applyAmounts(
+            Map<String, BigDecimal> map, @Nullable CardPrice price, int signedQuantity) {
+        if (price == null) {
+            return;
+        }
+        addAmount(map, "usd", price.usd(), signedQuantity);
+        addAmount(map, "usdFoil", price.usdFoil(), signedQuantity);
+        addAmount(map, "eur", price.eur(), signedQuantity);
+        addAmount(map, "tix", price.tix(), signedQuantity);
+    }
+
+    private static void addAmount(
+            Map<String, BigDecimal> map, String currency, @Nullable BigDecimal amount, int qty) {
+        if (amount != null) {
+            map.merge(currency, amount.multiply(BigDecimal.valueOf(qty)), BigDecimal::add);
+        }
+    }
+
+    // Justified: method-local TreeMap, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
+    private static Map<String, Integer> positiveCounts(Map<String, Integer> source) {
+        Map<String, Integer> cleaned = new TreeMap<>(source);
+        cleaned.values().removeIf(count -> count <= 0);
+        return cleaned;
+    }
+
+    // Justified: method-local TreeMap, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
+    private static Map<String, BigDecimal> positiveAmounts(Map<String, BigDecimal> source) {
+        Map<String, BigDecimal> cleaned = new TreeMap<>(source);
+        cleaned.values().removeIf(amount -> amount.compareTo(BigDecimal.ZERO) <= 0);
+        return cleaned;
     }
 
     public enum Objective {
@@ -338,15 +394,6 @@ public class DeckUpgradeService {
             return price == null ? null : priceOf(price, currency);
         }
 
-        private static @Nullable BigDecimal priceOf(CardPrice price, String currency) {
-            return switch (currency) {
-                case "usdFoil" -> price.usdFoil();
-                case "eur" -> price.eur();
-                case "tix" -> price.tix();
-                default -> price.usd();
-            };
-        }
-
         private void apply(
                 DeckCardResponse target,
                 DeckCardAlternative alternative,
@@ -354,23 +401,30 @@ public class DeckUpgradeService {
                 Map<Long, CardAnalysisView> views) {
             int quantity = target.quantity();
             var cost = unitCost(alternative, prices);
-            substitutions.add(
-                    new Substitution(
-                            idOf(target),
-                            target.cardPrintingId(),
-                            target.card().name(),
-                            target.ownershipStatus(),
-                            quantity,
-                            alternative.printingId(),
-                            alternative.name(),
-                            alternative.owned(),
-                            cost,
-                            alternative.contributions()));
+            substitutions.add(toSubstitution(target, alternative, quantity, cost));
             if (cost != null) {
                 spent = spent.add(cost.multiply(BigDecimal.valueOf(quantity)));
             }
             addedNames.add(alternative.name());
             applyMetrics(target, alternative, quantity, prices, views);
+        }
+
+        private static Substitution toSubstitution(
+                DeckCardResponse target,
+                DeckCardAlternative alternative,
+                int quantity,
+                @Nullable BigDecimal cost) {
+            return new Substitution(
+                    idOf(target),
+                    target.cardPrintingId(),
+                    target.card().name(),
+                    target.ownershipStatus(),
+                    quantity,
+                    alternative.printingId(),
+                    alternative.name(),
+                    alternative.owned(),
+                    cost,
+                    alternative.contributions());
         }
 
         private void applyMetrics(
@@ -397,31 +451,6 @@ public class DeckUpgradeService {
             applyAmounts(value, prices.get(alternative.printingId()), quantity);
         }
 
-        private static void mergeCount(Map<String, Integer> map, String key, int delta) {
-            map.merge(key, delta, Integer::sum);
-        }
-
-        private static void applyAmounts(
-                Map<String, BigDecimal> map, @Nullable CardPrice price, int signedQuantity) {
-            if (price == null) {
-                return;
-            }
-            addAmount(map, "usd", price.usd(), signedQuantity);
-            addAmount(map, "usdFoil", price.usdFoil(), signedQuantity);
-            addAmount(map, "eur", price.eur(), signedQuantity);
-            addAmount(map, "tix", price.tix(), signedQuantity);
-        }
-
-        private static void addAmount(
-                Map<String, BigDecimal> map,
-                String currency,
-                @Nullable BigDecimal amount,
-                int qty) {
-            if (amount != null) {
-                map.merge(currency, amount.multiply(BigDecimal.valueOf(qty)), BigDecimal::add);
-            }
-        }
-
         UpgradeMetrics afterMetrics(boolean legal) {
             return new UpgradeMetrics(
                     positiveCounts(ownership),
@@ -429,18 +458,6 @@ public class DeckUpgradeService {
                     positiveAmounts(missing),
                     positiveCounts(categories),
                     legal);
-        }
-
-        private static Map<String, Integer> positiveCounts(Map<String, Integer> source) {
-            Map<String, Integer> cleaned = new TreeMap<>(source);
-            cleaned.values().removeIf(count -> count <= 0);
-            return cleaned;
-        }
-
-        private static Map<String, BigDecimal> positiveAmounts(Map<String, BigDecimal> source) {
-            Map<String, BigDecimal> cleaned = new TreeMap<>(source);
-            cleaned.values().removeIf(amount -> amount.compareTo(BigDecimal.ZERO) <= 0);
-            return cleaned;
         }
     }
 }

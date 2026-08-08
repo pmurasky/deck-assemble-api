@@ -579,6 +579,8 @@ class DeckUpgradeServiceTest {
         return intMap(alternating);
     }
 
+    // Justified: method-local TreeMap, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
     private static Map<String, Integer> intMap(Object... alternating) {
         Map<String, Integer> map = new TreeMap<>();
         for (int index = 0; index < alternating.length; index += 2) {
@@ -587,6 +589,8 @@ class DeckUpgradeServiceTest {
         return map;
     }
 
+    // Justified: method-local TreeMap, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
     private static Map<String, BigDecimal> amounts(Object... alternating) {
         Map<String, BigDecimal> map = new TreeMap<>();
         for (int index = 0; index < alternating.length; index += 2) {
