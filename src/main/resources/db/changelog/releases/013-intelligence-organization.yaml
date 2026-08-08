@@ -145,3 +145,254 @@ databaseChangeLog:
             columns:
               - column:
                   name: deck_card_id
+  - changeSet:
+      id: 013-deck-folders-tags-templates
+      author: opencode
+      comment: >-
+        Task 8 adds profile-scoped organization: folders (one per deck, referenced by a plain
+        decks.folder_id FK column with no DB constraint, matching the commander_card_id style),
+        reusable tags (many per deck via deck_tag_assignments), and reusable ordered category
+        templates (category_templates/category_template_items) whose items are materialized into
+        deck_categories via DeckCategoryService when applied.
+      changes:
+        - addColumn:
+            tableName: decks
+            columns:
+              - column:
+                  name: folder_id
+                  type: bigint
+        - createTable:
+            tableName: deck_folders
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_folders
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: deck_tags
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_tags
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: deck_tag_assignments
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_tag_assignments
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: category_templates
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_category_templates
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - createTable:
+            tableName: category_template_items
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_category_template_items
+              - column:
+                  name: category_template_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display_order
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: deck_tag_assignments
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_tag_assignments_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_tag_assignments
+            baseColumnNames: tag_id
+            referencedTableName: deck_tags
+            referencedColumnNames: id
+            constraintName: fk_deck_tag_assignments_tag
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: category_template_items
+            baseColumnNames: category_template_id
+            referencedTableName: category_templates
+            referencedColumnNames: id
+            constraintName: fk_category_template_items_template
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: deck_folders
+            columnNames: profile_id, name
+            constraintName: uq_deck_folders_profile_name
+        - addUniqueConstraint:
+            tableName: deck_tags
+            columnNames: profile_id, name
+            constraintName: uq_deck_tags_profile_name
+        - addUniqueConstraint:
+            tableName: deck_tag_assignments
+            columnNames: deck_id, tag_id
+            constraintName: uq_deck_tag_assignments_deck_tag
+        - addUniqueConstraint:
+            tableName: category_templates
+            columnNames: profile_id, name
+            constraintName: uq_category_templates_profile_name
+        - createIndex:
+            tableName: deck_tag_assignments
+            indexName: idx_deck_tag_assignments_tag_id
+            columns:
+              - column:
+                  name: tag_id
+        - createIndex:
+            tableName: category_template_items
+            indexName: idx_category_template_items_template_id
+            columns:
+              - column:
+                  name: category_template_id

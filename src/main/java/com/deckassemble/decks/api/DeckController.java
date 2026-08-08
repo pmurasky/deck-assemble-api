@@ -2,6 +2,8 @@ package com.deckassemble.decks.api;
 
 import com.deckassemble.decks.api.alternatives.DeckCardAlternativeResponse;
 import com.deckassemble.decks.api.comparison.DeckComparisonResponse;
+import com.deckassemble.decks.api.organization.DeckFolderAssignmentRequest;
+import com.deckassemble.decks.api.organization.DeckTagAssignmentRequest;
 import com.deckassemble.decks.api.upgrades.DeckUpgradePlanResponse;
 import com.deckassemble.decks.api.upgrades.DeckUpgradeRequest;
 import com.deckassemble.decks.application.DeckCardAddRequest;
@@ -23,6 +25,8 @@ import com.deckassemble.decks.application.alternatives.DeckCardAlternativeServic
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import com.deckassemble.decks.application.comparison.DeckComparisonService;
+import com.deckassemble.decks.application.organization.DeckFolderService;
+import com.deckassemble.decks.application.organization.DeckTagService;
 import com.deckassemble.decks.application.upgrades.DeckUpgradeService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -35,11 +39,17 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+// Suppressed: cohesive deck aggregate controller (same rationale as the constructor's
+// parameter-count suppression below) — every method is a thin pass-through to one collaborator
+// serving a /decks/{deckId}/... subresource; splitting by subresource would scatter that
+// aggregate's routes across many single-purpose controllers for no behavioral benefit.
+@SuppressWarnings("PMD.TooManyMethods")
 @RestController
 @RequestMapping("/decks")
 public class DeckController {
@@ -53,10 +63,12 @@ public class DeckController {
     private final DeckCardAlternativeService deckCardAlternativeService;
     private final DeckComparisonService deckComparisonService;
     private final DeckUpgradeService deckUpgradeService;
+    private final DeckFolderService deckFolderService;
+    private final DeckTagService deckTagService;
 
     // Suppressed: cohesive deck aggregate controller; each collaborator serves deck subresources
-    // (cards, combos, wishlist, ownership, analysis, alternatives, comparison, upgrades) under
-    // /decks/{deckId}.
+    // (cards, combos, wishlist, ownership, analysis, alternatives, comparison, upgrades, folder,
+    // tags) under /decks/{deckId}.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckController(
             DeckService deckService,
@@ -67,7 +79,9 @@ public class DeckController {
             DeckAnalysisService deckAnalysisService,
             DeckCardAlternativeService deckCardAlternativeService,
             DeckComparisonService deckComparisonService,
-            DeckUpgradeService deckUpgradeService) {
+            DeckUpgradeService deckUpgradeService,
+            DeckFolderService deckFolderService,
+            DeckTagService deckTagService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
@@ -77,6 +91,8 @@ public class DeckController {
         this.deckCardAlternativeService = deckCardAlternativeService;
         this.deckComparisonService = deckComparisonService;
         this.deckUpgradeService = deckUpgradeService;
+        this.deckFolderService = deckFolderService;
+        this.deckTagService = deckTagService;
     }
 
     @GetMapping
@@ -203,6 +219,20 @@ public class DeckController {
     public ResponseEntity<Void> removeCard(
             @PathVariable long deckId, @PathVariable long deckCardId) {
         deckCardService.removeCard(deckId, deckCardId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{deckId}/folder")
+    public ResponseEntity<Void> assignFolder(
+            @PathVariable long deckId, @Valid @RequestBody DeckFolderAssignmentRequest request) {
+        deckFolderService.assignToDeck(deckId, request.folderId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{deckId}/tags")
+    public ResponseEntity<Void> assignTags(
+            @PathVariable long deckId, @Valid @RequestBody DeckTagAssignmentRequest request) {
+        deckTagService.assignToDeck(deckId, request.tagIds());
         return ResponseEntity.noContent().build();
     }
 }

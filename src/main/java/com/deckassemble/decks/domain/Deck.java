@@ -55,6 +55,11 @@ public class Deck {
     @Column(name = "secondary_commander_card_id")
     private Long secondaryCommanderCardId;
 
+    // ponytail: plain FK, not @ManyToOne DeckFolder — consistent with the commander-card-id style
+    // above even though DeckFolder is in-module; a deck has at most one folder.
+    @Column(name = "folder_id")
+    private Long folderId;
+
     @Column(name = "use_owned_cards_only", nullable = false)
     private boolean useOwnedCardsOnly;
 
@@ -141,6 +146,14 @@ public class Deck {
 
     public void setSecondaryCommanderCardId(@Nullable Long secondaryCommanderCardId) {
         this.secondaryCommanderCardId = secondaryCommanderCardId;
+    }
+
+    public Long getFolderId() {
+        return folderId;
+    }
+
+    public void setFolderId(@Nullable Long folderId) {
+        this.folderId = folderId;
     }
 
     public boolean isUseOwnedCardsOnly() {

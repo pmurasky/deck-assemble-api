@@ -191,6 +191,66 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
                 .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
     }
 
+    @Test
+    void shouldApplyTemplateIdempotentlyWithoutDuplicateCategories() throws Exception {
+        String subject = "auth0|org-template";
+        long deckId = createDeck(subject, "Org Template Deck");
+        long templateId = createTemplate(subject, "Ramp Focus", "Ramp", "Removal");
+
+        applyTemplate(subject, deckId, templateId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Ramp')]").exists())
+                .andExpect(jsonPath("$[?(@.name == 'Removal')]").exists());
+        int countAfterFirstApply =
+                deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId).size();
+
+        applyTemplate(subject, deckId, templateId).andExpect(status().isOk());
+
+        assertThat(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId))
+                .hasSize(countAfterFirstApply);
+    }
+
+    @Test
+    void shouldRejectApplyingNonexistentTemplate() throws Exception {
+        String subject = "auth0|org-template-missing";
+        long deckId = createDeck(subject, "Org Template Missing Deck");
+
+        applyTemplate(subject, deckId, 999_999L)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CATEGORY_TEMPLATE_NOT_FOUND"));
+    }
+
+    private ResultActions applyTemplate(String subject, long deckId, long templateId)
+            throws Exception {
+        return mockMvc.perform(
+                post(
+                                "/decks/{deckId}/categories/from-template?templateId={templateId}",
+                                deckId,
+                                templateId)
+                        .with(jwt().jwt(jwt -> jwt.subject(subject))));
+    }
+
+    private long createTemplate(String subject, String name, String... itemNames) throws Exception {
+        StringBuilder items = new StringBuilder();
+        for (String itemName : itemNames) {
+            if (items.length() > 0) {
+                items.append(',');
+            }
+            items.append('"').append(itemName).append('"');
+        }
+        MvcResult result =
+                mockMvc.perform(
+                                post("/category-templates")
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"name\":\"%s\",\"itemNames\":[%s]}"
+                                                        .formatted(name, items)))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        return idFrom(result);
+    }
+
     private ResultActions assignCards(
             String subject, long deckId, long categoryId, String cardIdsJson) throws Exception {
         return assignCardsRaw(subject, deckId, categoryId, cardIdsJson).andExpect(status().isOk());

@@ -1,5 +1,6 @@
 package com.deckassemble.decks.api.organization;
 
+import com.deckassemble.decks.application.organization.CategoryTemplateService;
 import com.deckassemble.decks.application.organization.DeckCategoryService;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** CRUD for deck organization categories and bulk category-to-card assignment. */
@@ -21,9 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeckOrganizationController {
 
     private final DeckCategoryService deckCategoryService;
+    private final CategoryTemplateService categoryTemplateService;
 
-    public DeckOrganizationController(DeckCategoryService deckCategoryService) {
+    public DeckOrganizationController(
+            DeckCategoryService deckCategoryService,
+            CategoryTemplateService categoryTemplateService) {
         this.deckCategoryService = deckCategoryService;
+        this.categoryTemplateService = categoryTemplateService;
     }
 
     @GetMapping
@@ -63,5 +69,13 @@ public class DeckOrganizationController {
             @Valid @RequestBody DeckCategoryAssignmentRequest request) {
         return DeckCategoryResponse.from(
                 deckCategoryService.assignCards(deckId, categoryId, request.deckCardIds()));
+    }
+
+    @PostMapping("/from-template")
+    public List<DeckCategoryResponse> applyTemplate(
+            @PathVariable long deckId, @RequestParam long templateId) {
+        return categoryTemplateService.applyToDeck(deckId, templateId).stream()
+                .map(DeckCategoryResponse::from)
+                .toList();
     }
 }
