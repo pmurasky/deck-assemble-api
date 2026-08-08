@@ -65,6 +65,9 @@ class DeckCategoryServiceTest {
         when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
         lenient()
+                .when(deckRepository.findLockedByIdAndProfileId(DECK_ID, PROFILE_ID))
+                .thenReturn(Optional.of(deck));
+        lenient()
                 .when(deckCategoryRepository.save(any(DeckCategory.class)))
                 .thenAnswer(
                         inv -> {

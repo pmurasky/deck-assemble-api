@@ -1,5 +1,6 @@
 package com.deckassemble.decks.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -19,7 +20,15 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -35,6 +44,7 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
     @Autowired private CardRepository cardRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
+    @Autowired private DeckCategoryRepository deckCategoryRepository;
 
     @Test
     void shouldSeedDefaultCategoriesOrderedOnFirstList() throws Exception {
@@ -51,6 +61,38 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
                 .andExpect(jsonPath("$[0].systemOwned").value(true))
                 .andExpect(jsonPath("$[5].name").value("Synergy"))
                 .andExpect(jsonPath("$[5].functionalCategory").value("SYNERGY"));
+    }
+
+    @Test
+    void shouldSeedDefaultCategoriesExactlyOnceUnderConcurrentFirstTouch() throws Exception {
+        String subject = "auth0|org-race";
+        long deckId = createDeck(subject, "Org Race Deck");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        Callable<Integer> listCategories =
+                () -> {
+                    ready.countDown();
+                    go.await();
+                    return mockMvc.perform(
+                                    get("/decks/{deckId}/categories", deckId)
+                                            .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                            .andReturn()
+                            .getResponse()
+                            .getStatus();
+                };
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            Future<Integer> first = executor.submit(listCategories);
+            Future<Integer> second = executor.submit(listCategories);
+            ready.await();
+            go.countDown();
+
+            assertThat(first.get(10, TimeUnit.SECONDS)).isEqualTo(200);
+            assertThat(second.get(10, TimeUnit.SECONDS)).isEqualTo(200);
+        }
+
+        List<?> categories = deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId);
+        assertThat(categories).hasSize(6);
     }
 
     @Test

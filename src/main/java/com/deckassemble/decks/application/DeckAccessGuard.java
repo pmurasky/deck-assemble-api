@@ -39,4 +39,15 @@ public class DeckAccessGuard {
                 .findByIdAndProfileId(deckId, profileId())
                 .orElseThrow(DeckNotFoundException::new);
     }
+
+    /**
+     * Same as {@link #owned(long)} but takes a row lock on the deck, serializing concurrent
+     * check-then-act operations scoped to this deck (e.g. lazy first-touch seeding) the same way
+     * {@link #lockedProfileId()} serializes profile-scoped ones.
+     */
+    public Deck ownedLocked(long deckId) {
+        return deckRepository
+                .findLockedByIdAndProfileId(deckId, profileId())
+                .orElseThrow(DeckNotFoundException::new);
+    }
 }

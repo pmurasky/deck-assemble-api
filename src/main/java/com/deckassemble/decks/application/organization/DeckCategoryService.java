@@ -103,7 +103,14 @@ public class DeckCategoryService {
 
     // ponytail: seeded lazily on first touch rather than eagerly at deck creation, so this
     // service stays self-contained and DeckService (out of this task's file map) is untouched.
+    //
+    // The check-then-act below (existsByDeckId, then insert 6 rows) would otherwise race two
+    // concurrent first-touch calls for the same brand-new deck into both seeding and tripping
+    // uq_deck_categories_deck_name. ownedLocked() takes a PESSIMISTIC_WRITE row lock on the deck
+    // first, serializing them exactly like DeckImportCommitService/CollectionImportService
+    // already serialize their own first-touch check-then-act paths via lockedProfileId().
     private void ensureDefaultCategories(long deckId) {
+        deckAccessGuard.ownedLocked(deckId);
         if (deckCategoryRepository.existsByDeckId(deckId)) {
             return;
         }
