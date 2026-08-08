@@ -3,7 +3,9 @@ package com.deckassemble.decks.application.organization;
 import com.deckassemble.cards.domain.CardFunctionalCategory;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.DeckCardRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckCategory;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignment;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignmentRepository;
@@ -12,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -33,16 +36,19 @@ public class DeckCategoryService {
     private final DeckCategoryRepository deckCategoryRepository;
     private final DeckCategoryAssignmentRepository assignmentRepository;
     private final DeckCardRepository deckCardRepository;
+    private final DeckRevisionService deckRevisionService;
 
     public DeckCategoryService(
             DeckAccessGuard deckAccessGuard,
             DeckCategoryRepository deckCategoryRepository,
             DeckCategoryAssignmentRepository assignmentRepository,
-            DeckCardRepository deckCardRepository) {
+            DeckCardRepository deckCardRepository,
+            DeckRevisionService deckRevisionService) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckCategoryRepository = deckCategoryRepository;
         this.assignmentRepository = assignmentRepository;
         this.deckCardRepository = deckCardRepository;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public List<CategoryView> list(long deckId) {
@@ -102,6 +108,7 @@ public class DeckCategoryService {
         int order = (int) deckCategoryRepository.countByDeckId(deckId);
         DeckCategory saved =
                 deckCategoryRepository.save(new DeckCategory(deckId, name, order, false));
+        recordChange(deckId);
         return viewOf(saved, List.of());
     }
 
@@ -109,11 +116,16 @@ public class DeckCategoryService {
         deckAccessGuard.owned(deckId);
         ensureDefaultCategories(deckId);
         DeckCategory category = ownedCategory(deckId, categoryId);
-        if (!category.getName().equals(name)) {
+        boolean changed = !category.getName().equals(name);
+        if (changed) {
             assertNameAvailable(deckId, name);
             category.setName(name);
         }
-        return viewsFor(List.of(deckCategoryRepository.save(category))).get(0);
+        CategoryView view = viewsFor(List.of(deckCategoryRepository.save(category))).get(0);
+        if (changed) {
+            recordChange(deckId);
+        }
+        return view;
     }
 
     public void delete(long deckId, long categoryId) {
@@ -126,6 +138,7 @@ public class DeckCategoryService {
         }
         assignmentRepository.deleteByDeckCategoryId(categoryId);
         deckCategoryRepository.delete(category);
+        recordChange(deckId);
     }
 
     public CategoryView assignCards(long deckId, long categoryId, List<Long> deckCardIds) {
@@ -134,6 +147,12 @@ public class DeckCategoryService {
         DeckCategory category = ownedCategory(deckId, categoryId);
         List<Long> distinctIds = deckCardIds.stream().distinct().toList();
         assertCardsInDeck(deckId, distinctIds);
+        replaceAssignments(deckId, categoryId, distinctIds);
+        return viewOf(category, distinctIds);
+    }
+
+    private void replaceAssignments(long deckId, long categoryId, List<Long> distinctIds) {
+        Set<Long> before = assignedDeckCardIds(categoryId);
         // Hibernate defers deletes until after inserts within one flush, so a bare delete-then-
         // save here would race the new rows against the old ones on (category, card). Flushing
         // the delete first keeps the "replace" semantics correct and idempotent.
@@ -143,7 +162,20 @@ public class DeckCategoryService {
                 deckCardId ->
                         assignmentRepository.save(
                                 new DeckCategoryAssignment(categoryId, deckCardId)));
-        return viewOf(category, distinctIds);
+        if (!before.equals(Set.copyOf(distinctIds))) {
+            recordChange(deckId);
+        }
+    }
+
+    private Set<Long> assignedDeckCardIds(long categoryId) {
+        return assignmentRepository.findByDeckCategoryIdIn(List.of(categoryId)).stream()
+                .map(DeckCategoryAssignment::getDeckCardId)
+                .collect(Collectors.toSet());
+    }
+
+    private void recordChange(long deckId) {
+        deckRevisionService.record(
+                deckId, deckAccessGuard.profileId(), DeckChangeType.CATEGORY_CHANGED);
     }
 
     // ponytail: seeded lazily on first touch rather than eagerly at deck creation, so this

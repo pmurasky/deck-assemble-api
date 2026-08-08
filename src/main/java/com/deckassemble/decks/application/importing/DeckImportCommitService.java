@@ -6,8 +6,10 @@ import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.DeckImportPreview;
 import com.deckassemble.decks.domain.DeckImportPreviewRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
-/** Atomically creates decks from validated import previews. */
+/**
+ * Atomically creates decks from validated import previews. Composes the already-instrumented {@link
+ * DeckService#create} and {@link DeckCardService#addCard}, but records exactly one {@code IMPORTED}
+ * revision for the whole operation rather than one per composed call: those calls run inside {@link
+ * DeckRevisionService#withoutRecording}, then a single revision is recorded here.
+ */
 @Service
 public class DeckImportCommitService {
 
@@ -28,18 +35,25 @@ public class DeckImportCommitService {
     private final ObjectMapper objectMapper;
     private final DeckService deckService;
     private final DeckCardService deckCardService;
+    private final DeckRevisionService deckRevisionService;
 
+    // Suppressed: cohesive import-commit collaborators (preview persistence, ownership, JSON
+    // codec, deck/card mutation, and history recording); no natural subgrouping without an
+    // artificial wrapper, same precedent as DeckController.
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckImportCommitService(
             DeckImportPreviewRepository previewRepository,
             DeckAccessGuard accessGuard,
             ObjectMapper objectMapper,
             DeckService deckService,
-            DeckCardService deckCardService) {
+            DeckCardService deckCardService,
+            DeckRevisionService deckRevisionService) {
         this.previewRepository = previewRepository;
         this.accessGuard = accessGuard;
         this.objectMapper = objectMapper;
         this.deckService = deckService;
         this.deckCardService = deckCardService;
+        this.deckRevisionService = deckRevisionService;
     }
 
     @Transactional
@@ -65,17 +79,28 @@ public class DeckImportCommitService {
             String name,
             Set<Integer> excluded,
             String idempotencyKey) {
-        DeckResponse deck = deckService.create(deckRequest(name));
-        int imported = addSelected(deck.id(), rows.resolved(), excluded);
+        // The deck create + per-row card adds below are already-instrumented mutations, but a
+        // whole import commits as one meaningful change, not one revision per composed call.
+        CommitOutcome outcome =
+                deckRevisionService.withoutRecording(
+                        () -> {
+                            DeckResponse created = deckService.create(deckRequest(name));
+                            int imported = addSelected(created.id(), rows.resolved(), excluded);
+                            return new CommitOutcome(created, imported);
+                        });
         int skipped = excludedCount(rows, excluded);
-        DeckResponse refreshed = deckService.getById(deck.id());
+        DeckResponse refreshed = deckService.getById(outcome.deck().id());
+        deckRevisionService.record(
+                outcome.deck().id(), preview.getProfileId(), DeckChangeType.IMPORTED);
         preview.storeCanonicalRows(
                 objectMapper.writeValueAsString(
-                        new CommitSnapshot(rows, refreshed, imported, skipped)));
-        preview.markCommitted(idempotencyKey, deck.id());
+                        new CommitSnapshot(rows, refreshed, outcome.imported(), skipped)));
+        preview.markCommitted(idempotencyKey, outcome.deck().id());
         previewRepository.save(preview);
-        return new CommitResult(refreshed, imported, skipped);
+        return new CommitResult(refreshed, outcome.imported(), skipped);
     }
+
+    private record CommitOutcome(DeckResponse deck, int imported) {}
 
     private DeckImportPreview ownedPreview(UUID token, long profileId) {
         DeckImportPreview preview =

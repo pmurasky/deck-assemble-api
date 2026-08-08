@@ -3,15 +3,19 @@ package com.deckassemble.decks.application.organization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckTag;
 import com.deckassemble.decks.domain.organization.DeckTagAssignment;
 import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
@@ -43,6 +47,7 @@ class DeckTagServiceTest {
     @Mock private DeckRepository deckRepository;
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
+    @Mock private DeckRevisionService deckRevisionService;
 
     private final AtomicLong nextTagId = new AtomicLong(TAG_ID_A);
 
@@ -72,7 +77,12 @@ class DeckTagServiceTest {
                         });
         DeckAccessGuard deckAccessGuard =
                 new DeckAccessGuard(currentUser, profileService, deckRepository);
-        service = new DeckTagService(deckAccessGuard, deckTagRepository, assignmentRepository);
+        service =
+                new DeckTagService(
+                        deckAccessGuard,
+                        deckTagRepository,
+                        assignmentRepository,
+                        deckRevisionService);
     }
 
     @Test
@@ -104,6 +114,22 @@ class DeckTagServiceTest {
 
         verify(assignmentRepository).deleteByDeckId(DECK_ID);
         verify(assignmentRepository, times(2)).save(any(DeckTagAssignment.class));
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.TAG_CHANGED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenReassigningSameTagSet() {
+        stubOwnedTag(TAG_ID_A);
+        stubOwnedTag(TAG_ID_B);
+        when(assignmentRepository.findByDeckId(DECK_ID))
+                .thenReturn(
+                        List.of(
+                                new DeckTagAssignment(DECK_ID, TAG_ID_A),
+                                new DeckTagAssignment(DECK_ID, TAG_ID_B)));
+
+        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_B));
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test

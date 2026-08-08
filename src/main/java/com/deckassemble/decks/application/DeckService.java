@@ -3,11 +3,15 @@ package com.deckassemble.decks.application;
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,18 +25,25 @@ public class DeckService {
     private final DeckAccessGuard deckAccessGuard;
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
+    private final DeckRevisionService deckRevisionService;
 
+    // Suppressed: cohesive deck-mutation collaborators (persistence, card lookups, ownership,
+    // legality, and history recording); no natural subgrouping without an artificial wrapper, same
+    // precedent as DeckController.
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckService(
             DeckRepository deckRepository,
             DeckCardRepository deckCardRepository,
             DeckAccessGuard deckAccessGuard,
             CardCatalogService cardCatalogService,
-            CommanderLegalityEvaluator commanderLegalityEvaluator) {
+            CommanderLegalityEvaluator commanderLegalityEvaluator,
+            DeckRevisionService deckRevisionService) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.deckAccessGuard = deckAccessGuard;
         this.cardCatalogService = cardCatalogService;
         this.commanderLegalityEvaluator = commanderLegalityEvaluator;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public List<DeckResponse> list() {
@@ -50,7 +61,9 @@ public class DeckService {
         deck.setBudgetLimit(request.budgetLimit());
         deck.setDesiredPowerLevel(request.desiredPowerLevel());
         deck.setPlayStyle(request.playStyle());
-        return responseFor(deckRepository.save(deck));
+        Deck saved = deckRepository.save(deck);
+        deckRevisionService.record(saved.getId(), saved.getProfileId(), DeckChangeType.CREATED);
+        return responseFor(saved);
     }
 
     public DeckResponse getById(long deckId) {
@@ -64,9 +77,55 @@ public class DeckService {
 
     public DeckResponse update(long deckId, DeckUpdateRequest request) {
         Deck deck = owned(deckId);
+        MutableFields before = MutableFields.of(deck);
         applyCoreFields(deck, request);
         applyOptionFields(deck, request);
-        return responseFor(deckRepository.save(deck));
+        Deck saved = deckRepository.save(deck);
+        recordUpdate(saved, before);
+        return responseFor(saved);
+    }
+
+    private void recordUpdate(Deck deck, MutableFields before) {
+        MutableFields after = MutableFields.of(deck);
+        if (before.equals(after)) {
+            return;
+        }
+        boolean commanderChanged =
+                !Objects.equals(before.commanderCardId(), after.commanderCardId())
+                        || !Objects.equals(
+                                before.secondaryCommanderCardId(),
+                                after.secondaryCommanderCardId());
+        DeckChangeType changeType =
+                commanderChanged
+                        ? DeckChangeType.COMMANDER_CHANGED
+                        : DeckChangeType.METADATA_UPDATED;
+        deckRevisionService.record(deck.getId(), deck.getProfileId(), changeType);
+    }
+
+    /** Snapshot of a deck's user-editable fields, used to detect no-op updates. */
+    private record MutableFields(
+            String name,
+            String formatCode,
+            @Nullable String description,
+            @Nullable Long commanderCardId,
+            @Nullable Long secondaryCommanderCardId,
+            boolean useOwnedCardsOnly,
+            @Nullable BigDecimal budgetLimit,
+            @Nullable Integer desiredPowerLevel,
+            @Nullable String playStyle) {
+
+        static MutableFields of(Deck deck) {
+            return new MutableFields(
+                    deck.getName(),
+                    deck.getFormatCode(),
+                    deck.getDescription(),
+                    deck.getCommanderCardId(),
+                    deck.getSecondaryCommanderCardId(),
+                    deck.isUseOwnedCardsOnly(),
+                    deck.getBudgetLimit(),
+                    deck.getDesiredPowerLevel(),
+                    deck.getPlayStyle());
+        }
     }
 
     private void applyCoreFields(Deck deck, DeckUpdateRequest request) {
@@ -108,8 +167,14 @@ public class DeckService {
 
     public DeckResponse archive(long deckId) {
         Deck deck = owned(deckId);
+        boolean changed = deck.getStatus() != Deck.Status.ARCHIVED;
         deck.setStatus(Deck.Status.ARCHIVED);
-        return responseFor(deckRepository.save(deck));
+        Deck saved = deckRepository.save(deck);
+        if (changed) {
+            deckRevisionService.record(
+                    saved.getId(), saved.getProfileId(), DeckChangeType.METADATA_UPDATED);
+        }
+        return responseFor(saved);
     }
 
     public DeckResponse duplicate(long deckId) {
@@ -118,6 +183,7 @@ public class DeckService {
         copyDetails(source, copy);
         Deck saved = deckRepository.save(copy);
         copyCards(deckId, saved);
+        deckRevisionService.record(saved.getId(), saved.getProfileId(), DeckChangeType.CREATED);
         return responseFor(saved);
     }
 

@@ -1,11 +1,14 @@
 package com.deckassemble.decks.application.organization;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckFolder;
 import com.deckassemble.decks.domain.organization.DeckFolderRepository;
 import java.util.List;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,14 +26,17 @@ public class DeckFolderService {
     private final DeckAccessGuard deckAccessGuard;
     private final DeckFolderRepository deckFolderRepository;
     private final DeckRepository deckRepository;
+    private final DeckRevisionService deckRevisionService;
 
     public DeckFolderService(
             DeckAccessGuard deckAccessGuard,
             DeckFolderRepository deckFolderRepository,
-            DeckRepository deckRepository) {
+            DeckRepository deckRepository,
+            DeckRevisionService deckRevisionService) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckFolderRepository = deckFolderRepository;
         this.deckRepository = deckRepository;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public List<FolderView> list() {
@@ -69,8 +75,13 @@ public class DeckFolderService {
         if (folderId != null) {
             ownedFolder(deckAccessGuard.profileId(), folderId);
         }
+        boolean changed = !Objects.equals(deck.getFolderId(), folderId);
         deck.setFolderId(folderId);
         deckRepository.save(deck);
+        if (changed) {
+            deckRevisionService.record(
+                    deckId, deckAccessGuard.profileId(), DeckChangeType.FOLDER_CHANGED);
+        }
     }
 
     private DeckFolder ownedFolder(long profileId, long folderId) {

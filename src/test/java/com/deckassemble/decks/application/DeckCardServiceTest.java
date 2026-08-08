@@ -3,6 +3,7 @@ package com.deckassemble.decks.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,10 +11,12 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
@@ -37,6 +40,7 @@ class DeckCardServiceTest {
     @Mock private ProfileService profileService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private OwnershipChecker ownershipChecker;
+    @Mock private DeckRevisionService deckRevisionService;
 
     @Test
     void shouldAddCardWithDefaults() {
@@ -51,6 +55,7 @@ class DeckCardServiceTest {
 
         assertThat(result.quantity()).isEqualTo(1);
         assertThat(result.deckSection()).isEqualTo("MAIN_DECK");
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.CARD_ADDED);
     }
 
     @Test
@@ -113,6 +118,20 @@ class DeckCardServiceTest {
 
         assertThat(result.quantity()).isEqualTo(4);
         assertThat(result.deckSection()).isEqualTo("SIDEBOARD");
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.CARD_UPDATED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenUpdateRequestChangesNothing() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        DeckCard card = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
+        when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
+        when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service().updateCard(1L, 7L, new DeckCardUpdateRequest(2, DeckCard.Section.MAIN_DECK));
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -123,6 +142,18 @@ class DeckCardServiceTest {
 
         assertThatThrownBy(() -> service().removeCard(1L, 7L))
                 .isInstanceOf(DeckCardNotFoundException.class);
+    }
+
+    @Test
+    void shouldRecordRevisionOnCardRemoval() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        DeckCard card = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
+        when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
+
+        service().removeCard(1L, 7L);
+
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.CARD_REMOVED);
     }
 
     @Test
@@ -172,7 +203,8 @@ class DeckCardServiceTest {
                 new DeckAccessGuard(currentUser, profileService, deckRepository),
                 deckCardRepository,
                 cardCatalogService,
-                ownershipChecker);
+                ownershipChecker,
+                deckRevisionService);
     }
 
     private void stubUser() {

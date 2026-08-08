@@ -11,8 +11,10 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckFolder;
 import com.deckassemble.decks.domain.organization.DeckFolderRepository;
 import com.deckassemble.shared.security.CurrentUser;
@@ -40,6 +42,7 @@ class DeckFolderServiceTest {
     @Mock private DeckRepository deckRepository;
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
+    @Mock private DeckRevisionService deckRevisionService;
 
     private final AtomicLong nextFolderId = new AtomicLong(FOLDER_ID);
 
@@ -70,7 +73,9 @@ class DeckFolderServiceTest {
                         });
         DeckAccessGuard deckAccessGuard =
                 new DeckAccessGuard(currentUser, profileService, deckRepository);
-        service = new DeckFolderService(deckAccessGuard, deckFolderRepository, deckRepository);
+        service =
+                new DeckFolderService(
+                        deckAccessGuard, deckFolderRepository, deckRepository, deckRevisionService);
     }
 
     @Test
@@ -105,6 +110,7 @@ class DeckFolderServiceTest {
 
         assertThat(deck.getFolderId()).isEqualTo(FOLDER_ID);
         verify(deckRepository).save(deck);
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
     }
 
     @Test
@@ -114,6 +120,20 @@ class DeckFolderServiceTest {
         service.assignToDeck(DECK_ID, null);
 
         assertThat(deck.getFolderId()).isNull();
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenAssigningSameFolderAgain() {
+        DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
+        ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
+        when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
+                .thenReturn(Optional.of(folder));
+        deck.setFolderId(FOLDER_ID);
+
+        service.assignToDeck(DECK_ID, FOLDER_ID);
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test

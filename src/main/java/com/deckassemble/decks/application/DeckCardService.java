@@ -3,9 +3,11 @@ package com.deckassemble.decks.application;
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -20,16 +22,19 @@ public class DeckCardService {
     private final DeckCardRepository deckCardRepository;
     private final CardCatalogService cardCatalogService;
     private final OwnershipChecker ownershipChecker;
+    private final DeckRevisionService deckRevisionService;
 
     public DeckCardService(
             DeckAccessGuard deckAccessGuard,
             DeckCardRepository deckCardRepository,
             CardCatalogService cardCatalogService,
-            OwnershipChecker ownershipChecker) {
+            OwnershipChecker ownershipChecker,
+            DeckRevisionService deckRevisionService) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckCardRepository = deckCardRepository;
         this.cardCatalogService = cardCatalogService;
         this.ownershipChecker = ownershipChecker;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public List<DeckCardResponse> listCards(long deckId) {
@@ -45,25 +50,38 @@ public class DeckCardService {
         DeckCard.Section section =
                 request.deckSection() == null ? DeckCard.Section.MAIN_DECK : request.deckSection();
         int quantity = request.quantity() == null ? 1 : request.quantity();
-        return responseFor(deckCardRepository.save(mergeOrNew(deckId, request, section, quantity)));
+        DeckCardResponse response =
+                responseFor(
+                        deckCardRepository.save(mergeOrNew(deckId, request, section, quantity)));
+        deckRevisionService.record(deckId, deckAccessGuard.profileId(), DeckChangeType.CARD_ADDED);
+        return response;
     }
 
     public DeckCardResponse updateCard(
             long deckId, long deckCardId, DeckCardUpdateRequest request) {
         deckAccessGuard.owned(deckId);
         DeckCard card = ownedCard(deckId, deckCardId);
+        int oldQuantity = card.getQuantity();
+        DeckCard.Section oldSection = card.getDeckSection();
         if (request.quantity() != null) {
             card.setQuantity(request.quantity());
         }
         if (request.deckSection() != null) {
             card.setDeckSection(request.deckSection());
         }
-        return responseFor(deckCardRepository.save(card));
+        DeckCardResponse response = responseFor(deckCardRepository.save(card));
+        if (card.getQuantity() != oldQuantity || card.getDeckSection() != oldSection) {
+            deckRevisionService.record(
+                    deckId, deckAccessGuard.profileId(), DeckChangeType.CARD_UPDATED);
+        }
+        return response;
     }
 
     public void removeCard(long deckId, long deckCardId) {
         deckAccessGuard.owned(deckId);
         deckCardRepository.delete(ownedCard(deckId, deckCardId));
+        deckRevisionService.record(
+                deckId, deckAccessGuard.profileId(), DeckChangeType.CARD_REMOVED);
     }
 
     DeckCard ownedCard(long deckId, long deckCardId) {

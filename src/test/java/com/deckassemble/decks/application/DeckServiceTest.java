@@ -3,22 +3,27 @@ package com.deckassemble.decks.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.shared.security.CurrentUser;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,6 +42,9 @@ class DeckServiceTest {
     @Mock private ProfileService profileService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CommanderLegalityEvaluator commanderLegalityEvaluator;
+    @Mock private DeckRevisionService deckRevisionService;
+
+    private final AtomicLong nextDeckId = new AtomicLong(1L);
 
     @Test
     void shouldListDecksForCurrentProfile() {
@@ -53,7 +61,7 @@ class DeckServiceTest {
     @Test
     void shouldCreateDeckWithDefaults() {
         stubUser();
-        when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
+        stubSaveAssignsId();
         when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
         DeckCreateRequest request =
                 new DeckCreateRequest(
@@ -64,6 +72,20 @@ class DeckServiceTest {
         assertThat(result.name()).isEqualTo("New Deck");
         assertThat(result.useOwnedCardsOnly()).isFalse();
         assertThat(result.status()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void shouldRecordCreatedRevisionOnCreate() {
+        stubUser();
+        stubSaveAssignsId();
+        when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
+        DeckCreateRequest request =
+                new DeckCreateRequest(
+                        "New Deck", "COMMANDER", null, null, null, null, null, null, null);
+
+        DeckResponse result = service().create(request);
+
+        verify(deckRevisionService).record(result.id(), PROFILE_ID, DeckChangeType.CREATED);
     }
 
     @Test
@@ -104,6 +126,54 @@ class DeckServiceTest {
     }
 
     @Test
+    void shouldRecordMetadataUpdatedRevisionWhenNonCommanderFieldChanges() {
+        stubUser();
+        Deck deck = deck(1L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
+        DeckUpdateRequest request =
+                new DeckUpdateRequest("Renamed", null, null, null, null, null, null, null, null);
+
+        service().update(1L, request);
+
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
+    }
+
+    @Test
+    void shouldRecordCommanderChangedRevisionWhenCommanderFieldChanges() {
+        stubUser();
+        Deck deck = deck(1L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
+        DeckUpdateRequest request =
+                new DeckUpdateRequest(null, null, null, 101L, null, null, null, null, null);
+
+        service().update(1L, request);
+
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.COMMANDER_CHANGED);
+        verify(deckRevisionService, never())
+                .record(1L, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenUpdateRequestChangesNothing() {
+        stubUser();
+        Deck deck = deck(1L);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
+        DeckUpdateRequest request =
+                new DeckUpdateRequest(
+                        "Deck", "COMMANDER", null, null, null, null, null, null, null);
+
+        service().update(1L, request);
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void shouldDeleteOwnedDeck() {
         stubUser();
         Deck deck = deck(1L);
@@ -125,6 +195,21 @@ class DeckServiceTest {
         DeckResponse result = service().archive(1L);
 
         assertThat(result.status()).isEqualTo("ARCHIVED");
+        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenArchivingAlreadyArchivedDeck() {
+        stubUser();
+        Deck deck = deck(1L);
+        deck.setStatus(Deck.Status.ARCHIVED);
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
+
+        service().archive(1L);
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -153,6 +238,7 @@ class DeckServiceTest {
         verify(deckCardRepository, org.mockito.Mockito.times(2)).save(saved.capture());
         assertThat(saved.getAllValues())
                 .allSatisfy(card -> assertThat(card.getDeckId()).isEqualTo(2L));
+        verify(deckRevisionService).record(2L, PROFILE_ID, DeckChangeType.CREATED);
     }
 
     @Test
@@ -198,7 +284,18 @@ class DeckServiceTest {
                 deckCardRepository,
                 new DeckAccessGuard(currentUser, profileService, deckRepository),
                 cardCatalogService,
-                commanderLegalityEvaluator);
+                commanderLegalityEvaluator,
+                deckRevisionService);
+    }
+
+    private void stubSaveAssignsId() {
+        when(deckRepository.save(any(Deck.class)))
+                .thenAnswer(
+                        inv -> {
+                            Deck saved = inv.getArgument(0);
+                            ReflectionTestUtils.setField(saved, "id", nextDeckId.incrementAndGet());
+                            return saved;
+                        });
     }
 
     private void stubUser() {

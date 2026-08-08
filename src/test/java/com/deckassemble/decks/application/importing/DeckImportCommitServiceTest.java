@@ -3,8 +3,10 @@ package com.deckassemble.decks.application.importing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,14 +17,17 @@ import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckImportPreview;
 import com.deckassemble.decks.domain.DeckImportPreviewRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -38,6 +43,7 @@ class DeckImportCommitServiceTest {
     @Mock private DeckAccessGuard accessGuard;
     @Mock private DeckService deckService;
     @Mock private DeckCardService deckCardService;
+    @Mock private DeckRevisionService deckRevisionService;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     @Test
@@ -70,6 +76,9 @@ class DeckImportCommitServiceTest {
                         preview.getCanonicalRows(), DeckImportCommitService.CommitSnapshot.class);
         assertThat(snapshot.imported()).isEqualTo(1);
         assertThat(snapshot.skipped()).isEqualTo(2);
+        verify(deckRevisionService).withoutRecording(any());
+        verify(deckRevisionService).record(10L, 1L, DeckChangeType.IMPORTED);
+        verify(deckRevisionService, times(1)).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -182,6 +191,7 @@ class DeckImportCommitServiceTest {
         assertThat(preview.getCanonicalRows()).isEqualTo(canonicalRows);
         verify(previewRepository, never()).save(preview);
         verify(deckService, never()).getById(10L);
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -203,7 +213,12 @@ class DeckImportCommitServiceTest {
 
     private DeckImportCommitService service() {
         return new DeckImportCommitService(
-                previewRepository, accessGuard, mapper, deckService, deckCardService);
+                previewRepository,
+                accessGuard,
+                mapper,
+                deckService,
+                deckCardService,
+                deckRevisionService);
     }
 
     private void preparePending(DeckImportPreview preview, String idempotencyKey) {
@@ -212,6 +227,11 @@ class DeckImportCommitServiceTest {
                 .thenReturn(Optional.of(preview));
         when(previewRepository.findByProfileIdAndIdempotencyKey(1L, idempotencyKey))
                 .thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient()
+                .when(
+                        deckRevisionService.withoutRecording(
+                                org.mockito.ArgumentMatchers.<Supplier<Object>>any()))
+                .thenAnswer(inv -> ((Supplier<?>) inv.getArgument(0)).get());
     }
 
     private DeckImportPreview pendingPreview(

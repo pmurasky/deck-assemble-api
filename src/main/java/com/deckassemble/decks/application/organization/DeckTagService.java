@@ -1,11 +1,15 @@
 package com.deckassemble.decks.application.organization;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
+import com.deckassemble.decks.application.history.DeckRevisionService;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckTag;
 import com.deckassemble.decks.domain.organization.DeckTagAssignment;
 import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
 import com.deckassemble.decks.domain.organization.DeckTagRepository;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,14 +27,17 @@ public class DeckTagService {
     private final DeckAccessGuard deckAccessGuard;
     private final DeckTagRepository deckTagRepository;
     private final DeckTagAssignmentRepository assignmentRepository;
+    private final DeckRevisionService deckRevisionService;
 
     public DeckTagService(
             DeckAccessGuard deckAccessGuard,
             DeckTagRepository deckTagRepository,
-            DeckTagAssignmentRepository assignmentRepository) {
+            DeckTagAssignmentRepository assignmentRepository,
+            DeckRevisionService deckRevisionService) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckTagRepository = deckTagRepository;
         this.assignmentRepository = assignmentRepository;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public List<TagView> list() {
@@ -67,6 +74,7 @@ public class DeckTagService {
         long profileId = deckAccessGuard.profileId();
         List<Long> distinctIds = tagIds.stream().distinct().toList();
         distinctIds.forEach(tagId -> ownedTag(profileId, tagId));
+        Set<Long> before = assignedTagIds(deckId);
         // Same delete-then-flush-then-insert ordering as DeckCategoryService.assignCards: a bare
         // delete-then-save would race the new rows against the old ones on (deck, tag) within one
         // Hibernate flush.
@@ -74,6 +82,15 @@ public class DeckTagService {
         assignmentRepository.flush();
         distinctIds.forEach(
                 tagId -> assignmentRepository.save(new DeckTagAssignment(deckId, tagId)));
+        if (!before.equals(Set.copyOf(distinctIds))) {
+            deckRevisionService.record(deckId, profileId, DeckChangeType.TAG_CHANGED);
+        }
+    }
+
+    private Set<Long> assignedTagIds(long deckId) {
+        return assignmentRepository.findByDeckId(deckId).stream()
+                .map(DeckTagAssignment::getTagId)
+                .collect(Collectors.toSet());
     }
 
     private DeckTag ownedTag(long profileId, long tagId) {

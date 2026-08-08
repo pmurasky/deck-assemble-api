@@ -15,10 +15,12 @@ import com.deckassemble.cards.domain.CardFunctionalCategory;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckCategory;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignment;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignmentRepository;
@@ -51,6 +53,7 @@ class DeckCategoryServiceTest {
     @Mock private DeckCardRepository deckCardRepository;
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
+    @Mock private DeckRevisionService deckRevisionService;
 
     private final List<DeckCategory> savedCategories = new ArrayList<>();
     private final AtomicLong nextCategoryId = new AtomicLong(100L);
@@ -144,6 +147,7 @@ class DeckCategoryServiceTest {
         assertThat(created.displayOrder()).isEqualTo(6);
         assertThat(created.systemOwned()).isFalse();
         assertThat(created.functionalCategory()).isNull();
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -159,6 +163,18 @@ class DeckCategoryServiceTest {
 
         assertThat(renamed.name()).isEqualTo("Mana Sources");
         assertThat(renamed.functionalCategory()).isEqualTo(CardFunctionalCategory.LAND);
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenRenamingToSameName() {
+        when(deckCategoryRepository.existsByDeckId(DECK_ID)).thenReturn(true);
+        DeckCategory land = existingCategory(1L, "Land", 0, true);
+        when(deckCategoryRepository.findByIdAndDeckId(1L, DECK_ID)).thenReturn(Optional.of(land));
+
+        service().rename(DECK_ID, 1L, "Land");
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -182,6 +198,7 @@ class DeckCategoryServiceTest {
 
         verify(assignmentRepository).deleteByDeckCategoryId(2L);
         verify(deckCategoryRepository).delete(combos);
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -205,6 +222,7 @@ class DeckCategoryServiceTest {
         assertThat(result.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
         verify(assignmentRepository).deleteByDeckCategoryId(2L);
         verify(assignmentRepository, times(2)).save(any(DeckCategoryAssignment.class));
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -229,6 +247,31 @@ class DeckCategoryServiceTest {
 
         assertThat(first.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
         assertThat(second.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
+    }
+
+    @Test
+    void shouldNotRecordRevisionWhenReassigningSameCardSet() {
+        when(deckCategoryRepository.existsByDeckId(DECK_ID)).thenReturn(true);
+        DeckCategory combos = existingCategory(2L, "Combos", 6, false);
+        when(deckCategoryRepository.findByIdAndDeckId(2L, DECK_ID)).thenReturn(Optional.of(combos));
+        when(deckCardRepository.findByIdAndDeckId(anyLong(), eq(DECK_ID)))
+                .thenAnswer(
+                        inv -> {
+                            long id = inv.getArgument(0);
+                            return Optional.of(
+                                    new DeckCard(DECK_ID, id, 1, DeckCard.Section.MAIN_DECK));
+                        });
+        when(assignmentRepository.findByDeckCategoryIdIn(List.of(2L)))
+                .thenReturn(
+                        List.of(
+                                new DeckCategoryAssignment(2L, 10L),
+                                new DeckCategoryAssignment(2L, 11L)));
+        when(assignmentRepository.save(any(DeckCategoryAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        service().assignCards(DECK_ID, 2L, List.of(10L, 11L));
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -326,6 +369,7 @@ class DeckCategoryServiceTest {
                 new DeckAccessGuard(currentUser, profileService, deckRepository),
                 deckCategoryRepository,
                 assignmentRepository,
-                deckCardRepository);
+                deckCardRepository,
+                deckRevisionService);
     }
 }
