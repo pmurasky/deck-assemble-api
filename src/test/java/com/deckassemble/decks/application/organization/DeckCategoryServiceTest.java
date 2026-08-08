@@ -28,6 +28,7 @@ import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
@@ -255,6 +256,63 @@ class DeckCategoryServiceTest {
         when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().list(DECK_ID)).isInstanceOf(DeckNotFoundException.class);
+    }
+
+    @Test
+    void shouldReturnExplicitCategoryNamesByDeckCardId() {
+        DeckCategory land = existingCategory(1L, "Mana Sources", 0, true);
+        DeckCategory combos = existingCategory(2L, "Combos", 6, false);
+        when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
+                .thenReturn(List.of(land, combos));
+        when(assignmentRepository.findByDeckCategoryIdIn(List.of(1L, 2L)))
+                .thenReturn(
+                        List.of(
+                                new DeckCategoryAssignment(1L, 10L),
+                                new DeckCategoryAssignment(2L, 11L)));
+
+        Map<Long, String> result = service().explicitCategoryNamesByDeckCard(DECK_ID);
+
+        assertThat(result)
+                .containsExactlyInAnyOrderEntriesOf(Map.of(10L, "Mana Sources", 11L, "Combos"));
+    }
+
+    @Test
+    void shouldReturnEmptyMapWhenNoCategoriesSeededYet() {
+        when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
+                .thenReturn(List.of());
+
+        assertThat(service().explicitCategoryNamesByDeckCard(DECK_ID)).isEmpty();
+    }
+
+    @Test
+    void shouldNotSeedDefaultCategoriesWhenReadingExplicitAssignments() {
+        when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
+                .thenReturn(List.of());
+
+        service().explicitCategoryNamesByDeckCard(DECK_ID);
+
+        verify(deckCategoryRepository, never()).existsByDeckId(anyLong());
+        verify(deckCategoryRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldPreferEarliestDisplayOrderCategoryWhenCardAssignedTwice() {
+        // A card can only be explicitly assigned once via assignCards' replace semantics, but two
+        // separate assignCards calls against different categories could still both reference it;
+        // resolve deterministically by earliest display order.
+        DeckCategory land = existingCategory(1L, "Land", 0, true);
+        DeckCategory combos = existingCategory(2L, "Combos", 6, false);
+        when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
+                .thenReturn(List.of(land, combos));
+        when(assignmentRepository.findByDeckCategoryIdIn(List.of(1L, 2L)))
+                .thenReturn(
+                        List.of(
+                                new DeckCategoryAssignment(2L, 10L),
+                                new DeckCategoryAssignment(1L, 10L)));
+
+        Map<Long, String> result = service().explicitCategoryNamesByDeckCard(DECK_ID);
+
+        assertThat(result).containsExactly(Map.entry(10L, "Land"));
     }
 
     private DeckCategory existingCategory(long id, String name, int order, boolean systemOwned) {

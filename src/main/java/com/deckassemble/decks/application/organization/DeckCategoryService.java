@@ -8,6 +8,7 @@ import com.deckassemble.decks.domain.organization.DeckCategory;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignment;
 import com.deckassemble.decks.domain.organization.DeckCategoryAssignmentRepository;
 import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,6 +49,50 @@ public class DeckCategoryService {
         deckAccessGuard.owned(deckId);
         ensureDefaultCategories(deckId);
         return viewsFor(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId));
+    }
+
+    /**
+     * Read-only view, for presentation surfaces outside this module (e.g. deck analysis), of which
+     * deck cards the user has explicitly filed into a category and what that category is named.
+     * Unlike {@link #list(long)} this never seeds the default categories: a deck with no explicit
+     * assignments yet simply has no overrides to report. Canonical {@link CardFunctionalCategory}
+     * facts (recommendation quotas, raw card categorization) never read this map and stay
+     * unaffected by user renames or assignments.
+     */
+    public Map<Long, String> explicitCategoryNamesByDeckCard(long deckId) {
+        deckAccessGuard.owned(deckId);
+        List<DeckCategory> categories =
+                deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId);
+        if (categories.isEmpty()) {
+            return Map.of();
+        }
+        return namesByDeckCardId(categories, deckCardIdsByCategoryId(categories));
+    }
+
+    private Map<Long, List<Long>> deckCardIdsByCategoryId(List<DeckCategory> categories) {
+        List<Long> categoryIds = categories.stream().map(DeckCategory::getId).toList();
+        return assignmentRepository.findByDeckCategoryIdIn(categoryIds).stream()
+                .collect(
+                        Collectors.groupingBy(
+                                DeckCategoryAssignment::getDeckCategoryId,
+                                Collectors.mapping(
+                                        DeckCategoryAssignment::getDeckCardId,
+                                        Collectors.toList())));
+    }
+
+    // Earliest-display-order category wins for a card assigned to more than one.
+    // Justified: method-local map, never shared across threads.
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
+    private static Map<Long, String> namesByDeckCardId(
+            List<DeckCategory> categories, Map<Long, List<Long>> deckCardIdsByCategoryId) {
+        Map<Long, String> names = new LinkedHashMap<>();
+        for (DeckCategory category : categories) {
+            for (Long deckCardId :
+                    deckCardIdsByCategoryId.getOrDefault(category.getId(), List.of())) {
+                names.putIfAbsent(deckCardId, category.getName());
+            }
+        }
+        return names;
     }
 
     public CategoryView create(long deckId, String name) {
