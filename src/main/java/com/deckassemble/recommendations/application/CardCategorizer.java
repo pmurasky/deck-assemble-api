@@ -2,9 +2,12 @@ package com.deckassemble.recommendations.application;
 
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardFace;
+import com.deckassemble.cards.domain.CardFunctionalCategory;
 import java.util.Locale;
 import org.springframework.stereotype.Component;
 
+// Text classification logic lives in cards.domain.CardFunctionalCategory (shared with card
+// search filtering); this class is a thin, API-compatible wrapper kept for existing callers.
 @Component
 public class CardCategorizer {
 
@@ -28,35 +31,18 @@ public class CardCategorizer {
     }
 
     public static Category categorizeText(String types, String text) {
-        if (types.contains("land")) {
-            return Category.LAND;
-        }
-        if (isRamp(text)) {
-            return Category.RAMP;
-        }
-        if (text.contains("draw")) {
-            return Category.DRAW;
-        }
-        if (isWipe(text)) {
-            return Category.WIPE;
-        }
-        if (isRemoval(text)) {
-            return Category.REMOVAL;
-        }
-        return Category.SYNERGY;
+        return toCategory(CardFunctionalCategory.categorize(types, text));
     }
 
-    private static boolean isRamp(String text) {
-        return text.contains("add {")
-                || (text.contains("search your library") && text.contains("land"));
-    }
-
-    private static boolean isWipe(String text) {
-        return text.contains("destroy all") || text.contains("exile all");
-    }
-
-    private static boolean isRemoval(String text) {
-        return text.contains("destroy target") || text.contains("exile target");
+    private static Category toCategory(CardFunctionalCategory category) {
+        return switch (category) {
+            case LAND -> Category.LAND;
+            case RAMP -> Category.RAMP;
+            case DRAW -> Category.DRAW;
+            case WIPE -> Category.WIPE;
+            case REMOVAL -> Category.REMOVAL;
+            case SYNERGY -> Category.SYNERGY;
+        };
     }
 
     private static void appendLowercased(StringBuilder target, String value) {
