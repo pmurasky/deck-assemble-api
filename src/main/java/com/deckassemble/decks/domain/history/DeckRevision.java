@@ -66,25 +66,23 @@ public class DeckRevision {
 
     protected DeckRevision() {}
 
-    // Justified: immutable append-only revision row; every column is supplied once at creation
-    // (there are no setters), so the constructor must carry each field the schema requires.
-    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckRevision(
             Long deckId,
             Long profileId,
             int revisionNumber,
             @Nullable Integer baseRevisionNumber,
-            DeckChangeType changeType,
-            @Nullable String metadata,
-            String snapshot) {
+            Content content) {
         this.deckId = deckId;
         this.profileId = profileId;
         this.revisionNumber = revisionNumber;
         this.baseRevisionNumber = baseRevisionNumber;
-        this.changeType = changeType;
-        this.metadata = metadata;
-        this.snapshot = snapshot;
+        this.changeType = content.changeType();
+        this.metadata = content.metadata();
+        this.snapshot = content.snapshot();
     }
+
+    /** What this revision captures: why it exists, any extra context, and the deck snapshot. */
+    public record Content(DeckChangeType changeType, @Nullable String metadata, String snapshot) {}
 
     public Long getId() {
         return id;

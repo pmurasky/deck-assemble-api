@@ -61,9 +61,10 @@ class DeckRevisionRepositoryIntegrationTest extends AbstractIntegrationTest {
                                 deck.getProfileId(),
                                 1,
                                 null,
-                                DeckChangeType.CREATED,
-                                null,
-                                objectMapper.writeValueAsString(original)));
+                                new DeckRevision.Content(
+                                        DeckChangeType.CREATED,
+                                        null,
+                                        objectMapper.writeValueAsString(original))));
         entityManager.clear();
 
         DeckRevision reloaded = revisionRepository.findById(saved.getId()).orElseThrow();
@@ -104,9 +105,8 @@ class DeckRevisionRepositoryIntegrationTest extends AbstractIntegrationTest {
                 deck.getProfileId(),
                 revisionNumber,
                 revisionNumber > 1 ? revisionNumber - 1 : null,
-                changeType,
-                null,
-                objectMapper.writeValueAsString(sampleSnapshot()));
+                new DeckRevision.Content(
+                        changeType, null, objectMapper.writeValueAsString(sampleSnapshot())));
     }
 
     private Deck saveDeck() {
