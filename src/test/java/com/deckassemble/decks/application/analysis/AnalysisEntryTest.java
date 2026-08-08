@@ -15,6 +15,7 @@ class AnalysisEntryTest {
         AnalysisEntry entry =
                 new AnalysisEntry(
                         1L,
+                        1L,
                         1,
                         "OWNED",
                         new CardAnalysisView(
@@ -37,6 +38,7 @@ class AnalysisEntryTest {
         AnalysisEntry entry =
                 new AnalysisEntry(
                         1L,
+                        1L,
                         1,
                         "OWNED",
                         new CardAnalysisView(
@@ -58,6 +60,7 @@ class AnalysisEntryTest {
         // Given a card whose first face lacks a type line
         AnalysisEntry entry =
                 new AnalysisEntry(
+                        1L,
                         1L,
                         1,
                         "OWNED",
@@ -82,6 +85,7 @@ class AnalysisEntryTest {
         // Given a card with no type information at all
         AnalysisEntry entry =
                 new AnalysisEntry(
+                        1L,
                         1L,
                         1,
                         "OWNED",

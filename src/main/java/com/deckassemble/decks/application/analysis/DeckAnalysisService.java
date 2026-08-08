@@ -9,6 +9,7 @@ import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckComboService;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.organization.DeckCategoryService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,18 +26,23 @@ public class DeckAnalysisService {
     private final DeckComboService deckComboService;
     private final CardCatalogService cardCatalogService;
     private final CardPriceService cardPriceService;
+    private final DeckCategoryService deckCategoryService;
 
+    // checkstyle:ParameterNumber suppressed: this service coordinates existing module boundaries.
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckAnalysisService(
             DeckService deckService,
             DeckCardService deckCardService,
             DeckComboService deckComboService,
             CardCatalogService cardCatalogService,
-            CardPriceService cardPriceService) {
+            CardPriceService cardPriceService,
+            DeckCategoryService deckCategoryService) {
         this.deckService = deckService;
         this.deckCardService = deckCardService;
         this.deckComboService = deckComboService;
         this.cardCatalogService = cardCatalogService;
         this.cardPriceService = cardPriceService;
+        this.deckCategoryService = deckCategoryService;
     }
 
     public DeckAnalysisResponse analyze(long deckId) {
@@ -46,8 +52,14 @@ public class DeckAnalysisService {
                 cardCatalogService.getAnalysisViewsByPrintingIds(cardPrintingIds(cards));
         List<AnalysisEntry> entries = entries(cards, views);
         Map<Long, CardPrice> prices = cardPriceService.latestPrices(entryPrintingIds(entries));
+        Map<Long, String> explicitCategoryNames =
+                deckCategoryService.explicitCategoryNamesByDeckCard(deckId);
         return DeckAnalysisResponse.from(
-                entries, prices, legality, deckComboService.getCombos(deckId));
+                entries,
+                prices,
+                legality,
+                deckComboService.getCombos(deckId),
+                explicitCategoryNames);
     }
 
     private static List<AnalysisEntry> entries(
@@ -71,6 +83,7 @@ public class DeckAnalysisService {
                 ? Optional.empty()
                 : Optional.of(
                         new AnalysisEntry(
+                                card.id(),
                                 card.cardPrintingId(),
                                 card.quantity(),
                                 card.ownershipStatus(),

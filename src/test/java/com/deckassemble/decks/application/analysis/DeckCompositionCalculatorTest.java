@@ -3,8 +3,10 @@ package com.deckassemble.decks.application.analysis;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.deckassemble.cards.application.CardAnalysisView;
+import com.deckassemble.recommendations.application.CardCategorizer;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class DeckCompositionCalculatorTest {
@@ -14,7 +16,7 @@ class DeckCompositionCalculatorTest {
         // Given an empty deck
         // When / Then
         assertThat(DeckCompositionCalculator.typeDistribution(List.of())).isEmpty();
-        assertThat(DeckCompositionCalculator.functionalCategories(List.of())).isEmpty();
+        assertThat(DeckCompositionCalculator.functionalCategories(List.of(), Map.of())).isEmpty();
         assertThat(DeckCompositionCalculator.tokenProducers(List.of())).isEmpty();
         assertThat(DeckCompositionCalculator.gameChangers(List.of())).isEmpty();
     }
@@ -53,11 +55,51 @@ class DeckCompositionCalculatorTest {
                         entry(1, card("Bear", "Creature — Bear", "")));
 
         // When / Then
-        assertThat(DeckCompositionCalculator.functionalCategories(entries))
+        assertThat(DeckCompositionCalculator.functionalCategories(entries, Map.of()))
                 .containsExactlyInAnyOrderEntriesOf(
                         java.util.Map.of(
                                 "RAMP", 1, "DRAW", 2, "WIPE", 1, "REMOVAL", 1, "LAND", 4, "SYNERGY",
                                 1));
+    }
+
+    @Test
+    void shouldPreferExplicitCategoryAssignmentOverInferredPresentationCategory() {
+        // Given a synergy piece the user has explicitly filed under a custom category, and an
+        // unassigned removal spell left to the inferred bucket
+        AnalysisEntry assigned = entry(20L, 1, card("Bear", "Creature — Bear", ""));
+        AnalysisEntry unassigned =
+                entry(21L, 1, card("Swords", "Instant", "Exile target creature."));
+        Map<Long, String> explicitCategoryNames = Map.of(20L, "Combo Pieces");
+
+        // When
+        Map<String, Integer> categories =
+                DeckCompositionCalculator.functionalCategories(
+                        List.of(assigned, unassigned), explicitCategoryNames);
+
+        // Then the assigned card shows the user's category and the rest fall back to inferred
+        assertThat(categories)
+                .containsExactlyInAnyOrderEntriesOf(Map.of("Combo Pieces", 1, "REMOVAL", 1));
+        // And the canonical categorizer itself never sees the override: raw classification of
+        // the same card is still SYNERGY, unaffected by the user's presentation choice.
+        assertThat(
+                        CardCategorizer.categorizeText(
+                                assigned.allTypeLines(), assigned.allOracleText()))
+                .isEqualTo(CardCategorizer.Category.SYNERGY);
+    }
+
+    @Test
+    void shouldFallBackToInferredCategoryForCardsWithNoDeckCardId() {
+        // Given a synthesized commander row (no persisted DeckCard, so no deckCardId) that can
+        // never have an explicit assignment, alongside a non-empty override map for other cards
+        AnalysisEntry synthesizedCommander =
+                new AnalysisEntry(null, 1L, 1, "OWNED", card("Bear", "Creature — Bear", ""));
+        Map<Long, String> explicitCategoryNames = Map.of(20L, "Combo Pieces");
+
+        // When / Then the lookup tolerates the missing id instead of throwing
+        assertThat(
+                        DeckCompositionCalculator.functionalCategories(
+                                List.of(synthesizedCommander), explicitCategoryNames))
+                .containsExactly(Map.entry("SYNERGY", 1));
     }
 
     @Test
@@ -111,7 +153,11 @@ class DeckCompositionCalculatorTest {
     }
 
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {
-        return new AnalysisEntry(1L, quantity, "OWNED", card);
+        return entry(1L, quantity, card);
+    }
+
+    private static AnalysisEntry entry(long deckCardId, int quantity, CardAnalysisView card) {
+        return new AnalysisEntry(deckCardId, 1L, quantity, "OWNED", card);
     }
 
     private static CardAnalysisView card(String name, String typeLine, String oracleText) {

@@ -8,7 +8,12 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /** One deck card joined with its catalog view, weighted by quantity. */
-record AnalysisEntry(Long printingId, int quantity, String ownershipStatus, CardAnalysisView card) {
+record AnalysisEntry(
+        @Nullable Long deckCardId,
+        Long printingId,
+        int quantity,
+        String ownershipStatus,
+        CardAnalysisView card) {
 
     boolean isLand() {
         return allTypeLines().contains("land");

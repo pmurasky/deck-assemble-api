@@ -33,14 +33,37 @@ public final class DeckCompositionCalculator {
         return distribution;
     }
 
-    public static Map<String, Integer> functionalCategories(List<AnalysisEntry> entries) {
+    /**
+     * Groups entries by presentation category: a card explicitly filed by the user into a deck
+     * category (see {@code explicitCategoryNames}, keyed by deck card id) shows that category's
+     * name; every other card falls back to its inferred functional {@link Category}. The override
+     * never reaches {@link CardCategorizer} itself, so canonical categorization (and anything built
+     * on it, e.g. recommendation quotas) is unaffected.
+     */
+    public static Map<String, Integer> functionalCategories(
+            List<AnalysisEntry> entries, Map<Long, String> explicitCategoryNames) {
         Map<String, Integer> categories = new TreeMap<>();
         for (AnalysisEntry entry : entries) {
-            Category category =
-                    CardCategorizer.categorizeText(entry.allTypeLines(), entry.allOracleText());
-            categories.merge(category.name(), entry.quantity(), Integer::sum);
+            String categoryName = presentationCategory(entry, explicitCategoryNames);
+            categories.merge(categoryName, entry.quantity(), Integer::sum);
         }
         return categories;
+    }
+
+    private static String presentationCategory(
+            AnalysisEntry entry, Map<Long, String> explicitCategoryNames) {
+        // Synthesized rows (e.g. a commander with no persisted DeckCard, see
+        // DeckCardService#synthesizedCommander) have no deckCardId and thus can never carry an
+        // explicit assignment; skip the lookup rather than querying a null key, which the JDK's
+        // immutable Map.of()-family maps reject even for a plain get().
+        Long deckCardId = entry.deckCardId();
+        String explicit = deckCardId == null ? null : explicitCategoryNames.get(deckCardId);
+        if (explicit != null) {
+            return explicit;
+        }
+        Category category =
+                CardCategorizer.categorizeText(entry.allTypeLines(), entry.allOracleText());
+        return category.name();
     }
 
     public static List<String> tokenProducers(List<AnalysisEntry> entries) {

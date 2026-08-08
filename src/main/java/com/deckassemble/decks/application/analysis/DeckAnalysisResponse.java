@@ -35,7 +35,8 @@ public record DeckAnalysisResponse(
             List<AnalysisEntry> entries,
             Map<Long, CardPrice> prices,
             DeckLegalityResponse legality,
-            DeckComboResponse combos) {
+            DeckComboResponse combos,
+            Map<Long, String> explicitCategoryNames) {
         DeckValueCalculator.DeckValue value = DeckValueCalculator.value(entries, prices);
         return new DeckAnalysisResponse(
                 ManaCurveCalculator.curve(entries),
@@ -48,7 +49,7 @@ public record DeckAnalysisResponse(
                 value.valueByCurrency(),
                 value.missingCostByCurrency(),
                 value.unpricedCount(),
-                DeckCompositionCalculator.functionalCategories(entries),
+                DeckCompositionCalculator.functionalCategories(entries, explicitCategoryNames),
                 DeckCompositionCalculator.tokenProducers(entries),
                 DeckCompositionCalculator.gameChangers(entries),
                 legality,

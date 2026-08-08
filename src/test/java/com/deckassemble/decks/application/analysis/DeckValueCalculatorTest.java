@@ -124,6 +124,7 @@ class DeckValueCalculatorTest {
     private static AnalysisEntry entry(Long printingId, int quantity, String ownership) {
         return new AnalysisEntry(
                 printingId,
+                printingId,
                 quantity,
                 ownership,
                 new CardAnalysisView(

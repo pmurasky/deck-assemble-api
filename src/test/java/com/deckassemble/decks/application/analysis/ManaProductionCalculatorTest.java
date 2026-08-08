@@ -130,7 +130,7 @@ class ManaProductionCalculatorTest {
     }
 
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {
-        return new AnalysisEntry(1L, quantity, "OWNED", card);
+        return new AnalysisEntry(1L, 1L, quantity, "OWNED", card);
     }
 
     private static CardAnalysisView card(String name, String typeLine, String oracleText) {

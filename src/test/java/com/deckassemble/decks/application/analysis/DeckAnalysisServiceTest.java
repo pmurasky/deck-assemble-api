@@ -13,6 +13,7 @@ import com.deckassemble.decks.application.DeckComboResponse;
 import com.deckassemble.decks.application.DeckComboService;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.organization.DeckCategoryService;
 import com.deckassemble.recommendations.domain.SpellbookCombo;
 import java.math.BigDecimal;
 import java.util.List;
@@ -30,11 +31,13 @@ class DeckAnalysisServiceTest {
     @Mock private DeckComboService deckComboService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CardPriceService cardPriceService;
+    @Mock private DeckCategoryService deckCategoryService;
 
     @Test
     void shouldReturnEmptyAnalysisForEmptyDeck() {
         // Given a deck with no cards
         stubLegality();
+        stubNoExplicitCategoryOverrides();
         when(deckCardService.listCards(1L)).thenReturn(List.of());
         when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of())).thenReturn(Map.of());
         when(cardPriceService.latestPrices(List.of())).thenReturn(Map.of());
@@ -66,6 +69,7 @@ class DeckAnalysisServiceTest {
     void shouldComposeAnalysisAcrossCollaborators() {
         // Given a deck with an owned spell, a wishlist land, and a proxied game changer
         stubLegality();
+        stubNoExplicitCategoryOverrides();
         when(deckCardService.listCards(1L))
                 .thenReturn(
                         List.of(
@@ -137,6 +141,7 @@ class DeckAnalysisServiceTest {
     void shouldExcludeSideboardCompanionAndMaybeBoard() {
         // Given cards spread across play and non-play sections
         stubLegality();
+        stubNoExplicitCategoryOverrides();
         when(deckCardService.listCards(1L))
                 .thenReturn(
                         List.of(
@@ -179,6 +184,7 @@ class DeckAnalysisServiceTest {
     void shouldSkipCardsWithoutCatalogViews() {
         // Given a deck card whose printing no longer resolves to a catalog view
         stubLegality();
+        stubNoExplicitCategoryOverrides();
         when(deckCardService.listCards(1L))
                 .thenReturn(List.of(deckCard(10L, 2, "MAIN_DECK", "OWNED")));
         when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of(10L))).thenReturn(Map.of());
@@ -193,13 +199,37 @@ class DeckAnalysisServiceTest {
         assertThat(analysis.unpricedCardCount()).isZero();
     }
 
+    @Test
+    void shouldShowExplicitCategoryAssignmentInsteadOfInferredCategory() {
+        // Given a synergy creature the user has explicitly filed under a custom category
+        stubLegality();
+        when(deckCategoryService.explicitCategoryNamesByDeckCard(1L))
+                .thenReturn(Map.of(10L, "Combo Pieces"));
+        when(deckCardService.listCards(1L))
+                .thenReturn(List.of(deckCard(10L, 1, "MAIN_DECK", "OWNED")));
+        when(cardCatalogService.getAnalysisViewsByPrintingIds(List.of(10L)))
+                .thenReturn(
+                        Map.of(
+                                10L,
+                                view(10L, "Bear", "2", false, face(null, "Creature — Bear", ""))));
+        when(cardPriceService.latestPrices(List.of(10L))).thenReturn(Map.of());
+        when(deckComboService.getCombos(1L)).thenReturn(new DeckComboResponse(true, List.of()));
+
+        // When
+        DeckAnalysisResponse analysis = service().analyze(1L);
+
+        // Then the presentation view uses the user's category, not the inferred SYNERGY bucket
+        assertThat(analysis.functionalCategories()).containsExactly(Map.entry("Combo Pieces", 1));
+    }
+
     private DeckAnalysisService service() {
         return new DeckAnalysisService(
                 deckService,
                 deckCardService,
                 deckComboService,
                 cardCatalogService,
-                cardPriceService);
+                cardPriceService,
+                deckCategoryService);
     }
 
     private void stubLegality() {
@@ -212,9 +242,13 @@ class DeckAnalysisServiceTest {
                                                 "COMMANDER_REQUIRED", "No commander"))));
     }
 
+    private void stubNoExplicitCategoryOverrides() {
+        when(deckCategoryService.explicitCategoryNamesByDeckCard(1L)).thenReturn(Map.of());
+    }
+
     private static DeckCardResponse deckCard(
-            Long printingId, int quantity, String section, String ownership) {
-        return new DeckCardResponse(1L, printingId, quantity, section, ownership, null);
+            Long deckCardId, int quantity, String section, String ownership) {
+        return new DeckCardResponse(deckCardId, deckCardId, quantity, section, ownership, null);
     }
 
     private static CardAnalysisView view(
