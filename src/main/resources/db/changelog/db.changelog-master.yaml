@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/releases/011-card-printing-flavor-name.yaml
   - include:
       file: db/changelog/releases/012-interoperability-analytics.yaml
+  - include:
+      file: db/changelog/releases/013-intelligence-organization.yaml

@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.Card;
@@ -14,6 +16,7 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.CommanderPairingRules;
 import com.deckassemble.cards.domain.MagicSet;
+import com.deckassemble.shared.security.CurrentUser;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +39,9 @@ class CardCatalogServiceTest {
 
     @Mock private CardRepository cardRepository;
     @Mock private CardPrintingRepository cardPrintingRepository;
+    @Mock private CurrentUser currentUser;
+    @Mock private CardOwnershipLookup cardOwnershipLookup;
+    @Mock private CardPriceService cardPriceService;
 
     @Test
     void shouldFilterSearchResultsByPairingWithPrimaryCommander() {
@@ -52,8 +58,7 @@ class CardCatalogServiceTest {
         when(cardRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(List.of(partner, nonPartner));
 
-        Page<CardSummaryResponse> result =
-                service().search("", null, null, null, null, 1L, PAGEABLE);
+        Page<CardSummaryResponse> result = service().search(basicFilter(""), null, 1L, PAGEABLE);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent())
@@ -73,12 +78,55 @@ class CardCatalogServiceTest {
                 .thenReturn(List.of(printing));
 
         Page<CardSummaryResponse> result =
-                service().search("bolt", null, null, null, null, null, PAGEABLE);
+                service().search(basicFilter("bolt"), null, null, PAGEABLE);
 
         assertThat(result.getContent()).hasSize(1);
         CardSummaryResponse summary = result.getContent().get(0);
         assertThat(summary.foilAvailable()).isTrue();
         assertThat(summary.nonfoilAvailable()).isFalse();
+    }
+
+    @Test
+    void shouldSkipOwnershipLookupWhenOwnedQuantityFilterNotRequested() {
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service().search(basicFilter(""), null, null, PAGEABLE);
+
+        verifyNoInteractions(currentUser, cardOwnershipLookup);
+    }
+
+    @Test
+    void shouldSkipOwnershipLookupWhenAnonymous() {
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(currentUser.subject()).thenReturn(Optional.empty());
+
+        service().search(basicFilter(""), new CardSearchFilter.IntRange(1, null), null, PAGEABLE);
+
+        verify(cardOwnershipLookup, never()).ownedQuantitiesBySubject(any());
+    }
+
+    @Test
+    void shouldLookUpOwnedQuantitiesForAuthenticatedSubjectWhenFilterRequested() {
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of()));
+        when(currentUser.subject()).thenReturn(Optional.of("auth0|owner"));
+        when(cardOwnershipLookup.ownedQuantitiesBySubject("auth0|owner")).thenReturn(Map.of());
+
+        service().search(basicFilter(""), new CardSearchFilter.IntRange(1, null), null, PAGEABLE);
+
+        verify(cardOwnershipLookup).ownedQuantitiesBySubject("auth0|owner");
+    }
+
+    @Test
+    void shouldSkipPriceLookupWhenPriceFilterNotRequested() {
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service().search(basicFilter(""), null, null, PAGEABLE);
+
+        verifyNoInteractions(cardPriceService);
     }
 
     @Test
@@ -275,7 +323,16 @@ class CardCatalogServiceTest {
 
     private CardCatalogService service() {
         return new CardCatalogService(
-                cardRepository, cardPrintingRepository, new CommanderPairingRules());
+                cardRepository,
+                cardPrintingRepository,
+                new CommanderPairingRules(),
+                currentUser,
+                cardOwnershipLookup,
+                cardPriceService);
+    }
+
+    private static CardSearchFilter basicFilter(String query) {
+        return CardSearchFilter.basic(query, null, null, null, null);
     }
 
     private Card card(String name) {

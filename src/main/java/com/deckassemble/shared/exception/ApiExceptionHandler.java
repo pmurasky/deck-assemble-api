@@ -2,6 +2,7 @@ package com.deckassemble.shared.exception;
 
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.FinishUnavailableException;
+import com.deckassemble.cards.application.InvalidCardSearchFilterException;
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.CollectionNotFoundException;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
@@ -43,6 +44,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DeckCardNotFoundException.class)
     ProblemDetail handleDeckCardNotFound() {
         return notFound("deck-card", "Deck card");
+    }
+
+    @ExceptionHandler(InvalidCardSearchFilterException.class)
+    ProblemDetail handleInvalidCardSearchFilter(InvalidCardSearchFilterException exception) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        problem.setType(URI.create("https://deckassemble.app/problems/invalid-search-filter"));
+        problem.setTitle("Invalid search filter");
+        problem.setProperty("code", "INVALID_SEARCH_FILTER");
+        return problem;
     }
 
     @ExceptionHandler(FinishUnavailableException.class)

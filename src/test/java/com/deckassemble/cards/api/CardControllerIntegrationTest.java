@@ -12,14 +12,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardLegality;
+import com.deckassemble.cards.domain.CardPrice;
+import com.deckassemble.cards.domain.CardPriceSnapshot;
+import com.deckassemble.cards.domain.CardPriceSnapshotRepository;
 import com.deckassemble.cards.domain.CardPrinting;
 import com.deckassemble.cards.domain.CardPrintingFace;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.collections.domain.CardCollection;
+import com.deckassemble.collections.domain.CardCollectionRepository;
+import com.deckassemble.collections.domain.CollectionCard;
+import com.deckassemble.collections.domain.CollectionCardRepository;
 import com.deckassemble.imports.domain.CardImportRun;
 import com.deckassemble.imports.domain.CardImportRunRepository;
+import com.deckassemble.users.domain.Profile;
+import com.deckassemble.users.domain.ProfileRepository;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -34,6 +45,10 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private CardPrintingRepository cardPrintingRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardImportRunRepository cardImportRunRepository;
+    @Autowired private CardPriceSnapshotRepository cardPriceSnapshotRepository;
+    @Autowired private ProfileRepository profileRepository;
+    @Autowired private CardCollectionRepository cardCollectionRepository;
+    @Autowired private CollectionCardRepository collectionCardRepository;
 
     @Test
     void shouldReturnActiveCardsMatchingTheNameQuery() throws Exception {
@@ -304,5 +319,163 @@ class CardControllerIntegrationTest extends AbstractIntegrationTest {
     void shouldForbidCardImportsForNonAdministrators() throws Exception {
         mockMvc.perform(post("/admin/card-imports").queryParam("query", "set:mar").with(jwt()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldFilterByCompoundOracleTextManaValueAndFormatLegality() throws Exception {
+        Card match = cardRepository.save(new Card("oracle-compound-match", "Compound Match"));
+        match.setOracleText("Exile target creature.");
+        match.setManaValue(java.math.BigDecimal.valueOf(1));
+        match.getLegalities().add(new CardLegality(match, "commander", "legal"));
+        cardRepository.save(match);
+        Card wrongText = cardRepository.save(new Card("oracle-compound-text", "Compound Text"));
+        wrongText.setOracleText("Draw a card.");
+        wrongText.setManaValue(java.math.BigDecimal.valueOf(1));
+        wrongText.getLegalities().add(new CardLegality(wrongText, "commander", "legal"));
+        cardRepository.save(wrongText);
+        Card wrongMv = cardRepository.save(new Card("oracle-compound-mv", "Compound Mv"));
+        wrongMv.setOracleText("Exile target creature.");
+        wrongMv.setManaValue(java.math.BigDecimal.valueOf(9));
+        wrongMv.getLegalities().add(new CardLegality(wrongMv, "commander", "legal"));
+        cardRepository.save(wrongMv);
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("oracleText", "exile")
+                                .queryParam("maxManaValue", "2")
+                                .queryParam("formatCode", "commander")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Compound Match"));
+    }
+
+    @Test
+    void shouldRespectPageSizeAndSortBounds() throws Exception {
+        cardRepository.save(new Card("oracle-page-a", "Page Bound Alpha"));
+        cardRepository.save(new Card("oracle-page-b", "Page Bound Bravo"));
+        cardRepository.save(new Card("oracle-page-c", "Page Bound Charlie"));
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Page Bound")
+                                .queryParam("page", "0")
+                                .queryParam("size", "2")
+                                .queryParam("sort", "name,asc")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].name").value("Page Bound Alpha"))
+                .andExpect(jsonPath("$.content[1].name").value("Page Bound Bravo"))
+                .andExpect(jsonPath("$.totalElements").value(3));
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Page Bound")
+                                .queryParam("page", "1")
+                                .queryParam("size", "2")
+                                .queryParam("sort", "name,asc")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Page Bound Charlie"));
+    }
+
+    @Test
+    void shouldReturnEmptyResultsForAnInvertedManaValueRange() throws Exception {
+        Card card = cardRepository.save(new Card("oracle-inverted-range", "Inverted Range"));
+        card.setManaValue(java.math.BigDecimal.valueOf(3));
+        cardRepository.save(card);
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Inverted Range")
+                                .queryParam("minManaValue", "5")
+                                .queryParam("maxManaValue", "1")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
+    void shouldRejectAnUnknownFunctionalCategory() throws Exception {
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("functionalCategory", "not-a-category")
+                                .with(jwt()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SEARCH_FILTER"));
+    }
+
+    @Test
+    void shouldRejectAnOutOfBoundsPowerFilter() throws Exception {
+        mockMvc.perform(get("/cards").queryParam("minPower", "-1").with(jwt()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectANegativeManaValueFilter() throws Exception {
+        mockMvc.perform(get("/cards").queryParam("minManaValue", "-1").with(jwt()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldFilterCardsByOwnedQuantityRange() throws Exception {
+        String subject = "auth0|owned-quantity-search";
+        Profile profile = profileRepository.save(new Profile(subject, subject));
+        MagicSet set = magicSetRepository.save(new MagicSet("set-owned-qty", "oqs", "Owned Qty"));
+        Card owned = cardRepository.save(new Card("oracle-owned-qty-owned", "Owned Qty Owned"));
+        CardPrinting ownedPrinting =
+                cardPrintingRepository.save(new CardPrinting(owned, set, "owned-qty-printing"));
+        Card unowned =
+                cardRepository.save(new Card("oracle-owned-qty-unowned", "Owned Qty Unowned"));
+        cardPrintingRepository.save(new CardPrinting(unowned, set, "unowned-qty-printing"));
+        CardCollection collection =
+                cardCollectionRepository.save(
+                        new CardCollection(profile.getId(), "Binder", null, true));
+        collectionCardRepository.save(
+                new CollectionCard(collection.getId(), ownedPrinting.getId(), 3, 0));
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Owned Qty")
+                                .queryParam("minOwnedQuantity", "1")
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Owned Qty Owned"));
+    }
+
+    @Test
+    void shouldFilterCardsByPriceRange() throws Exception {
+        MagicSet set =
+                magicSetRepository.save(new MagicSet("set-price-range", "prc", "Price Range"));
+        Card cheap = cardRepository.save(new Card("oracle-price-cheap", "Price Cheap"));
+        CardPrinting cheapPrinting =
+                cardPrintingRepository.save(new CardPrinting(cheap, set, "price-cheap-printing"));
+        cardPriceSnapshotRepository.save(
+                new CardPriceSnapshot(
+                        cheapPrinting.getId(),
+                        new CardPrice(BigDecimal.valueOf(1), null, null, null),
+                        Instant.now()));
+        Card expensive = cardRepository.save(new Card("oracle-price-expensive", "Price Expensive"));
+        CardPrinting expensivePrinting =
+                cardPrintingRepository.save(
+                        new CardPrinting(expensive, set, "price-expensive-printing"));
+        cardPriceSnapshotRepository.save(
+                new CardPriceSnapshot(
+                        expensivePrinting.getId(),
+                        new CardPrice(BigDecimal.valueOf(100), null, null, null),
+                        Instant.now()));
+
+        mockMvc.perform(
+                        get("/cards")
+                                .queryParam("query", "Price")
+                                .queryParam("minPrice", "0")
+                                .queryParam("maxPrice", "10")
+                                .with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Price Cheap"));
     }
 }

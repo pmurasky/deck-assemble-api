@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-card-printings-card-id-index
+      author: opencode
+      comment: >-
+        Advanced card search (task 6) adds rarity/collector-number/language/finish criteria to
+        the existing per-card "any printing matches" exists-subquery (previously set-code only).
+        card_printings.card_id is an unindexed FK exercised once per outer row by that correlated
+        subquery, so it is now a real query-plan cost, not a speculative addition.
+      changes:
+        - createIndex:
+            tableName: card_printings
+            indexName: idx_card_printings_card_id
+            columns:
+              - column:
+                  name: card_id
