@@ -1,0 +1,85 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-deck-revisions
+      author: opencode
+      changes:
+        - createTable:
+            tableName: deck_revisions
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_revisions
+                    nullable: false
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revision_number
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_revision_number
+                  type: integer
+              - column:
+                  name: change_type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metadata
+                  type: jsonb
+              - column:
+                  name: snapshot
+                  type: jsonb
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: deck_revisions
+            columnNames: deck_id, revision_number
+            constraintName: uq_deck_revisions_deck_revision_number
+        - addForeignKeyConstraint:
+            baseTableName: deck_revisions
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_revisions_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_revisions
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_deck_revisions_profile
+            onDelete: CASCADE
+        - createIndex:
+            tableName: deck_revisions
+            indexName: idx_deck_revisions_deck_id
+            columns:
+              - column:
+                  name: deck_id
+        - createIndex:
+            tableName: deck_revisions
+            indexName: idx_deck_revisions_profile_id
+            columns:
+              - column:
+                  name: profile_id

@@ -25,3 +25,5 @@ databaseChangeLog:
       file: db/changelog/releases/012-interoperability-analytics.yaml
   - include:
       file: db/changelog/releases/013-intelligence-organization.yaml
+  - include:
+      file: db/changelog/releases/014-experimentation-publishing.yaml
