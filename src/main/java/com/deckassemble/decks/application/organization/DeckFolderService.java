@@ -66,8 +66,14 @@ public class DeckFolderService {
     public void delete(long folderId) {
         long profileId = deckAccessGuard.profileId();
         DeckFolder folder = ownedFolder(profileId, folderId);
+        List<Long> affectedDeckIds =
+                deckRepository.findByFolderId(folder.getId()).stream().map(Deck::getId).toList();
         deckRepository.clearFolderId(folder.getId());
         deckFolderRepository.delete(folder);
+        affectedDeckIds.forEach(
+                deckId ->
+                        deckRevisionService.record(
+                                deckId, profileId, DeckChangeType.FOLDER_CHANGED));
     }
 
     public void assignToDeck(long deckId, @Nullable Long folderId) {

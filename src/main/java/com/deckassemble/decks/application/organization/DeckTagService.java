@@ -65,8 +65,16 @@ public class DeckTagService {
     public void delete(long tagId) {
         long profileId = deckAccessGuard.profileId();
         DeckTag tag = ownedTag(profileId, tagId);
+        List<Long> affectedDeckIds =
+                assignmentRepository.findByTagId(tagId).stream()
+                        .map(DeckTagAssignment::getDeckId)
+                        .distinct()
+                        .toList();
         assignmentRepository.deleteByTagId(tagId);
         deckTagRepository.delete(tag);
+        affectedDeckIds.forEach(
+                deckId ->
+                        deckRevisionService.record(deckId, profileId, DeckChangeType.TAG_CHANGED));
     }
 
     public void assignToDeck(long deckId, List<Long> tagIds) {

@@ -192,6 +192,31 @@ class DeckTagServiceTest {
     }
 
     @Test
+    void shouldRecordTagChangedRevisionForEachDeckAffectedByTagDeletion() {
+        stubOwnedTag(TAG_ID_A);
+        when(assignmentRepository.findByTagId(TAG_ID_A))
+                .thenReturn(
+                        List.of(
+                                new DeckTagAssignment(DECK_ID, TAG_ID_A),
+                                new DeckTagAssignment(2L, TAG_ID_A)));
+
+        service.delete(TAG_ID_A);
+
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.TAG_CHANGED);
+        verify(deckRevisionService).record(2L, PROFILE_ID, DeckChangeType.TAG_CHANGED);
+    }
+
+    @Test
+    void shouldNotRecordAnyRevisionWhenNoDeckHadDeletedTag() {
+        stubOwnedTag(TAG_ID_A);
+        when(assignmentRepository.findByTagId(TAG_ID_A)).thenReturn(List.of());
+
+        service.delete(TAG_ID_A);
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void shouldListTagsForCurrentProfile() {
         DeckTag tag = new DeckTag(PROFILE_ID, "Combo");
         ReflectionTestUtils.setField(tag, "id", TAG_ID_A);

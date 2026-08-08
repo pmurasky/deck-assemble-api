@@ -7,6 +7,8 @@ public interface DeckTagAssignmentRepository extends JpaRepository<DeckTagAssign
 
     List<DeckTagAssignment> findByDeckId(Long deckId);
 
+    List<DeckTagAssignment> findByTagId(Long tagId);
+
     void deleteByDeckId(Long deckId);
 
     void deleteByTagId(Long tagId);

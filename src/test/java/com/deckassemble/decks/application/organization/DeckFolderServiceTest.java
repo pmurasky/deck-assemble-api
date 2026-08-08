@@ -167,6 +167,35 @@ class DeckFolderServiceTest {
     }
 
     @Test
+    void shouldRecordFolderChangedRevisionForEachDeckAffectedByFolderDeletion() {
+        DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
+        ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
+        when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
+                .thenReturn(Optional.of(folder));
+        Deck other = new Deck(PROFILE_ID, "Other Deck", "COMMANDER");
+        ReflectionTestUtils.setField(other, "id", 2L);
+        when(deckRepository.findByFolderId(FOLDER_ID)).thenReturn(List.of(deck, other));
+
+        service.delete(FOLDER_ID);
+
+        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
+        verify(deckRevisionService).record(2L, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
+    }
+
+    @Test
+    void shouldNotRecordAnyRevisionWhenNoDeckReferencedDeletedFolder() {
+        DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
+        ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
+        when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
+                .thenReturn(Optional.of(folder));
+        when(deckRepository.findByFolderId(FOLDER_ID)).thenReturn(List.of());
+
+        service.delete(FOLDER_ID);
+
+        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void shouldRenameFolderRejectingDuplicateTarget() {
         DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
         ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
