@@ -160,6 +160,21 @@ class DeckFolderServiceTest {
     }
 
     @Test
+    void shouldRenameFolderToNewAvailableName() {
+        DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
+        ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
+        when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
+                .thenReturn(Optional.of(folder));
+        when(deckFolderRepository.existsByProfileIdAndNameIgnoreCase(PROFILE_ID, "Midrange"))
+                .thenReturn(false);
+
+        DeckFolderService.FolderView renamed = service.rename(FOLDER_ID, "Midrange");
+
+        assertThat(renamed.name()).isEqualTo("Midrange");
+        assertThat(folder.getName()).isEqualTo("Midrange");
+    }
+
+    @Test
     void shouldListFoldersForCurrentProfile() {
         DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
         ReflectionTestUtils.setField(folder, "id", FOLDER_ID);

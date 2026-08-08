@@ -133,6 +133,28 @@ class DeckTagServiceTest {
     }
 
     @Test
+    void shouldRenameTagToNewAvailableName() {
+        DeckTag tag = stubOwnedTag(TAG_ID_A);
+        when(deckTagRepository.existsByProfileIdAndNameIgnoreCase(PROFILE_ID, "Ramp"))
+                .thenReturn(false);
+
+        DeckTagService.TagView renamed = service.rename(TAG_ID_A, "Ramp");
+
+        assertThat(renamed.name()).isEqualTo("Ramp");
+        assertThat(tag.getName()).isEqualTo("Ramp");
+    }
+
+    @Test
+    void shouldRejectRenamingTagToDuplicateName() {
+        stubOwnedTag(TAG_ID_A);
+        when(deckTagRepository.existsByProfileIdAndNameIgnoreCase(PROFILE_ID, "Ramp"))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.rename(TAG_ID_A, "Ramp"))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
     void shouldDeleteTagAndItsAssignmentsButRetainDecks() {
         DeckTag tag = stubOwnedTag(TAG_ID_A);
 

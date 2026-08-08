@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -102,6 +103,43 @@ class CategoryTemplateServiceTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> service.create("ramp focus", List.of("Ramp")))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void shouldUpdateTemplateRenamingAndReplacingItems() {
+        CategoryTemplate template = stubOwnedTemplate();
+        when(templateRepository.existsByProfileIdAndNameIgnoreCase(PROFILE_ID, "Control Shell"))
+                .thenReturn(false);
+        savedItems.add(new CategoryTemplateItem(TEMPLATE_ID, "Old Item", 0));
+        // The mock repository doesn't apply deletes on its own; mirror what a real delete would
+        // do to the rows findByCategoryTemplateId subsequently returns.
+        doAnswer(
+                        inv -> {
+                            savedItems.clear();
+                            return null;
+                        })
+                .when(itemRepository)
+                .deleteByCategoryTemplateId(TEMPLATE_ID);
+
+        CategoryTemplateService.TemplateView updated =
+                service.update(TEMPLATE_ID, "Control Shell", List.of("Counterspells", "Wraths"));
+
+        assertThat(updated.name()).isEqualTo("Control Shell");
+        assertThat(template.getName()).isEqualTo("Control Shell");
+        verify(itemRepository).deleteByCategoryTemplateId(TEMPLATE_ID);
+        assertThat(savedItems)
+                .extracting(CategoryTemplateItem::getName)
+                .containsExactly("Counterspells", "Wraths");
+    }
+
+    @Test
+    void shouldRejectUpdatingTemplateToDuplicateName() {
+        stubOwnedTemplate();
+        when(templateRepository.existsByProfileIdAndNameIgnoreCase(PROFILE_ID, "Taken Name"))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(TEMPLATE_ID, "Taken Name", List.of("Item")))
                 .isInstanceOf(ResponseStatusException.class);
     }
 

@@ -69,6 +69,37 @@ class CategoryTemplateControllerIntegrationTest extends AbstractIntegrationTest 
     }
 
     @Test
+    void shouldRenameTemplateToNewAvailableName() throws Exception {
+        String subject = "auth0|template-rename-ok";
+        long templateId = createTemplate(subject, "Ramp Focus", "Ramp");
+
+        mockMvc.perform(
+                        patch("/category-templates/{templateId}", templateId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Control Shell\",\"itemNames\":[\"Ramp\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Control Shell"));
+
+        mockMvc.perform(get("/category-templates").with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(jsonPath("$[0].name").value("Control Shell"));
+    }
+
+    @Test
+    void shouldRejectRenamingTemplateToDuplicateName() throws Exception {
+        String subject = "auth0|template-rename-dup";
+        createTemplate(subject, "Ramp Focus", "Ramp");
+        long otherId = createTemplate(subject, "Control Shell", "Wraths");
+
+        mockMvc.perform(
+                        patch("/category-templates/{templateId}", otherId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Ramp Focus\",\"itemNames\":[\"Wraths\"]}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void shouldHideTemplatesCreatedByOtherProfiles() throws Exception {
         createTemplate("auth0|template-owner", "Private Template", "Item");
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -74,6 +75,37 @@ class DeckTagControllerIntegrationTest extends AbstractIntegrationTest {
         assignTags("auth0|tag-foreign-deck", deckId, tagId)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("DECK_TAG_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldRenameTagToNewAvailableName() throws Exception {
+        String subject = "auth0|tag-rename-ok";
+        long tagId = createTag(subject, "Combo");
+
+        mockMvc.perform(
+                        patch("/deck-tags/{tagId}", tagId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Ramp\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ramp"));
+
+        mockMvc.perform(get("/deck-tags").with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(jsonPath("$[0].name").value("Ramp"));
+    }
+
+    @Test
+    void shouldRejectRenamingTagToDuplicateName() throws Exception {
+        String subject = "auth0|tag-rename-dup";
+        createTag(subject, "Combo");
+        long otherId = createTag(subject, "Ramp");
+
+        mockMvc.perform(
+                        patch("/deck-tags/{tagId}", otherId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Combo\"}"))
+                .andExpect(status().isConflict());
     }
 
     @Test

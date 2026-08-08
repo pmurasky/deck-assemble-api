@@ -120,6 +120,23 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void shouldRenameFolderToNewAvailableName() throws Exception {
+        String subject = "auth0|folder-rename-ok";
+        long folderId = createFolder(subject, "Aggro");
+
+        mockMvc.perform(
+                        patch("/deck-folders/{folderId}", folderId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Midrange\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Midrange"));
+
+        mockMvc.perform(get("/deck-folders").with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(jsonPath("$[0].name").value("Midrange"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions assignFolder(
             String subject, long deckId, long folderId) throws Exception {
         return mockMvc.perform(
