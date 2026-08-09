@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -45,6 +46,7 @@ class DeckRevisionServiceTest {
     @Mock private DeckCategoryRepository deckCategoryRepository;
     @Mock private DeckTagAssignmentRepository deckTagAssignmentRepository;
     @Mock private DeckTagRepository deckTagRepository;
+    @Mock private DeckAccessGuard deckAccessGuard;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     private Deck deck;
@@ -238,6 +240,7 @@ class DeckRevisionServiceTest {
                 deckCategoryRepository,
                 deckTagAssignmentRepository,
                 deckTagRepository,
-                mapper);
+                mapper,
+                deckAccessGuard);
     }
 }

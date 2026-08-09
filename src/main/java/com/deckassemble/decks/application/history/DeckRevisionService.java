@@ -1,5 +1,6 @@
 package com.deckassemble.decks.application.history;
 
+import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -14,10 +15,16 @@ import com.deckassemble.decks.domain.organization.DeckTag;
 import com.deckassemble.decks.domain.organization.DeckTagAssignment;
 import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
 import com.deckassemble.decks.domain.organization.DeckTagRepository;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -43,10 +50,13 @@ public class DeckRevisionService {
     private final DeckTagAssignmentRepository deckTagAssignmentRepository;
     private final DeckTagRepository deckTagRepository;
     private final ObjectMapper objectMapper;
+    private final DeckAccessGuard deckAccessGuard;
 
     // Suppressed: cohesive snapshot-recording collaborators — one repository per canonical-state
-    // fragment (deck core fields, cards, categories, tags) plus the revision store and JSON codec.
-    // No natural subgrouping without an artificial wrapper; same precedent as DeckController.
+    // fragment (deck core fields, cards, categories, tags) plus the revision store, JSON codec, and
+    // (for the read side: list/get/snapshotAt/currentRevisionNumber) the access guard every other
+    // owner-scoped read in this module goes through. No natural subgrouping without an artificial
+    // wrapper; same precedent as DeckController.
     @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckRevisionService(
             DeckRevisionRepository revisionRepository,
@@ -55,7 +65,8 @@ public class DeckRevisionService {
             DeckCategoryRepository deckCategoryRepository,
             DeckTagAssignmentRepository deckTagAssignmentRepository,
             DeckTagRepository deckTagRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            DeckAccessGuard deckAccessGuard) {
         this.revisionRepository = revisionRepository;
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
@@ -63,6 +74,7 @@ public class DeckRevisionService {
         this.deckTagAssignmentRepository = deckTagAssignmentRepository;
         this.deckTagRepository = deckTagRepository;
         this.objectMapper = objectMapper;
+        this.deckAccessGuard = deckAccessGuard;
     }
 
     /**
@@ -102,6 +114,66 @@ public class DeckRevisionService {
             SUPPRESSED.set(previouslySuppressed);
         }
     }
+
+    /** Paginated, most-recent-first revision history for an owned deck. */
+    public Page<RevisionView> list(long deckId, Pageable pageable) {
+        deckAccessGuard.owned(deckId);
+        return revisionRepository
+                .findByDeckIdOrderByRevisionNumberDesc(deckId, pageable)
+                .map(this::viewOf);
+    }
+
+    /** One specific revision of an owned deck, or a 404 if that revision number doesn't exist. */
+    public RevisionView get(long deckId, int revisionNumber) {
+        deckAccessGuard.owned(deckId);
+        return viewOf(revisionFor(deckId, revisionNumber));
+    }
+
+    /** The deserialized snapshot stored on one revision of an owned deck. */
+    public DeckSnapshot snapshotAt(long deckId, int revisionNumber) {
+        deckAccessGuard.owned(deckId);
+        return readSnapshot(revisionFor(deckId, revisionNumber));
+    }
+
+    /** The deck's current (most recent) revision number, or 0 if none has been recorded yet. */
+    public int currentRevisionNumber(long deckId) {
+        deckAccessGuard.owned(deckId);
+        return nextRevisionNumber(deckId) - 1;
+    }
+
+    private DeckRevision revisionFor(long deckId, int revisionNumber) {
+        return revisionRepository
+                .findByDeckIdAndRevisionNumber(deckId, revisionNumber)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.NOT_FOUND, "Revision not found"));
+    }
+
+    private RevisionView viewOf(DeckRevision revision) {
+        return new RevisionView(
+                revision.getRevisionNumber(),
+                revision.getBaseRevisionNumber(),
+                revision.getChangeType(),
+                revision.getMetadata(),
+                readSnapshot(revision),
+                revision.getCreatedAt(),
+                revision.getCreatedBy());
+    }
+
+    private DeckSnapshot readSnapshot(DeckRevision revision) {
+        return objectMapper.readValue(revision.getSnapshot(), DeckSnapshot.class);
+    }
+
+    /** Read-only view of a revision, with its snapshot already deserialized. */
+    public record RevisionView(
+            int revisionNumber,
+            @Nullable Integer baseRevisionNumber,
+            DeckChangeType changeType,
+            @Nullable String metadata,
+            DeckSnapshot snapshot,
+            Instant createdAt,
+            @Nullable String createdBy) {}
 
     private int nextRevisionNumber(long deckId) {
         return revisionRepository
