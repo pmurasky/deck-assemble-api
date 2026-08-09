@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
@@ -48,6 +49,7 @@ class DeckTagServiceTest {
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     private final AtomicLong nextTagId = new AtomicLong(TAG_ID_A);
 
@@ -76,7 +78,8 @@ class DeckTagServiceTest {
                             return tag;
                         });
         DeckAccessGuard deckAccessGuard =
-                new DeckAccessGuard(currentUser, profileService, deckRepository);
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy);
         service =
                 new DeckTagService(
                         deckAccessGuard,

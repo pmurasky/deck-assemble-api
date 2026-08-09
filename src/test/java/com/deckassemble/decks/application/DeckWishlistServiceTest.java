@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardPriceService;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
@@ -31,6 +32,7 @@ class DeckWishlistServiceTest {
     @Mock private ProfileService profileService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CardPriceService cardPriceService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     @Test
     void shouldReturnWishlistWithPricesAndTotal() {
@@ -76,7 +78,8 @@ class DeckWishlistServiceTest {
 
     private DeckWishlistService service() {
         return new DeckWishlistService(
-                new DeckAccessGuard(currentUser, profileService, deckRepository),
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy),
                 deckCardRepository,
                 cardCatalogService,
                 cardPriceService);

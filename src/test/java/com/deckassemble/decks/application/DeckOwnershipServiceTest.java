@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.collections.application.CollectionService;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -37,6 +38,7 @@ class DeckOwnershipServiceTest {
     @Mock private OwnershipChecker ownershipChecker;
     @Mock private CollectionService collectionService;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     @Test
     void shouldFlipWishlistToOwnedWhenSyncing() {
@@ -124,7 +126,9 @@ class DeckOwnershipServiceTest {
     }
 
     private DeckOwnershipService service() {
-        var guard = new DeckAccessGuard(currentUser, profileService, deckRepository);
+        var guard =
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy);
         return new DeckOwnershipService(
                 guard,
                 deckCardRepository,

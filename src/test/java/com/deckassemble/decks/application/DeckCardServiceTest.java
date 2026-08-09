@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -41,6 +42,7 @@ class DeckCardServiceTest {
     @Mock private CardCatalogService cardCatalogService;
     @Mock private OwnershipChecker ownershipChecker;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     @Test
     void shouldAddCardWithDefaults() {
@@ -200,7 +202,8 @@ class DeckCardServiceTest {
 
     private DeckCardService service() {
         return new DeckCardService(
-                new DeckAccessGuard(currentUser, profileService, deckRepository),
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy),
                 deckCardRepository,
                 cardCatalogService,
                 ownershipChecker,

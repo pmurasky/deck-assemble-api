@@ -21,6 +21,7 @@ import com.deckassemble.decks.application.DeckCreateRequest;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckResponse;
 import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.recommendations.application.CardCategorizer.Category;
 import com.deckassemble.recommendations.domain.DeckBuild;
 import com.deckassemble.recommendations.domain.DeckBuildRepository;
@@ -59,6 +60,7 @@ class DeckBuilderServiceTest {
     @Mock private ProfileService profileService;
     @Mock private com.deckassemble.cards.application.CardPriceService cardPriceService;
     @Mock private com.deckassemble.decks.domain.DeckRepository deckRepository;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     private DeckBuilderService builderService;
 
@@ -66,7 +68,11 @@ class DeckBuilderServiceTest {
     void setUp() {
         builderService =
                 new DeckBuilderService(
-                        new DeckAccessGuard(currentUser, profileService, deckRepository),
+                        new DeckAccessGuard(
+                                currentUser,
+                                profileService,
+                                deckRepository,
+                                deckCollaborationPolicy),
                         new CommanderResolver(cardCatalogService),
                         new DeckCandidateSelector(
                                 cardCatalogService,

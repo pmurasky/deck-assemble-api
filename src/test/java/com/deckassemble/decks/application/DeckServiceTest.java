@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -43,6 +44,7 @@ class DeckServiceTest {
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CommanderLegalityEvaluator commanderLegalityEvaluator;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     private final AtomicLong nextDeckId = new AtomicLong(1L);
 
@@ -282,7 +284,8 @@ class DeckServiceTest {
         return new DeckService(
                 deckRepository,
                 deckCardRepository,
-                new DeckAccessGuard(currentUser, profileService, deckRepository),
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy),
                 cardCatalogService,
                 commanderLegalityEvaluator,
                 deckRevisionService);

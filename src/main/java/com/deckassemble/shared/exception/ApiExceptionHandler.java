@@ -7,6 +7,7 @@ import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.CollectionNotFoundException;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.collaboration.DeckCollaboratorNotFoundException;
 import com.deckassemble.decks.application.organization.CategoryTemplateNotFoundException;
 import com.deckassemble.decks.application.organization.DeckCategoryNotFoundException;
 import com.deckassemble.decks.application.organization.DeckFolderNotFoundException;
@@ -48,6 +49,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DeckCardNotFoundException.class)
     ProblemDetail handleDeckCardNotFound() {
         return notFound("deck-card", "Deck card");
+    }
+
+    @ExceptionHandler(DeckCollaboratorNotFoundException.class)
+    ProblemDetail handleDeckCollaboratorNotFound() {
+        return notFound("deck-collaborator", "Deck collaborator");
     }
 
     @ExceptionHandler(DeckCategoryNotFoundException.class)

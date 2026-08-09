@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
 import com.deckassemble.decks.domain.DeckCardRepository;
@@ -33,6 +34,7 @@ class DeckComboServiceTest {
     @Mock private ProfileService profileService;
     @Mock private CardCatalogService cardCatalogService;
     @Mock private CommanderSpellbookClient commanderSpellbookClient;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     @Test
     void shouldReturnIncludedSpellbookCombosForDeck() {
@@ -81,7 +83,8 @@ class DeckComboServiceTest {
 
     private DeckComboService service() {
         return new DeckComboService(
-                new DeckAccessGuard(currentUser, profileService, deckRepository),
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy),
                 deckCardRepository,
                 cardCatalogService,
                 commanderSpellbookClient);

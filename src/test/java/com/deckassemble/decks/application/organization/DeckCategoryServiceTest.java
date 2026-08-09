@@ -15,6 +15,7 @@ import com.deckassemble.cards.domain.CardFunctionalCategory;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -54,6 +55,7 @@ class DeckCategoryServiceTest {
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
     private final List<DeckCategory> savedCategories = new ArrayList<>();
     private final AtomicLong nextCategoryId = new AtomicLong(100L);
@@ -366,7 +368,8 @@ class DeckCategoryServiceTest {
 
     private DeckCategoryService service() {
         return new DeckCategoryService(
-                new DeckAccessGuard(currentUser, profileService, deckRepository),
+                new DeckAccessGuard(
+                        currentUser, profileService, deckRepository, deckCollaborationPolicy),
                 deckCategoryRepository,
                 assignmentRepository,
                 deckCardRepository,
