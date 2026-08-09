@@ -11,19 +11,10 @@ import static org.mockito.Mockito.when;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.domain.Deck;
-import com.deckassemble.decks.domain.DeckCard;
-import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.history.DeckRevision;
 import com.deckassemble.decks.domain.history.DeckRevisionRepository;
-import com.deckassemble.decks.domain.organization.DeckCategory;
-import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
-import com.deckassemble.decks.domain.organization.DeckTag;
-import com.deckassemble.decks.domain.organization.DeckTagAssignment;
-import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
-import com.deckassemble.decks.domain.organization.DeckTagRepository;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,22 +23,24 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import tools.jackson.databind.json.JsonMapper;
 
+/**
+ * Covers revision numbering, locking and suppression only — canonical snapshot assembly is {@link
+ * DeckSnapshotBuilder}'s own responsibility and is tested there. Here, {@link DeckSnapshotBuilder}
+ * is a plain mock: {@link DeckRevisionService} only needs to know it's called and its output stored
+ * verbatim.
+ */
 @ExtendWith(MockitoExtension.class)
 class DeckRevisionServiceTest {
 
     private static final long DECK_ID = 1L;
     private static final long PROFILE_ID = 42L;
+    private static final String SNAPSHOT_JSON = "{\"name\":\"snapshot\"}";
 
     @Mock private DeckRevisionRepository revisionRepository;
     @Mock private DeckRepository deckRepository;
-    @Mock private DeckCardRepository deckCardRepository;
-    @Mock private DeckCategoryRepository deckCategoryRepository;
-    @Mock private DeckTagAssignmentRepository deckTagAssignmentRepository;
-    @Mock private DeckTagRepository deckTagRepository;
     @Mock private DeckAccessGuard deckAccessGuard;
-    private final JsonMapper mapper = JsonMapper.builder().build();
+    @Mock private DeckSnapshotBuilder snapshotBuilder;
 
     private Deck deck;
 
@@ -58,11 +51,7 @@ class DeckRevisionServiceTest {
         lenient()
                 .when(deckRepository.findLockedByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
-        lenient().when(deckCardRepository.findByDeckId(DECK_ID)).thenReturn(List.of());
-        lenient()
-                .when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
-                .thenReturn(List.of());
-        lenient().when(deckTagAssignmentRepository.findByDeckId(DECK_ID)).thenReturn(List.of());
+        lenient().when(snapshotBuilder.toJson(any(Deck.class))).thenReturn(SNAPSHOT_JSON);
         lenient().when(revisionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -80,6 +69,7 @@ class DeckRevisionServiceTest {
         assertThat(saved.getBaseRevisionNumber()).isNull();
         assertThat(saved.getChangeType()).isEqualTo(DeckChangeType.CREATED);
         assertThat(saved.getProfileId()).isEqualTo(PROFILE_ID);
+        assertThat(saved.getSnapshot()).isEqualTo(SNAPSHOT_JSON);
     }
 
     @Test
@@ -116,56 +106,13 @@ class DeckRevisionServiceTest {
     }
 
     @Test
-    void shouldSnapshotCardsOrderedByIdRegardlessOfRepositoryOrder() {
+    void shouldBuildTheSnapshotFromTheLockedDeckInstance() {
         when(revisionRepository.findFirstByDeckIdOrderByRevisionNumberDesc(DECK_ID))
                 .thenReturn(Optional.empty());
-        DeckCard second = deckCard(20L, 101L, 2);
-        DeckCard first = deckCard(10L, 100L, 1);
-        when(deckCardRepository.findByDeckId(DECK_ID)).thenReturn(List.of(second, first));
-        ArgumentCaptor<DeckRevision> captor = ArgumentCaptor.forClass(DeckRevision.class);
 
         service().record(DECK_ID, PROFILE_ID, DeckChangeType.CARD_ADDED);
 
-        verify(revisionRepository).save(captor.capture());
-        DeckSnapshot snapshot = readSnapshot(captor.getValue());
-        assertThat(snapshot.cards())
-                .extracting(DeckSnapshot.CardEntry::cardPrintingId)
-                .containsExactly(100L, 101L);
-    }
-
-    @Test
-    void shouldSnapshotCategoriesInDisplayOrder() {
-        when(revisionRepository.findFirstByDeckIdOrderByRevisionNumberDesc(DECK_ID))
-                .thenReturn(Optional.empty());
-        when(deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(DECK_ID))
-                .thenReturn(List.of(category("Land", 0), category("Ramp", 1)));
-        ArgumentCaptor<DeckRevision> captor = ArgumentCaptor.forClass(DeckRevision.class);
-
-        service().record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
-
-        verify(revisionRepository).save(captor.capture());
-        DeckSnapshot snapshot = readSnapshot(captor.getValue());
-        assertThat(snapshot.categoryNames()).containsExactly("Land", "Ramp");
-    }
-
-    @Test
-    void shouldSnapshotTagNamesSortedAlphabeticallyRegardlessOfAssignmentOrder() {
-        when(revisionRepository.findFirstByDeckIdOrderByRevisionNumberDesc(DECK_ID))
-                .thenReturn(Optional.empty());
-        when(deckTagAssignmentRepository.findByDeckId(DECK_ID))
-                .thenReturn(
-                        List.of(
-                                new DeckTagAssignment(DECK_ID, 2L),
-                                new DeckTagAssignment(DECK_ID, 1L)));
-        when(deckTagRepository.findAllById(List.of(2L, 1L)))
-                .thenReturn(List.of(tag(2L, "Zebra"), tag(1L, "Aggro")));
-        ArgumentCaptor<DeckRevision> captor = ArgumentCaptor.forClass(DeckRevision.class);
-
-        service().record(DECK_ID, PROFILE_ID, DeckChangeType.TAG_CHANGED);
-
-        verify(revisionRepository).save(captor.capture());
-        DeckSnapshot snapshot = readSnapshot(captor.getValue());
-        assertThat(snapshot.tagNames()).containsExactly("Aggro", "Zebra");
+        verify(snapshotBuilder).toJson(deck);
     }
 
     @Test
@@ -203,10 +150,6 @@ class DeckRevisionServiceTest {
         assertThat(result).isEqualTo("value");
     }
 
-    private DeckSnapshot readSnapshot(DeckRevision revision) {
-        return mapper.readValue(revision.getSnapshot(), DeckSnapshot.class);
-    }
-
     private DeckRevision existingRevision(int revisionNumber) {
         return new DeckRevision(
                 DECK_ID,
@@ -216,31 +159,8 @@ class DeckRevisionServiceTest {
                 new DeckRevision.Content(DeckChangeType.CREATED, null, "{}"));
     }
 
-    private static DeckCard deckCard(long id, long printingId, int quantity) {
-        DeckCard card = new DeckCard(DECK_ID, printingId, quantity, DeckCard.Section.MAIN_DECK);
-        ReflectionTestUtils.setField(card, "id", id);
-        return card;
-    }
-
-    private static DeckCategory category(String name, int order) {
-        return new DeckCategory(DECK_ID, name, order, false);
-    }
-
-    private static DeckTag tag(long id, String name) {
-        DeckTag tag = new DeckTag(PROFILE_ID, name);
-        ReflectionTestUtils.setField(tag, "id", id);
-        return tag;
-    }
-
     private DeckRevisionService service() {
         return new DeckRevisionService(
-                revisionRepository,
-                deckRepository,
-                deckCardRepository,
-                deckCategoryRepository,
-                deckTagAssignmentRepository,
-                deckTagRepository,
-                mapper,
-                deckAccessGuard);
+                revisionRepository, deckRepository, deckAccessGuard, snapshotBuilder);
     }
 }

@@ -3,21 +3,11 @@ package com.deckassemble.decks.application.history;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.domain.Deck;
-import com.deckassemble.decks.domain.DeckCard;
-import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.history.DeckRevision;
 import com.deckassemble.decks.domain.history.DeckRevisionRepository;
-import com.deckassemble.decks.domain.organization.DeckCategory;
-import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
-import com.deckassemble.decks.domain.organization.DeckTag;
-import com.deckassemble.decks.domain.organization.DeckTagAssignment;
-import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
-import com.deckassemble.decks.domain.organization.DeckTagRepository;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
@@ -25,13 +15,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * Records an immutable, append-only {@link DeckRevision} for a meaningful deck mutation, in the
  * same transaction as the mutation itself. Callers decide *whether* a change is meaningful (no-op
- * detection lives with the mutation, not here); this service decides how the canonical snapshot is
- * assembled, how the sequential revision number is allocated, and persists the result.
+ * detection lives with the mutation, not here); this service allocates the sequential revision
+ * number, delegates canonical-snapshot assembly to {@link DeckSnapshotBuilder}, and persists the
+ * result.
  *
  * <p>Concurrent mutations to the same deck are serialized by taking a {@code PESSIMISTIC_WRITE} row
  * lock on the {@code Deck} row before computing the next revision number, the same locking
@@ -45,36 +35,18 @@ public class DeckRevisionService {
 
     private final DeckRevisionRepository revisionRepository;
     private final DeckRepository deckRepository;
-    private final DeckCardRepository deckCardRepository;
-    private final DeckCategoryRepository deckCategoryRepository;
-    private final DeckTagAssignmentRepository deckTagAssignmentRepository;
-    private final DeckTagRepository deckTagRepository;
-    private final ObjectMapper objectMapper;
     private final DeckAccessGuard deckAccessGuard;
+    private final DeckSnapshotBuilder snapshotBuilder;
 
-    // Suppressed: cohesive snapshot-recording collaborators — one repository per canonical-state
-    // fragment (deck core fields, cards, categories, tags) plus the revision store, JSON codec, and
-    // (for the read side: list/get/snapshotAt/currentRevisionNumber) the access guard every other
-    // owner-scoped read in this module goes through. No natural subgrouping without an artificial
-    // wrapper; same precedent as DeckController.
-    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public DeckRevisionService(
             DeckRevisionRepository revisionRepository,
             DeckRepository deckRepository,
-            DeckCardRepository deckCardRepository,
-            DeckCategoryRepository deckCategoryRepository,
-            DeckTagAssignmentRepository deckTagAssignmentRepository,
-            DeckTagRepository deckTagRepository,
-            ObjectMapper objectMapper,
-            DeckAccessGuard deckAccessGuard) {
+            DeckAccessGuard deckAccessGuard,
+            DeckSnapshotBuilder snapshotBuilder) {
         this.revisionRepository = revisionRepository;
         this.deckRepository = deckRepository;
-        this.deckCardRepository = deckCardRepository;
-        this.deckCategoryRepository = deckCategoryRepository;
-        this.deckTagAssignmentRepository = deckTagAssignmentRepository;
-        this.deckTagRepository = deckTagRepository;
-        this.objectMapper = objectMapper;
         this.deckAccessGuard = deckAccessGuard;
+        this.snapshotBuilder = snapshotBuilder;
     }
 
     /**
@@ -97,7 +69,7 @@ public class DeckRevisionService {
                         profileId,
                         nextRevisionNumber,
                         baseRevisionNumber,
-                        new DeckRevision.Content(changeType, null, snapshotJson(deck))));
+                        new DeckRevision.Content(changeType, null, snapshotBuilder.toJson(deck))));
     }
 
     /**
@@ -172,7 +144,7 @@ public class DeckRevisionService {
     }
 
     private DeckSnapshot readSnapshot(DeckRevision revision) {
-        return objectMapper.readValue(revision.getSnapshot(), DeckSnapshot.class);
+        return snapshotBuilder.fromJson(revision.getSnapshot());
     }
 
     /** Read-only view of a revision, with its snapshot already deserialized. */
@@ -190,57 +162,5 @@ public class DeckRevisionService {
                 .findFirstByDeckIdOrderByRevisionNumberDesc(deckId)
                 .map(revision -> revision.getRevisionNumber() + 1)
                 .orElse(1);
-    }
-
-    private String snapshotJson(Deck deck) {
-        return objectMapper.writeValueAsString(buildSnapshot(deck));
-    }
-
-    private DeckSnapshot buildSnapshot(Deck deck) {
-        return new DeckSnapshot(
-                deck.getName(),
-                deck.getFormatCode(),
-                deck.getDescription(),
-                deck.getCommanderCardId(),
-                deck.getSecondaryCommanderCardId(),
-                deck.getFolderId(),
-                deck.isUseOwnedCardsOnly(),
-                deck.getBudgetLimit(),
-                deck.getDesiredPowerLevel(),
-                deck.getPlayStyle(),
-                deck.getStatus().name(),
-                cardEntries(deck.getId()),
-                categoryNames(deck.getId()),
-                tagNames(deck.getId()));
-    }
-
-    private List<DeckSnapshot.CardEntry> cardEntries(Long deckId) {
-        return deckCardRepository.findByDeckId(deckId).stream()
-                .sorted(Comparator.comparing(DeckCard::getId))
-                .map(
-                        card ->
-                                new DeckSnapshot.CardEntry(
-                                        card.getCardPrintingId(),
-                                        card.getQuantity(),
-                                        card.getDeckSection().name(),
-                                        card.getOwnershipStatus().name()))
-                .toList();
-    }
-
-    private List<String> categoryNames(Long deckId) {
-        return deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId).stream()
-                .map(DeckCategory::getName)
-                .toList();
-    }
-
-    private List<String> tagNames(Long deckId) {
-        List<Long> tagIds =
-                deckTagAssignmentRepository.findByDeckId(deckId).stream()
-                        .map(DeckTagAssignment::getTagId)
-                        .toList();
-        return deckTagRepository.findAllById(tagIds).stream()
-                .map(DeckTag::getName)
-                .sorted()
-                .toList();
     }
 }
