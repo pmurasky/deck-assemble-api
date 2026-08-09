@@ -133,13 +133,23 @@ class DeckSimulationServiceTest {
 
     @Test
     void shouldCompleteMaximumWorkloadWithinAReasonableTime() {
-        stubHomogeneousLibrary(20, landCard(1L, "Forest", "G"));
-        DeckSimulationRequest request = request(100_000, 10, false, null, null, 21L);
+        // True worst case, not a light smoke case: a full-size 99-card Commander library
+        // (COMMANDER_DECK_SIZE=100 minus 1 commander, per CommanderLegalityEvaluator; shuffle cost
+        // scales linearly with library size) combined with an unsatisfiable LONDON_LAND_RANGE,
+        // which forces every game through all MAX_MULLIGANS=3 retries — 4 full shuffles per game
+        // instead of 1.
+        stubHomogeneousLibrary(99, landCard(1L, "Forest", "G"));
+        DeckSimulationRequest request = request(100_000, 10, false, 0, 0, 21L);
 
         long start = System.nanoTime();
         DeckSimulationResponse response = service().simulate(DECK_ID, request);
+        long elapsedNanos = System.nanoTime() - start;
 
-        assertThat(System.nanoTime() - start).isLessThan(Duration.ofSeconds(5).toNanos());
+        System.out.println(
+                "shouldCompleteMaximumWorkloadWithinAReasonableTime elapsed: "
+                        + Duration.ofNanos(elapsedNanos).toMillis()
+                        + "ms");
+        assertThat(elapsedNanos).isLessThan(Duration.ofSeconds(15).toNanos());
         assertThat(response.iterations()).isEqualTo(100_000);
     }
 
