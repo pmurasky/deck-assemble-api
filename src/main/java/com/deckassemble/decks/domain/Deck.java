@@ -1,5 +1,6 @@
 package com.deckassemble.decks.domain;
 
+import com.deckassemble.decks.domain.publishing.DeckVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -75,6 +76,16 @@ public class Deck {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Status status = Status.DRAFT;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private DeckVisibility visibility = DeckVisibility.PRIVATE;
+
+    // Assigned once, on first move away from PRIVATE, and never changed afterwards — see
+    // DeckPublishingService. Stays set even if visibility later returns to PRIVATE, so a
+    // previously shared link is stable; DeckVisibilityPolicy is what blocks it from resolving.
+    @Column(name = "share_slug", length = 32)
+    private String shareSlug;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -198,5 +209,21 @@ public class Deck {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public DeckVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(DeckVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    public String getShareSlug() {
+        return shareSlug;
+    }
+
+    public void setShareSlug(@Nullable String shareSlug) {
+        this.shareSlug = shareSlug;
     }
 }

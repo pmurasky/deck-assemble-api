@@ -16,6 +16,10 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
 
     List<Deck> findByFolderId(Long folderId);
 
+    Optional<Deck> findByShareSlug(String shareSlug);
+
+    boolean existsByShareSlug(String shareSlug);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT deck FROM Deck deck WHERE deck.id = :id AND deck.profileId = :profileId")
     Optional<Deck> findLockedByIdAndProfileId(Long id, Long profileId);
