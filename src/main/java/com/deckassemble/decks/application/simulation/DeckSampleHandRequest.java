@@ -17,4 +17,5 @@ public record DeckSampleHandRequest(
         @NotNull MulliganStrategy mulliganStrategy,
         @Nullable @Min(0) Integer minimumLands,
         @Nullable @Min(0) Integer maximumLands,
-        @Nullable Long seed) {}
+        @Nullable Long seed)
+        implements MulliganRequest {}

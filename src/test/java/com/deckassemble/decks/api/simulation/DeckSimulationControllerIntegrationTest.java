@@ -183,6 +183,144 @@ class DeckSimulationControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void shouldRunSimulationAndEchoRequestShape() throws Exception {
+        String subject = "auth0|simrun-basic";
+        long deckId = createDeck(subject, "Simulation Deck");
+        addCards(subject, deckId, "simrun", 20);
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":100,"turns":3,"onThePlay":true,\
+                                        "mulliganStrategy":"NONE","seed":123}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seed").value(123))
+                .andExpect(jsonPath("$.iterations").value(100))
+                .andExpect(jsonPath("$.turns").value(3))
+                .andExpect(jsonPath("$.landDropProbabilityByTurn.1").exists())
+                .andExpect(jsonPath("$.landDropProbabilityByTurn.3").exists())
+                .andExpect(jsonPath("$.confidence.iterations").value(100));
+    }
+
+    @Test
+    void shouldReturn400WhenIterationsIsBelowTheMinimum() throws Exception {
+        String subject = "auth0|simrun-toofew";
+        long deckId = createDeck(subject, "Too Few Iterations Deck");
+        addCards(subject, deckId, "toofew", 20);
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":99,"turns":3,"onThePlay":true,"mulliganStrategy":"NONE"}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenIterationsIsAboveTheMaximum() throws Exception {
+        String subject = "auth0|simrun-toomany";
+        long deckId = createDeck(subject, "Too Many Iterations Deck");
+        addCards(subject, deckId, "toomny", 20);
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":100001,"turns":3,"onThePlay":true,"mulliganStrategy":"NONE"}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenTurnsIsBelowTheMinimum() throws Exception {
+        String subject = "auth0|simrun-noturns";
+        long deckId = createDeck(subject, "No Turns Deck");
+        addCards(subject, deckId, "noturn", 20);
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":100,"turns":0,"onThePlay":true,"mulliganStrategy":"NONE"}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenTurnsIsAboveTheMaximum() throws Exception {
+        String subject = "auth0|simrun-manyturns";
+        long deckId = createDeck(subject, "Many Turns Deck");
+        addCards(subject, deckId, "mnyturn", 20);
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":100,"turns":11,"onThePlay":true,"mulliganStrategy":"NONE"}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400WhenLibraryIsTooSmallForTheRequestedTurns() throws Exception {
+        String subject = "auth0|simrun-smalllib";
+        long deckId = createDeck(subject, "Small Library Deck");
+        addSevenCards(subject, deckId, "smalllib");
+        int revision = currentRevision(deckId);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":%d,"iterations":100,"turns":10,"onThePlay":false,"mulliganStrategy":"NONE"}
+                                        """
+                                                .formatted(revision)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn404ForNonexistentRevisionOnSimulation() throws Exception {
+        String subject = "auth0|simrun-badrevision";
+        long deckId = createDeck(subject, "Simulation Deck");
+        addCards(subject, deckId, "simbad", 20);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/simulations", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {"revision":999,"iterations":100,"turns":3,"onThePlay":true,"mulliganStrategy":"NONE"}
+                                        """))
+                .andExpect(status().isNotFound());
+    }
+
     private int currentRevision(long deckId) {
         return deckRevisionRepository
                 .findFirstByDeckIdOrderByRevisionNumberDesc(deckId)
@@ -191,7 +329,11 @@ class DeckSimulationControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     private void addSevenCards(String subject, long deckId, String prefix) throws Exception {
-        for (int i = 0; i < 7; i++) {
+        addCards(subject, deckId, prefix, 7);
+    }
+
+    private void addCards(String subject, long deckId, String prefix, int count) throws Exception {
+        for (int i = 0; i < count; i++) {
             addCard(subject, deckId, createPrinting(prefix + "-" + i));
         }
     }
