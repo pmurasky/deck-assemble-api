@@ -6,7 +6,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Publishing-facing view of a deck: current state only. This does not yet pin an immutable revision
- * — that is Task 8's job, which will extend this shape.
+ * — that is Task 8's job, which will extend this shape. Includes the owner-supplied primer (raw
+ * Markdown source only — see DeckPrimerResponse for why no rendered-HTML field exists).
  */
 public record SharedDeckResponse(
         long deckId,
@@ -16,7 +17,9 @@ public record SharedDeckResponse(
         @Nullable Long commanderCardId,
         @Nullable Long secondaryCommanderCardId,
         DeckVisibility visibility,
-        @Nullable String shareSlug) {
+        @Nullable String shareSlug,
+        @Nullable String primerTitle,
+        @Nullable String primerMarkdown) {
 
     public static SharedDeckResponse from(Deck deck) {
         return new SharedDeckResponse(
@@ -27,6 +30,8 @@ public record SharedDeckResponse(
                 deck.getCommanderCardId(),
                 deck.getSecondaryCommanderCardId(),
                 deck.getVisibility(),
-                deck.getShareSlug());
+                deck.getShareSlug(),
+                deck.getPrimerTitle(),
+                deck.getPrimerMarkdown());
     }
 }

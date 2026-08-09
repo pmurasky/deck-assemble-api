@@ -279,6 +279,37 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @ParameterizedTest
+    @EnumSource(
+            value = DeckVisibility.class,
+            names = {"UNLISTED", "PUBLIC"})
+    void shouldSurfaceThePrimerOnTheSharedViewForAnyoneTheVisibilityPermits(
+            DeckVisibility visibility) throws Exception {
+        String owner = "auth0|primer-shared-" + visibility;
+        String stranger = "auth0|primer-shared-stranger-" + visibility;
+        long deckId = createDeck(owner, "Primer Shared " + visibility);
+        String slug = publish(owner, deckId, visibility);
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Guide", "# How to play"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/shared/decks/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.primerTitle").value("Guide"))
+                .andExpect(jsonPath("$.primerMarkdown").value("# How to play"));
+        mockMvc.perform(
+                        get("/shared/decks/{slug}", slug)
+                                .with(jwt().jwt(jwt -> jwt.subject(stranger))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.primerTitle").value("Guide"));
+    }
+
     private long createDeck(String subject, String name) throws Exception {
         MvcResult result =
                 mockMvc.perform(
