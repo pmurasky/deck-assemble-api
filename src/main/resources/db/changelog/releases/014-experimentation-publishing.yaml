@@ -116,3 +116,32 @@ databaseChangeLog:
               - column:
                   name: primer_markdown
                   type: text
+  - changeSet:
+      id: 014-deck-publish-pin
+      author: opencode
+      changes:
+        - addColumn:
+            tableName: decks
+            columns:
+              - column:
+                  name: published_revision_number
+                  type: integer
+              - column:
+                  name: published_at
+                  type: timestamptz
+  - changeSet:
+      id: 014-deck-fork-attribution
+      author: opencode
+      changes:
+        # No FK constraint by design: a fork's source attribution must survive the source deck
+        # being deleted (or turned back PRIVATE) — see Deck.java's comment on these fields and
+        # DeckForkServiceTest.
+        - addColumn:
+            tableName: decks
+            columns:
+              - column:
+                  name: source_deck_id
+                  type: bigint
+              - column:
+                  name: source_revision_number
+                  type: integer

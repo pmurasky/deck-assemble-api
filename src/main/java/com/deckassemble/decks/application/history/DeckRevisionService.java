@@ -135,6 +135,16 @@ public class DeckRevisionService {
         return readSnapshot(revisionFor(deckId, revisionNumber));
     }
 
+    /**
+     * Same as {@link #snapshotAt} but skips the ownership check. For callers — the shared-deck and
+     * fork flows — that have already authorized access to {@code deckId} through a different gate
+     * (share-slug visibility, not ownership), where the caller may be an anonymous or stranger
+     * requester rather than the deck's owner.
+     */
+    public DeckSnapshot snapshotAtForSharedAccess(long deckId, int revisionNumber) {
+        return readSnapshot(revisionFor(deckId, revisionNumber));
+    }
+
     /** The deck's current (most recent) revision number, or 0 if none has been recorded yet. */
     public int currentRevisionNumber(long deckId) {
         deckAccessGuard.owned(deckId);

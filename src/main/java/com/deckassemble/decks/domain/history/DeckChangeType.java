@@ -12,5 +12,6 @@ public enum DeckChangeType {
     TAG_CHANGED,
     FOLDER_CHANGED,
     IMPORTED,
-    RESTORED
+    RESTORED,
+    FORKED
 }

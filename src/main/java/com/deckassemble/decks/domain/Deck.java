@@ -23,7 +23,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "decks")
 // Justified: JPA entity mapping table columns; field count follows the schema.
-@SuppressWarnings("PMD.TooManyFields")
+// CyclomaticComplexity suppressed: plain accessors dominate the class metric.
+@SuppressWarnings({"PMD.TooManyFields", "PMD.CyclomaticComplexity"})
 public class Deck {
 
     public enum Status {
@@ -94,6 +95,26 @@ public class Deck {
 
     @Column(name = "primer_markdown", columnDefinition = "text")
     private String primerMarkdown;
+
+    // Set together by DeckPublishingService#publish: the deck-revision number pinned as the
+    // shared/fork representation, and when that pin was taken. Null until first published; stays
+    // set (and stale) across further private edits until republished — that staleness is the
+    // whole point, see DeckPublishingService#getShared.
+    @Column(name = "published_revision_number")
+    private Integer publishedRevisionNumber;
+
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    // ponytail: plain FK, no DB constraint — same pattern as commanderCardId/folderId above, but
+    // load-bearing here rather than incidental: DeckForkService must survive the source deck being
+    // deleted or turned back PRIVATE after the fork exists (attribution is metadata about how this
+    // deck came to be, not a live reference to the source). See DeckForkServiceTest.
+    @Column(name = "source_deck_id")
+    private Long sourceDeckId;
+
+    @Column(name = "source_revision_number")
+    private Integer sourceRevisionNumber;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -249,5 +270,37 @@ public class Deck {
 
     public void setPrimerMarkdown(@Nullable String primerMarkdown) {
         this.primerMarkdown = primerMarkdown;
+    }
+
+    public Integer getPublishedRevisionNumber() {
+        return publishedRevisionNumber;
+    }
+
+    public void setPublishedRevisionNumber(@Nullable Integer publishedRevisionNumber) {
+        this.publishedRevisionNumber = publishedRevisionNumber;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void setPublishedAt(@Nullable Instant publishedAt) {
+        this.publishedAt = publishedAt;
+    }
+
+    public Long getSourceDeckId() {
+        return sourceDeckId;
+    }
+
+    public void setSourceDeckId(@Nullable Long sourceDeckId) {
+        this.sourceDeckId = sourceDeckId;
+    }
+
+    public Integer getSourceRevisionNumber() {
+        return sourceRevisionNumber;
+    }
+
+    public void setSourceRevisionNumber(@Nullable Integer sourceRevisionNumber) {
+        this.sourceRevisionNumber = sourceRevisionNumber;
     }
 }

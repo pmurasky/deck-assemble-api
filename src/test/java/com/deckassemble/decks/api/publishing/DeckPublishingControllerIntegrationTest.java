@@ -2,6 +2,7 @@ package com.deckassemble.decks.api.publishing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.deckassemble.AbstractIntegrationTest;
+import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.CardPrinting;
+import com.deckassemble.cards.domain.CardPrintingRepository;
+import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.cards.domain.MagicSet;
+import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.decks.domain.Deck;
+import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.publishing.DeckVisibility;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,6 +38,10 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private DeckRepository deckRepository;
+    @Autowired private CardRepository cardRepository;
+    @Autowired private MagicSetRepository magicSetRepository;
+    @Autowired private CardPrintingRepository printingRepository;
 
     @ParameterizedTest
     @EnumSource(
@@ -310,6 +323,197 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.primerTitle").value("Guide"));
     }
 
+    @Test
+    void shouldKeepSharedContentPinnedAfterPrivateEditsUntilRepublished() throws Exception {
+        String owner = "auth0|publish-pin-owner";
+        long deckId = createDeck(owner, "Original Name");
+        String slug = publish(owner, deckId, DeckVisibility.PUBLIC);
+        pin(owner, deckId);
+
+        mockMvc.perform(get("/shared/decks/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Original Name"));
+
+        rename(owner, deckId, "Edited Name");
+
+        // The live deck changed, but the shared view is pinned to the revision at publish time.
+        mockMvc.perform(get("/shared/decks/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Original Name"));
+        mockMvc.perform(get("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(owner))))
+                .andExpect(jsonPath("$.name").value("Edited Name"));
+
+        pin(owner, deckId);
+
+        mockMvc.perform(get("/shared/decks/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Edited Name"));
+    }
+
+    @Test
+    void shouldFallBackToLiveStateForAVisibleDeckThatWasNeverPublished() throws Exception {
+        String owner = "auth0|publish-never-owner";
+        long deckId = createDeck(owner, "Live Only");
+        String slug = publish(owner, deckId, DeckVisibility.PUBLIC);
+
+        rename(owner, deckId, "Still Live");
+
+        mockMvc.perform(get("/shared/decks/{slug}", slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Still Live"));
+    }
+
+    @Test
+    void shouldRejectNonOwnerPublishing() throws Exception {
+        String owner = "auth0|publish-owner-guard";
+        String stranger = "auth0|publish-stranger-guard";
+        long deckId = createDeck(owner, "Owned Deck");
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/publish", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(stranger))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectAnonymousPublishing() throws Exception {
+        String owner = "auth0|publish-anon-guard";
+        long deckId = createDeck(owner, "Owned Deck");
+
+        mockMvc.perform(post("/decks/{deckId}/publish", deckId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldForkAPublishedDeckCopyingThePinnedSnapshotContent() throws Exception {
+        String owner = "auth0|fork-source-owner";
+        String forker = "auth0|fork-caller";
+        long sourceDeckId = createDeck(owner, "Fork Source");
+        addCard(owner, sourceDeckId, createPrinting("fork-card"));
+        String slug = publish(owner, sourceDeckId, DeckVisibility.PUBLIC);
+        pin(owner, sourceDeckId); // pins revision 2 (CREATED, then CARD_ADDED)
+        // Edit privately after pinning: the fork must NOT see this, only the pinned content.
+        rename(owner, sourceDeckId, "Renamed After Pin");
+
+        MvcResult result =
+                mockMvc.perform(
+                                post("/shared/decks/{slug}/fork", slug)
+                                        .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        DeckForkResponse forkResponse =
+                objectMapper.readValue(
+                        result.getResponse().getContentAsString(), DeckForkResponse.class);
+
+        assertThat(forkResponse.name()).isEqualTo("Fork Source");
+        assertThat(forkResponse.sourceDeckId()).isEqualTo(sourceDeckId);
+        assertThat(forkResponse.sourceRevisionNumber()).isEqualTo(2);
+        mockMvc.perform(
+                        get("/decks/{deckId}", forkResponse.deckId())
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Fork Source"))
+                .andExpect(jsonPath("$.cardCount").value(1));
+        // Forked deck is owned by the forker, not the source owner.
+        mockMvc.perform(
+                        get("/decks/{deckId}", forkResponse.deckId())
+                                .with(jwt().jwt(jwt -> jwt.subject(owner))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectForkingADeckThatIsVisibleButHasNeverBeenPublished() throws Exception {
+        String owner = "auth0|fork-unpublished-owner";
+        String forker = "auth0|fork-unpublished-caller";
+        long deckId = createDeck(owner, "Never Pinned");
+        String slug = publish(owner, deckId, DeckVisibility.PUBLIC);
+
+        mockMvc.perform(
+                        post("/shared/decks/{slug}/fork", slug)
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldRejectForkingAPrivateDeckEvenWithALingeringSlugFromAPastPublish() throws Exception {
+        String owner = "auth0|fork-private-owner";
+        String forker = "auth0|fork-private-caller";
+        long deckId = createDeck(owner, "Goes Private");
+        String slug = publish(owner, deckId, DeckVisibility.PUBLIC);
+        pin(owner, deckId);
+        // Revert to PRIVATE: the slug lingers (stable), but must stop resolving for fork too.
+        publish(owner, deckId, DeckVisibility.PRIVATE);
+
+        mockMvc.perform(
+                        post("/shared/decks/{slug}/fork", slug)
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn404WhenForkingAnUnknownSlug() throws Exception {
+        String forker = "auth0|fork-unknown-caller";
+
+        mockMvc.perform(
+                        post("/shared/decks/{slug}/fork", "does-not-exist")
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectAnonymousForking() throws Exception {
+        String owner = "auth0|fork-anon-owner";
+        long deckId = createDeck(owner, "Owned Deck");
+        String slug = publish(owner, deckId, DeckVisibility.PUBLIC);
+        pin(owner, deckId);
+
+        mockMvc.perform(post("/shared/decks/{slug}/fork", slug))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldSurviveSourceDeckDeletionAfterFork() throws Exception {
+        String owner = "auth0|fork-survive-delete-owner";
+        String forker = "auth0|fork-survive-delete-caller";
+        long sourceDeckId = createDeck(owner, "Deleted Later");
+        String slug = publish(owner, sourceDeckId, DeckVisibility.PUBLIC);
+        pin(owner, sourceDeckId);
+        long forkedDeckId = fork(forker, slug).deckId();
+
+        mockMvc.perform(
+                        delete("/decks/{deckId}", sourceDeckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner))))
+                .andExpect(status().isNoContent());
+
+        Deck forked = deckRepository.findById(forkedDeckId).orElseThrow();
+        assertThat(forked.getSourceDeckId()).isEqualTo(sourceDeckId);
+        assertThat(forked.getSourceRevisionNumber()).isEqualTo(1);
+        mockMvc.perform(
+                        get("/decks/{deckId}", forkedDeckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldSurviveSourceDeckPrivacyChangeAfterFork() throws Exception {
+        String owner = "auth0|fork-survive-privacy-owner";
+        String forker = "auth0|fork-survive-privacy-caller";
+        long sourceDeckId = createDeck(owner, "Goes Private Later");
+        String slug = publish(owner, sourceDeckId, DeckVisibility.PUBLIC);
+        pin(owner, sourceDeckId);
+        long forkedDeckId = fork(forker, slug).deckId();
+
+        publish(owner, sourceDeckId, DeckVisibility.PRIVATE);
+
+        Deck forked = deckRepository.findById(forkedDeckId).orElseThrow();
+        assertThat(forked.getSourceDeckId()).isEqualTo(sourceDeckId);
+        mockMvc.perform(
+                        get("/decks/{deckId}", forkedDeckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(forker))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Goes Private Later"));
+    }
+
     private long createDeck(String subject, String name) throws Exception {
         MvcResult result =
                 mockMvc.perform(
@@ -337,5 +541,52 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                         .andReturn();
         Matcher matcher = SHARE_SLUG_PATTERN.matcher(result.getResponse().getContentAsString());
         return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private void pin(String subject, long deckId) throws Exception {
+        mockMvc.perform(
+                        post("/decks/{deckId}/publish", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk());
+    }
+
+    private void rename(String subject, long deckId, String name) throws Exception {
+        mockMvc.perform(
+                        patch("/decks/{deckId}", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"%s\"}".formatted(name)))
+                .andExpect(status().isOk());
+    }
+
+    private DeckForkResponse fork(String subject, String slug) throws Exception {
+        MvcResult result =
+                mockMvc.perform(
+                                post("/shared/decks/{slug}/fork", slug)
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                        .andExpect(status().isCreated())
+                        .andReturn();
+        return objectMapper.readValue(
+                result.getResponse().getContentAsString(), DeckForkResponse.class);
+    }
+
+    private void addCard(String subject, long deckId, long printingId) throws Exception {
+        mockMvc.perform(
+                        post("/decks/{deckId}/cards", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"cardPrintingId\":%d,\"quantity\":1}"
+                                                .formatted(printingId)))
+                .andExpect(status().isCreated());
+    }
+
+    private long createPrinting(String identifier) {
+        Card card = cardRepository.save(new Card("oracle-" + identifier, "Card " + identifier));
+        MagicSet set =
+                magicSetRepository.save(new MagicSet("set-" + identifier, identifier, "Deck Set"));
+        return printingRepository
+                .save(new CardPrinting(card, set, "printing-" + identifier))
+                .getId();
     }
 }

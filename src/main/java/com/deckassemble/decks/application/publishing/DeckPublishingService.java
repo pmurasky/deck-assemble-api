@@ -2,11 +2,15 @@ package com.deckassemble.decks.application.publishing;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.history.DeckRevisionService;
+import com.deckassemble.decks.application.history.DeckSnapshot;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.publishing.DeckVisibility;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Base64;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,15 +26,18 @@ public class DeckPublishingService {
     private final DeckRepository deckRepository;
     private final DeckAccessGuard deckAccessGuard;
     private final DeckVisibilityPolicy visibilityPolicy;
+    private final DeckRevisionService deckRevisionService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public DeckPublishingService(
             DeckRepository deckRepository,
             DeckAccessGuard deckAccessGuard,
-            DeckVisibilityPolicy visibilityPolicy) {
+            DeckVisibilityPolicy visibilityPolicy,
+            DeckRevisionService deckRevisionService) {
         this.deckRepository = deckRepository;
         this.deckAccessGuard = deckAccessGuard;
         this.visibilityPolicy = visibilityPolicy;
+        this.deckRevisionService = deckRevisionService;
     }
 
     public Deck updateVisibility(long deckId, DeckVisibility visibility) {
@@ -42,12 +49,41 @@ public class DeckPublishingService {
         return deckRepository.save(deck);
     }
 
-    public Deck getShared(String slug) {
+    /**
+     * Pins the deck's current revision as its shared/fork representation. Until this is called
+     * (again), the shared view keeps serving whatever was pinned last — later private edits do not
+     * change it. Primer content is intentionally excluded from the pin: it stays live, editable
+     * independently of publish state (see SharedDeckResponse).
+     */
+    public Deck publish(long deckId) {
+        Deck deck = deckAccessGuard.ownedLocked(deckId);
+        deck.setPublishedRevisionNumber(deckRevisionService.currentRevisionNumber(deckId));
+        deck.setPublishedAt(Instant.now());
+        return deckRepository.save(deck);
+    }
+
+    /**
+     * Resolves a share slug through the same visibility gate every shared-deck access (view, fork)
+     * must go through — a deck that once was shared can return to PRIVATE while keeping its slug
+     * (see Deck's shareSlug comment), and this is what stops that stale slug from still resolving.
+     */
+    public SharedDeckView getShared(String slug) {
         Deck deck = deckRepository.findByShareSlug(slug).orElseThrow(DeckNotFoundException::new);
         if (!visibilityPolicy.isSharedViewAllowed(deck.getVisibility())) {
             throw new DeckNotFoundException();
         }
-        return deck;
+        return new SharedDeckView(deck, pinnedSnapshotOrNull(deck));
+    }
+
+    private @Nullable DeckSnapshot pinnedSnapshotOrNull(Deck deck) {
+        Integer publishedRevisionNumber = deck.getPublishedRevisionNumber();
+        if (publishedRevisionNumber == null) {
+            // Never published: reasonable minimal fallback is to keep showing live current state,
+            // same as before this task — Task 6 never gated shared-view access on publish state,
+            // and requiring publish-before-shareable would be new, unrequested scope.
+            return null;
+        }
+        return deckRevisionService.snapshotAtForSharedAccess(deck.getId(), publishedRevisionNumber);
     }
 
     private void ensureShareSlug(Deck deck) {
@@ -73,4 +109,10 @@ public class DeckPublishingService {
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
+
+    /**
+     * A gated shared-deck lookup result: the deck row (always live — visibility, slug, primer) plus
+     * its pinned content snapshot, or {@code null} if the deck has never been published.
+     */
+    public record SharedDeckView(Deck deck, @Nullable DeckSnapshot pinnedSnapshot) {}
 }
