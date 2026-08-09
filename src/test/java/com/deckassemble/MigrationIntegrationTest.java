@@ -36,6 +36,36 @@ class MigrationIntegrationTest extends AbstractIntegrationTest {
                 .isTrue();
     }
 
+    @Test
+    void shouldApplyCommunityPhysicalMigration() {
+        assertThat(countAppliedRelease("015-deck-collaborators")).isOne();
+        assertThat(countAppliedRelease("015-deck-comments")).isOne();
+        assertThat(countAppliedRelease("015-profile-follows")).isOne();
+        assertThat(countAppliedRelease("015-deck-favorites")).isOne();
+        assertThat(countAppliedRelease("015-notifications")).isOne();
+        assertThat(countAppliedRelease("015-moderation-reports")).isOne();
+
+        assertThat(tableExists("deck_collaborators")).isTrue();
+        assertThat(tableExists("deck_comments")).isTrue();
+        assertThat(tableExists("profile_follows")).isTrue();
+        assertThat(tableExists("deck_favorites")).isTrue();
+        assertThat(tableExists("notifications")).isTrue();
+        assertThat(tableExists("moderation_reports")).isTrue();
+
+        assertThat(hasUniqueConstraint("deck_collaborators", "UNIQUE (deck_id, profile_id)"))
+                .isTrue();
+        assertThat(hasUniqueConstraint("profile_follows", "UNIQUE (follower_id, followee_id)"))
+                .isTrue();
+        assertThat(hasUniqueConstraint("deck_favorites", "UNIQUE (profile_id, deck_id)")).isTrue();
+
+        assertThat(relationExists("idx_deck_collaborators_deck_id")).isTrue();
+        assertThat(relationExists("idx_deck_comments_deck_id")).isTrue();
+        assertThat(relationExists("idx_profile_follows_followee_id")).isTrue();
+        assertThat(relationExists("idx_deck_favorites_deck_id")).isTrue();
+        assertThat(relationExists("idx_notifications_recipient_read_at")).isTrue();
+        assertThat(relationExists("idx_moderation_reports_status")).isTrue();
+    }
+
     private int countAppliedRelease(String changeSetId) {
         return jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM databasechangelog WHERE id = ?", Integer.class, changeSetId);

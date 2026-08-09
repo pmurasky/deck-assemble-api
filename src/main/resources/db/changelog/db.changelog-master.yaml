@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/releases/013-intelligence-organization.yaml
   - include:
       file: db/changelog/releases/014-experimentation-publishing.yaml
+  - include:
+      file: db/changelog/releases/015-community-physical.yaml

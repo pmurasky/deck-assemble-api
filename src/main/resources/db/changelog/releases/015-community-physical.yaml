@@ -1,0 +1,386 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-deck-collaborators
+      author: opencode
+      changes:
+        - createTable:
+            tableName: deck_collaborators
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_collaborators
+                    nullable: false
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: deck_collaborators
+            columnNames: deck_id, profile_id
+            constraintName: uq_deck_collaborators_deck_profile
+        - addForeignKeyConstraint:
+            baseTableName: deck_collaborators
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_collaborators_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_collaborators
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_deck_collaborators_profile
+            onDelete: CASCADE
+        - createIndex:
+            tableName: deck_collaborators
+            indexName: idx_deck_collaborators_deck_id
+            columns:
+              - column:
+                  name: deck_id
+  - changeSet:
+      id: 015-deck-comments
+      author: opencode
+      changes:
+        - createTable:
+            tableName: deck_comments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_comments
+                    nullable: false
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: body
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: deck_comments
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_comments_deck
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_comments
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_deck_comments_profile
+            onDelete: CASCADE
+        - createIndex:
+            tableName: deck_comments
+            indexName: idx_deck_comments_deck_id
+            columns:
+              - column:
+                  name: deck_id
+  - changeSet:
+      id: 015-profile-follows
+      author: opencode
+      changes:
+        - createTable:
+            tableName: profile_follows
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_profile_follows
+                    nullable: false
+              - column:
+                  name: follower_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: followee_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: profile_follows
+            columnNames: follower_id, followee_id
+            constraintName: uq_profile_follows_follower_followee
+        - addForeignKeyConstraint:
+            baseTableName: profile_follows
+            baseColumnNames: follower_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_profile_follows_follower
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: profile_follows
+            baseColumnNames: followee_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_profile_follows_followee
+            onDelete: CASCADE
+        - createIndex:
+            tableName: profile_follows
+            indexName: idx_profile_follows_followee_id
+            columns:
+              - column:
+                  name: followee_id
+  - changeSet:
+      id: 015-deck-favorites
+      author: opencode
+      changes:
+        - createTable:
+            tableName: deck_favorites
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_deck_favorites
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deck_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: deck_favorites
+            columnNames: profile_id, deck_id
+            constraintName: uq_deck_favorites_profile_deck
+        - addForeignKeyConstraint:
+            baseTableName: deck_favorites
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_deck_favorites_profile
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: deck_favorites
+            baseColumnNames: deck_id
+            referencedTableName: decks
+            referencedColumnNames: id
+            constraintName: fk_deck_favorites_deck
+            onDelete: CASCADE
+        - createIndex:
+            tableName: deck_favorites
+            indexName: idx_deck_favorites_deck_id
+            columns:
+              - column:
+                  name: deck_id
+  - changeSet:
+      id: 015-notifications
+      author: opencode
+      changes:
+        - createTable:
+            tableName: notifications
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_notifications
+                    nullable: false
+              - column:
+                  name: recipient_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor_id
+                  type: bigint
+              - column:
+                  name: reason
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: read_at
+                  type: timestamptz
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: notifications
+            baseColumnNames: recipient_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_notifications_recipient
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: notifications
+            baseColumnNames: actor_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_notifications_actor
+            onDelete: SET NULL
+        - createIndex:
+            tableName: notifications
+            indexName: idx_notifications_recipient_read_at
+            columns:
+              - column:
+                  name: recipient_id
+              - column:
+                  name: read_at
+  - changeSet:
+      id: 015-moderation-reports
+      author: opencode
+      changes:
+        - createTable:
+            tableName: moderation_reports
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_moderation_reports
+                    nullable: false
+              # No FK on reporter_id -> ON DELETE SET NULL, and no FK at all on the reported
+              # resource (resource_type/resource_id) by design: moderation reports are a
+              # retained audit trail that must survive deletion of the reporter's account or
+              # the reported resource. See ModerationReport.java.
+              - column:
+                  name: reporter_id
+                  type: bigint
+              - column:
+                  name: resource_type
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: OPEN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: moderation_reports
+            baseColumnNames: reporter_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_moderation_reports_reporter
+            onDelete: SET NULL
+        - createIndex:
+            tableName: moderation_reports
+            indexName: idx_moderation_reports_status
+            columns:
+              - column:
+                  name: status
