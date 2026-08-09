@@ -87,6 +87,14 @@ public class Deck {
     @Column(name = "share_slug", length = 32)
     private String shareSlug;
 
+    // Guide/writeup an owner attaches to a deck. Raw Markdown only — see DeckPrimerResponse for
+    // why no rendered-HTML field exists yet (no vetted renderer/sanitizer dependency present).
+    @Column(name = "primer_title", length = 200)
+    private String primerTitle;
+
+    @Column(name = "primer_markdown", columnDefinition = "text")
+    private String primerMarkdown;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -225,5 +233,21 @@ public class Deck {
 
     public void setShareSlug(@Nullable String shareSlug) {
         this.shareSlug = shareSlug;
+    }
+
+    public String getPrimerTitle() {
+        return primerTitle;
+    }
+
+    public void setPrimerTitle(@Nullable String primerTitle) {
+        this.primerTitle = primerTitle;
+    }
+
+    public String getPrimerMarkdown() {
+        return primerMarkdown;
+    }
+
+    public void setPrimerMarkdown(@Nullable String primerMarkdown) {
+        this.primerMarkdown = primerMarkdown;
     }
 }

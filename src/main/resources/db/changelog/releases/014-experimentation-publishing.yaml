@@ -103,3 +103,16 @@ databaseChangeLog:
             tableName: decks
             columnNames: share_slug
             constraintName: uk_decks_share_slug
+  - changeSet:
+      id: 014-deck-primer
+      author: opencode
+      changes:
+        - addColumn:
+            tableName: decks
+            columns:
+              - column:
+                  name: primer_title
+                  type: varchar(200)
+              - column:
+                  name: primer_markdown
+                  type: text

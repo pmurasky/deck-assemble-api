@@ -5,6 +5,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,12 +21,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
 class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
 
     private static final Pattern SHARE_SLUG_PATTERN = Pattern.compile("\"shareSlug\":\"([^\"]+)\"");
 
     @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
 
     @ParameterizedTest
     @EnumSource(
@@ -161,6 +165,118 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(slug).isNotBlank();
         mockMvc.perform(get("/shared/decks/{slug}", slug)).andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldStoreAndReturnPrimerTitleAndUtf8MarkdownSourceForOwner() throws Exception {
+        String owner = "auth0|primer-owner-utf8";
+        long deckId = createDeck(owner, "UTF-8 Primer Deck");
+        String title = "Café Primer — 你好 🐉";
+        String markdown = "# Café Primer — 你好 🐉\n\nPlay lands, then dragons. Ünïcödé throughout.";
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest(title, markdown))))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.deckId").value(deckId))
+                .andExpect(jsonPath("$.title").value(title))
+                .andExpect(jsonPath("$.markdownSource").value(markdown));
+    }
+
+    @Test
+    void shouldReturnDangerousHtmlInMarkdownSourceAsAnInertJsonStringWithoutStrippingIt()
+            throws Exception {
+        String owner = "auth0|primer-owner-danger";
+        long deckId = createDeck(owner, "Danger Primer Deck");
+        String markdown = "Beware: <script>alert('xss')</script> and <img src=x onerror=alert(1)>.";
+
+        MvcResult result =
+                mockMvc.perform(
+                                put("/decks/{deckId}/primer", deckId)
+                                        .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new DeckPrimerRequest("Danger", markdown))))
+                        .andExpect(status().isOk())
+                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                        .andExpect(jsonPath("$.markdownSource").value(markdown))
+                        .andReturn();
+
+        // Round-trips byte-for-byte as a plain JSON string value — never executed, never
+        // silently stripped. That is the correct "store raw, don't render" behavior for this
+        // task: there is no server-side HTML template that would interpolate this unescaped.
+        DeckPrimerResponse response =
+                objectMapper.readValue(
+                        result.getResponse().getContentAsString(), DeckPrimerResponse.class);
+        assertThat(response.markdownSource()).isEqualTo(markdown);
+    }
+
+    @Test
+    void shouldRejectPrimerMarkdownSourceExceedingTheSizeLimit() throws Exception {
+        String owner = "auth0|primer-owner-toolong";
+        long deckId = createDeck(owner, "Too Long Primer Deck");
+        String tooLong = "a".repeat(20_001);
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Title", tooLong))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectPrimerTitleExceedingTheSizeLimit() throws Exception {
+        String owner = "auth0|primer-owner-titletoolong";
+        long deckId = createDeck(owner, "Too Long Title Deck");
+        String tooLong = "a".repeat(201);
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest(tooLong, "Body"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectNonOwnerUpdatingThePrimer() throws Exception {
+        String owner = "auth0|primer-patch-owner";
+        String stranger = "auth0|primer-patch-stranger";
+        long deckId = createDeck(owner, "Owned Primer Deck");
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(stranger)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Title", "Body"))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectAnonymousUpdatingThePrimer() throws Exception {
+        String owner = "auth0|primer-patch-anon-owner";
+        long deckId = createDeck(owner, "Owned Primer Deck");
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Title", "Body"))))
+                .andExpect(status().isUnauthorized());
     }
 
     private long createDeck(String subject, String name) throws Exception {
