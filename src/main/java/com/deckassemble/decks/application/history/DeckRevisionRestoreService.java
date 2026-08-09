@@ -5,7 +5,7 @@ import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCardUpdateRequest;
-import com.deckassemble.decks.application.DeckService;
+import com.deckassemble.decks.application.DeckStateReplacer;
 import com.deckassemble.decks.application.DeckUpdateRequest;
 import com.deckassemble.decks.application.organization.DeckCategoryService;
 import com.deckassemble.decks.application.organization.DeckFolderService;
@@ -26,19 +26,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Restores a deck to an earlier revision's snapshot by composing the already-instrumented mutation
- * primitives ({@link DeckService}, {@link DeckCardService}, {@link DeckCategoryService}, {@link
- * DeckFolderService}, {@link DeckTagService}) rather than writing to the database directly —
- * restore gets each primitive's own no-op detection for free this way. All composed calls run
- * inside {@link DeckRevisionService#withoutRecording}, then exactly one {@code RESTORED} revision
- * is recorded here for the whole operation — the same pattern {@code DeckImportCommitService}
- * already uses for import.
+ * primitives ({@link DeckStateReplacer}, {@link DeckCardService}, {@link DeckCategoryService},
+ * {@link DeckFolderService}, {@link DeckTagService}) rather than writing to the database directly —
+ * restore gets each primitive's own no-op detection for free this way (or, for metadata/status,
+ * applies the target state outright — see {@link DeckStateReplacer}). All composed calls run inside
+ * {@link DeckRevisionService#withoutRecording}, then exactly one {@code RESTORED} revision is
+ * recorded here for the whole operation — the same pattern {@code DeckImportCommitService} already
+ * uses for import.
  */
 @Service
 public class DeckRevisionRestoreService {
 
     private final DeckAccessGuard deckAccessGuard;
     private final DeckRevisionService deckRevisionService;
-    private final DeckService deckService;
+    private final DeckStateReplacer deckStateReplacer;
     private final DeckCardService deckCardService;
     private final DeckCategoryService deckCategoryService;
     private final DeckFolderService deckFolderService;
@@ -52,14 +53,14 @@ public class DeckRevisionRestoreService {
     public DeckRevisionRestoreService(
             DeckAccessGuard deckAccessGuard,
             DeckRevisionService deckRevisionService,
-            DeckService deckService,
+            DeckStateReplacer deckStateReplacer,
             DeckCardService deckCardService,
             DeckCategoryService deckCategoryService,
             DeckFolderService deckFolderService,
             DeckTagService deckTagService) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckRevisionService = deckRevisionService;
-        this.deckService = deckService;
+        this.deckStateReplacer = deckStateReplacer;
         this.deckCardService = deckCardService;
         this.deckCategoryService = deckCategoryService;
         this.deckFolderService = deckFolderService;
@@ -96,17 +97,16 @@ public class DeckRevisionRestoreService {
     }
 
     private Void applyAll(long deckId, DeckSnapshot target) {
-        applyMetadata(deckId, target);
+        applyState(deckId, target);
         deckFolderService.assignToDeck(deckId, target.folderId());
-        applyStatus(deckId, target);
         applyTags(deckId, target);
         applyCategories(deckId, target);
         applyCards(deckId, target);
         return null;
     }
 
-    private void applyMetadata(long deckId, DeckSnapshot target) {
-        deckService.update(
+    private void applyState(long deckId, DeckSnapshot target) {
+        deckStateReplacer.replace(
                 deckId,
                 new DeckUpdateRequest(
                         target.name(),
@@ -117,16 +117,8 @@ public class DeckRevisionRestoreService {
                         target.useOwnedCardsOnly(),
                         target.budgetLimit(),
                         target.desiredPowerLevel(),
-                        target.playStyle()));
-    }
-
-    // ponytail: DeckService exposes only a one-directional archive() primitive, so restore can
-    // re-apply ARCHIVED status forward but cannot un-archive a deck that was later archived after
-    // the target revision. Upgrade path: add DeckService.unarchive() if that gap ever matters.
-    private void applyStatus(long deckId, DeckSnapshot target) {
-        if ("ARCHIVED".equals(target.status())) {
-            deckService.archive(deckId);
-        }
+                        target.playStyle()),
+                Deck.Status.valueOf(target.status()));
     }
 
     private void applyTags(long deckId, DeckSnapshot target) {

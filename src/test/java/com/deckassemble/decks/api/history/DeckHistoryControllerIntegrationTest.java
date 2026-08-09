@@ -15,6 +15,8 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.decks.domain.Deck;
+import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.history.DeckRevisionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ class DeckHistoryControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository printingRepository;
     @Autowired private DeckRevisionRepository deckRevisionRepository;
+    @Autowired private DeckRepository deckRepository;
 
     @Test
     void shouldListRevisionsMostRecentFirstWithPagination() throws Exception {
@@ -169,6 +172,55 @@ class DeckHistoryControllerIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/decks/{deckId}", deckId).with(jwt().jwt(jwt -> jwt.subject(subject))))
                 .andExpect(jsonPath("$.name").value("Original"))
                 .andExpect(jsonPath("$.cardCount").value(0));
+    }
+
+    @Test
+    void shouldClearNullableMetadataFieldsOnRestore() throws Exception {
+        String subject = "auth0|history-restore-clear";
+        long deckId = createDeck(subject, "Deck"); // rev1: no description, no commander
+        long commanderCardId =
+                cardRepository.save(new Card("oracle-clear-commander", "Clear Commander")).getId();
+        mockMvc.perform(
+                        patch("/decks/{deckId}", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"description\":\"Has a description\",\"commanderCardId\":%d}"
+                                                .formatted(commanderCardId)))
+                .andExpect(status().isOk()); // rev2: description + commander now set
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/revisions/1/restore", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"expectedCurrentRevision\":2}"))
+                .andExpect(status().isOk());
+
+        Deck restored = deckRepository.findById(deckId).orElseThrow();
+        assertThat(restored.getDescription()).isNull();
+        assertThat(restored.getCommanderCardId()).isNull();
+    }
+
+    @Test
+    void shouldUnarchiveOnRestoreToAPreArchiveRevision() throws Exception {
+        String subject = "auth0|history-restore-unarchive";
+        long deckId = createDeck(subject, "Deck"); // rev1: DRAFT
+        mockMvc.perform(
+                        post("/decks/{deckId}/archive", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk()); // rev2: ARCHIVED
+        assertThat(deckRepository.findById(deckId).orElseThrow().getStatus())
+                .isEqualTo(Deck.Status.ARCHIVED);
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/revisions/1/restore", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"expectedCurrentRevision\":2}"))
+                .andExpect(status().isOk());
+
+        assertThat(deckRepository.findById(deckId).orElseThrow().getStatus())
+                .isEqualTo(Deck.Status.DRAFT);
     }
 
     private long createDeck(String subject, String name) throws Exception {
