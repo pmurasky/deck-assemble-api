@@ -152,6 +152,16 @@ class DeckPublishingServiceTest {
     }
 
     @Test
+    void shouldRejectPublishingADeckWithNoRecordedRevisions() {
+        Deck deck = new Deck(1L, "Deck", "COMMANDER");
+        when(deckAccessGuard.ownedLocked(42L)).thenReturn(deck);
+        when(deckRevisionService.currentRevisionNumber(42L)).thenReturn(0);
+
+        assertThatThrownBy(() -> service.publish(42L)).isInstanceOf(IllegalStateException.class);
+        verify(deckRepository, never()).save(any(Deck.class));
+    }
+
+    @Test
     void shouldServeThePinnedSnapshotContentWhenTheDeckHasBeenPublished() {
         Deck deck = new Deck(1L, "Live Name", "COMMANDER");
         ReflectionTestUtils.setField(deck, "id", 7L);

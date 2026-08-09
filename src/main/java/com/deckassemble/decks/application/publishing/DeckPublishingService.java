@@ -57,7 +57,17 @@ public class DeckPublishingService {
      */
     public Deck publish(long deckId) {
         Deck deck = deckAccessGuard.ownedLocked(deckId);
-        deck.setPublishedRevisionNumber(deckRevisionService.currentRevisionNumber(deckId));
+        int currentRevisionNumber = deckRevisionService.currentRevisionNumber(deckId);
+        if (currentRevisionNumber == 0) {
+            // Every deck-creation path records a CREATED revision at creation time, so this should
+            // be unreachable through the API — but 0 is also nextRevisionNumber's "never recorded"
+            // sentinel, and pinning it would make pinnedSnapshotOrNull call
+            // snapshotAtForSharedAccess(deckId, 0), which 404s (revisions start at 1). Fail loudly
+            // here instead of leaving the shared page permanently broken.
+            throw new IllegalStateException(
+                    "Cannot publish deck " + deckId + ": it has no recorded revisions");
+        }
+        deck.setPublishedRevisionNumber(currentRevisionNumber);
         deck.setPublishedAt(Instant.now());
         return deckRepository.save(deck);
     }
