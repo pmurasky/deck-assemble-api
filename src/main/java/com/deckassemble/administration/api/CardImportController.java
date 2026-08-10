@@ -42,6 +42,14 @@ public class CardImportController {
 
     public record ImportAcceptedResponse(long runId) {}
 
+    @PostMapping("/oracle-tags")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ImportAcceptedResponse> importOracleTags() {
+        long runId =
+                cardImportTrigger.triggerOracleTagImport(currentUser.subject().orElse("system"));
+        return ResponseEntity.accepted().body(new ImportAcceptedResponse(runId));
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<ImportRunHistoryResponse> history() {
