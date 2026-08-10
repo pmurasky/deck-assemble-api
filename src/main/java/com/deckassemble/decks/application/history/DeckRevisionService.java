@@ -2,6 +2,7 @@ package com.deckassemble.decks.application.history;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.collaboration.DeckRevisionConflictException;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.history.DeckChangeType;
@@ -61,6 +62,25 @@ public class DeckRevisionService {
                 deckRepository
                         .findLockedByIdAndProfileId(deckId, profileId)
                         .orElseThrow(DeckNotFoundException::new);
+        persist(deck, profileId, changeType);
+    }
+
+    /**
+     * Records a revision for an already-locked/loaded deck. Used by the collaborative-edit paths
+     * that took the row lock through {@code DeckAccessGuard.editableLocked}: those may be driven by
+     * a non-owner editor (so the owner-filtered {@link #record(long, long, DeckChangeType)} would
+     * not find the row) and already hold the lock (so re-fetching it is redundant). {@code
+     * profileId} is the actor who made the change.
+     */
+    public void record(Deck deck, long profileId, DeckChangeType changeType) {
+        if (Boolean.TRUE.equals(SUPPRESSED.get())) {
+            return;
+        }
+        persist(deck, profileId, changeType);
+    }
+
+    private void persist(Deck deck, long profileId, DeckChangeType changeType) {
+        long deckId = deck.getId();
         int nextRevisionNumber = nextRevisionNumber(deckId);
         Integer baseRevisionNumber = nextRevisionNumber == 1 ? null : nextRevisionNumber - 1;
         revisionRepository.save(
@@ -70,6 +90,33 @@ public class DeckRevisionService {
                         nextRevisionNumber,
                         baseRevisionNumber,
                         new DeckRevision.Content(changeType, null, snapshotBuilder.toJson(deck))));
+    }
+
+    /**
+     * The deck's current revision number without any access check — the caller must already have
+     * authorized and (for the write paths) locked the deck via {@code
+     * DeckAccessGuard.editableLocked}.
+     */
+    public int currentRevisionNumberUnchecked(long deckId) {
+        return nextRevisionNumber(deckId) - 1;
+    }
+
+    /**
+     * Optimistic-concurrency gate for collaborative edits: if {@code expectedRevision} is non-null
+     * and does not match the deck's current revision, fails with {@link
+     * DeckRevisionConflictException} (HTTP 409). A null {@code expectedRevision} skips the check,
+     * so owner-only callers that don't send one keep working unchanged. Must be called while
+     * holding the {@code editableLocked} row lock so the read-check-mutate sequence is atomic
+     * against other editors.
+     */
+    public void assertExpectedRevision(long deckId, @Nullable Integer expectedRevision) {
+        if (expectedRevision == null) {
+            return;
+        }
+        int current = currentRevisionNumberUnchecked(deckId);
+        if (expectedRevision != current) {
+            throw new DeckRevisionConflictException(current);
+        }
     }
 
     /**

@@ -16,4 +16,5 @@ public record DeckUpdateRequest(
         Boolean useOwnedCardsOnly,
         @Nullable BigDecimal budgetLimit,
         @Min(1) @Max(10) @Nullable Integer desiredPowerLevel,
-        @Size(max = 50) @Nullable String playStyle) {}
+        @Size(max = 50) @Nullable String playStyle,
+        @Nullable Integer expectedRevision) {}

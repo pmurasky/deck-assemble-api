@@ -134,9 +134,9 @@ class DeckForkServiceTest {
                                 7,
                                 "Aggro"));
         verify(deckCardService)
-                .addCard(99L, new DeckCardAddRequest(501L, 2, DeckCard.Section.MAIN_DECK));
-        verify(deckCategoryService).create(99L, "Ramp");
-        verify(deckTagService).assignToDeck(99L, List.of(55L));
+                .addCard(99L, new DeckCardAddRequest(501L, 2, DeckCard.Section.MAIN_DECK, null));
+        verify(deckCategoryService).create(99L, "Ramp", null);
+        verify(deckTagService).assignToDeck(99L, List.of(55L), null);
         verify(deckRevisionService).record(99L, 1L, DeckChangeType.FORKED);
         verify(deckRevisionService, times(1)).record(anyLong(), anyLong(), any());
         assertThat(result.getSourceDeckId()).isEqualTo(5L);
@@ -157,7 +157,7 @@ class DeckForkServiceTest {
                 .thenReturn(
                         List.of(
                                 new DeckCategoryService.CategoryView(
-                                        1L, "Ramp", 0, true, null, List.of())));
+                                        1L, "Ramp", 0, true, null, List.of(), 0)));
         when(deckTagService.list()).thenReturn(List.of());
         Deck forked99 = new Deck(1L, "Pinned Deck", "COMMANDER");
         ReflectionTestUtils.setField(forked99, "id", 99L);
@@ -166,7 +166,7 @@ class DeckForkServiceTest {
 
         service().fork("slug");
 
-        verify(deckCategoryService, never()).create(eq(99L), any());
+        verify(deckCategoryService, never()).create(eq(99L), any(), any());
     }
 
     @Test
@@ -188,7 +188,7 @@ class DeckForkServiceTest {
 
         service().fork("slug");
 
-        verify(deckTagService, never()).assignToDeck(anyLong(), any());
+        verify(deckTagService, never()).assignToDeck(anyLong(), any(), any());
     }
 
     private void allowWithoutRecordingToRunTheSuppliedAction() {
@@ -251,6 +251,7 @@ class DeckForkServiceTest {
                 0,
                 null,
                 null,
-                null);
+                null,
+                0);
     }
 }

@@ -90,7 +90,7 @@ public class CategoryTemplateService {
                         .collect(Collectors.toSet());
         for (CategoryTemplateItem item : items) {
             if (existingNames.add(item.getName().toLowerCase(Locale.ROOT))) {
-                deckCategoryService.create(deckId, item.getName());
+                deckCategoryService.create(deckId, item.getName(), null);
             }
         }
         return deckCategoryService.list(deckId);

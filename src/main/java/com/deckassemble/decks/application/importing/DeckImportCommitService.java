@@ -144,7 +144,8 @@ public class DeckImportCommitService {
                                 new DeckCardAddRequest(
                                         row.printingId(),
                                         row.row().quantity(),
-                                        row.row().section())));
+                                        row.row().section(),
+                                        null)));
         return selected.size();
     }
 

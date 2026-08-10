@@ -116,7 +116,7 @@ public class DeckForkService {
                         .collect(Collectors.toSet());
         snapshot.categoryNames().stream()
                 .filter(name -> !currentNames.contains(name))
-                .forEach(name -> deckCategoryService.create(deckId, name));
+                .forEach(name -> deckCategoryService.create(deckId, name, null));
     }
 
     private void applyTags(long deckId, DeckSnapshot snapshot) {
@@ -130,7 +130,7 @@ public class DeckForkService {
         List<Long> tagIds =
                 snapshot.tagNames().stream().map(idsByName::get).filter(Objects::nonNull).toList();
         if (!tagIds.isEmpty()) {
-            deckTagService.assignToDeck(deckId, tagIds);
+            deckTagService.assignToDeck(deckId, tagIds, null);
         }
     }
 
@@ -143,7 +143,8 @@ public class DeckForkService {
                                         new DeckCardAddRequest(
                                                 entry.cardPrintingId(),
                                                 entry.quantity(),
-                                                DeckCard.Section.valueOf(entry.deckSection()))));
+                                                DeckCard.Section.valueOf(entry.deckSection()),
+                                                null)));
     }
 
     private Deck attributeSource(

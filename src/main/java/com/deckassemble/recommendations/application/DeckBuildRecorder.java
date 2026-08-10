@@ -100,7 +100,7 @@ public class DeckBuildRecorder {
                             .addCard(
                                     deckId,
                                     new DeckCardAddRequest(
-                                            candidate.printingId(), 1, Section.MAIN_DECK))
+                                            candidate.printingId(), 1, Section.MAIN_DECK, null))
                             .ownershipStatus();
             count(counts, status);
         }
@@ -122,7 +122,7 @@ public class DeckBuildRecorder {
                     deckCardService
                             .addCard(
                                     deckId,
-                                    new DeckCardAddRequest(printingId, 1, Section.COMMANDER))
+                                    new DeckCardAddRequest(printingId, 1, Section.COMMANDER, null))
                             .ownershipStatus();
             count(counts, status);
         }

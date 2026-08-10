@@ -76,8 +76,10 @@ public class DeckFolderService {
                                 deckId, profileId, DeckChangeType.FOLDER_CHANGED));
     }
 
-    public void assignToDeck(long deckId, @Nullable Long folderId) {
-        Deck deck = deckAccessGuard.owned(deckId);
+    public int assignToDeck(
+            long deckId, @Nullable Long folderId, @Nullable Integer expectedRevision) {
+        Deck deck = deckAccessGuard.editableLocked(deckId);
+        deckRevisionService.assertExpectedRevision(deckId, expectedRevision);
         if (folderId != null) {
             ownedFolder(deckAccessGuard.profileId(), folderId);
         }
@@ -86,8 +88,9 @@ public class DeckFolderService {
         deckRepository.save(deck);
         if (changed) {
             deckRevisionService.record(
-                    deckId, deckAccessGuard.profileId(), DeckChangeType.FOLDER_CHANGED);
+                    deck, deckAccessGuard.profileId(), DeckChangeType.FOLDER_CHANGED);
         }
+        return deckRevisionService.currentRevisionNumberUnchecked(deckId);
     }
 
     private DeckFolder ownedFolder(long profileId, long folderId) {

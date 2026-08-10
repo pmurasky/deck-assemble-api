@@ -324,11 +324,11 @@ class DeckComparisonServiceTest {
     private static DeckCardResponse deckCard(
             long printingId, int quantity, String section, String oracleId, String name) {
         return new DeckCardResponse(
-                1L, printingId, quantity, section, "OWNED", summary(oracleId, name));
+                1L, printingId, quantity, section, "OWNED", summary(oracleId, name), 0);
     }
 
     private static DeckCardResponse unresolvedCard(long printingId, int quantity) {
-        return new DeckCardResponse(1L, printingId, quantity, "MAIN_DECK", "OWNED", null);
+        return new DeckCardResponse(1L, printingId, quantity, "MAIN_DECK", "OWNED", null, 0);
     }
 
     // Suppressed: an 18-field summary fixture is one placeholder per line; splitting harms clarity.

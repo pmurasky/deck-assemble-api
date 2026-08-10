@@ -2,6 +2,7 @@ package com.deckassemble.decks.application.organization;
 
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.history.DeckRevisionService;
+import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.history.DeckChangeType;
 import com.deckassemble.decks.domain.organization.DeckTag;
 import com.deckassemble.decks.domain.organization.DeckTagAssignment;
@@ -77,8 +78,9 @@ public class DeckTagService {
                         deckRevisionService.record(deckId, profileId, DeckChangeType.TAG_CHANGED));
     }
 
-    public void assignToDeck(long deckId, List<Long> tagIds) {
-        deckAccessGuard.owned(deckId);
+    public int assignToDeck(long deckId, List<Long> tagIds, @Nullable Integer expectedRevision) {
+        final Deck deck = deckAccessGuard.editableLocked(deckId);
+        deckRevisionService.assertExpectedRevision(deckId, expectedRevision);
         long profileId = deckAccessGuard.profileId();
         List<Long> distinctIds = tagIds.stream().distinct().toList();
         distinctIds.forEach(tagId -> ownedTag(profileId, tagId));
@@ -91,8 +93,9 @@ public class DeckTagService {
         distinctIds.forEach(
                 tagId -> assignmentRepository.save(new DeckTagAssignment(deckId, tagId)));
         if (!before.equals(Set.copyOf(distinctIds))) {
-            deckRevisionService.record(deckId, profileId, DeckChangeType.TAG_CHANGED);
+            deckRevisionService.record(deck, profileId, DeckChangeType.TAG_CHANGED);
         }
+        return deckRevisionService.currentRevisionNumberUnchecked(deckId);
     }
 
     private Set<Long> assignedTagIds(long deckId) {

@@ -54,6 +54,7 @@ class DeckTagServiceTest {
     private final AtomicLong nextTagId = new AtomicLong(TAG_ID_A);
 
     private DeckTagService service;
+    private Deck deck;
 
     @BeforeEach
     void stubCommonCollaborators() {
@@ -61,11 +62,13 @@ class DeckTagServiceTest {
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
         lenient().when(currentUser.subject()).thenReturn(Optional.of("sub"));
         lenient().when(profileService.getOrCreate("sub")).thenReturn(profile);
-        Deck deck = new Deck(PROFILE_ID, "Deck", "COMMANDER");
+        deck = new Deck(PROFILE_ID, "Deck", "COMMANDER");
         ReflectionTestUtils.setField(deck, "id", DECK_ID);
         lenient()
                 .when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
+        lenient().when(deckRepository.findLockedById(DECK_ID)).thenReturn(Optional.of(deck));
+        lenient().when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(true);
         lenient()
                 .when(deckTagRepository.save(any(DeckTag.class)))
                 .thenAnswer(
@@ -109,15 +112,17 @@ class DeckTagServiceTest {
     }
 
     @Test
-    void shouldAssignManyTagsToOneDeck() {
+    void shouldAssignManyTagsToOneDeckAndReturnResultingRevision() {
         stubOwnedTag(TAG_ID_A);
         stubOwnedTag(TAG_ID_B);
+        when(deckRevisionService.currentRevisionNumberUnchecked(DECK_ID)).thenReturn(7);
 
-        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_B));
+        int revisionNumber = service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_B), null);
 
+        assertThat(revisionNumber).isEqualTo(7);
         verify(assignmentRepository).deleteByDeckId(DECK_ID);
         verify(assignmentRepository, times(2)).save(any(DeckTagAssignment.class));
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.TAG_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.TAG_CHANGED);
     }
 
     @Test
@@ -130,16 +135,16 @@ class DeckTagServiceTest {
                                 new DeckTagAssignment(DECK_ID, TAG_ID_A),
                                 new DeckTagAssignment(DECK_ID, TAG_ID_B)));
 
-        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_B));
+        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_B), null);
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
     }
 
     @Test
     void shouldDeduplicateRepeatedTagIdsOnAssign() {
         stubOwnedTag(TAG_ID_A);
 
-        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_A));
+        service.assignToDeck(DECK_ID, List.of(TAG_ID_A, TAG_ID_A), null);
 
         verify(assignmentRepository, times(1)).save(any(DeckTagAssignment.class));
     }
@@ -149,15 +154,15 @@ class DeckTagServiceTest {
         when(deckTagRepository.findByIdAndProfileId(TAG_ID_A, PROFILE_ID))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, List.of(TAG_ID_A)))
+        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, List.of(TAG_ID_A), null))
                 .isInstanceOf(DeckTagNotFoundException.class);
     }
 
     @Test
     void shouldRejectAssigningToForeignDeck() {
-        when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID)).thenReturn(Optional.empty());
+        when(deckRepository.findLockedById(DECK_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, List.of(TAG_ID_A)))
+        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, List.of(TAG_ID_A), null))
                 .isInstanceOf(DeckNotFoundException.class);
     }
 

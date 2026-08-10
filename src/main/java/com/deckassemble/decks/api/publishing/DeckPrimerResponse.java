@@ -10,10 +10,11 @@ import com.deckassemble.decks.domain.Deck;
  * inertly even if it contains raw HTML/script content — there is no server-side HTML template that
  * would interpolate it unescaped.
  */
-public record DeckPrimerResponse(long deckId, String title, String markdownSource) {
+public record DeckPrimerResponse(
+        long deckId, String title, String markdownSource, int revisionNumber) {
 
-    public static DeckPrimerResponse from(Deck deck) {
+    public static DeckPrimerResponse from(Deck deck, int revisionNumber) {
         return new DeckPrimerResponse(
-                deck.getId(), deck.getPrimerTitle(), deck.getPrimerMarkdown());
+                deck.getId(), deck.getPrimerTitle(), deck.getPrimerMarkdown(), revisionNumber);
     }
 }

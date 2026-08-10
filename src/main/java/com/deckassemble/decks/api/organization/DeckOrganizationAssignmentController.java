@@ -3,7 +3,6 @@ package com.deckassemble.decks.api.organization;
 import com.deckassemble.decks.application.organization.DeckFolderService;
 import com.deckassemble.decks.application.organization.DeckTagService;
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,16 +27,19 @@ public class DeckOrganizationAssignmentController {
     }
 
     @PutMapping("/folder")
-    public ResponseEntity<Void> assignFolder(
+    public DeckAssignmentResponse assignFolder(
             @PathVariable long deckId, @Valid @RequestBody DeckFolderAssignmentRequest request) {
-        deckFolderService.assignToDeck(deckId, request.folderId());
-        return ResponseEntity.noContent().build();
+        int revisionNumber =
+                deckFolderService.assignToDeck(
+                        deckId, request.folderId(), request.expectedRevision());
+        return new DeckAssignmentResponse(revisionNumber);
     }
 
     @PutMapping("/tags")
-    public ResponseEntity<Void> assignTags(
+    public DeckAssignmentResponse assignTags(
             @PathVariable long deckId, @Valid @RequestBody DeckTagAssignmentRequest request) {
-        deckTagService.assignToDeck(deckId, request.tagIds());
-        return ResponseEntity.noContent().build();
+        int revisionNumber =
+                deckTagService.assignToDeck(deckId, request.tagIds(), request.expectedRevision());
+        return new DeckAssignmentResponse(revisionNumber);
     }
 }

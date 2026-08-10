@@ -47,30 +47,33 @@ class DeckCardServiceTest {
     @Test
     void shouldAddCardWithDefaults() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        Deck deck = deck(1L);
+        stubEditableLocked(deck);
         when(deckCardRepository.findByDeckIdAndCardPrintingIdAndDeckSection(
                         1L, 10L, DeckCard.Section.MAIN_DECK))
                 .thenReturn(Optional.empty());
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        DeckCardResponse result = service().addCard(1L, new DeckCardAddRequest(10L, null, null));
+        DeckCardResponse result =
+                service().addCard(1L, new DeckCardAddRequest(10L, null, null, null));
 
         assertThat(result.quantity()).isEqualTo(1);
         assertThat(result.deckSection()).isEqualTo("MAIN_DECK");
-        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.CARD_ADDED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CARD_ADDED);
     }
 
     @Test
     void shouldMarkNewCardAsOwnedWhenPrintingInCollection() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        stubEditableLocked(deck(1L));
         when(deckCardRepository.findByDeckIdAndCardPrintingIdAndDeckSection(
                         1L, 10L, DeckCard.Section.MAIN_DECK))
                 .thenReturn(Optional.empty());
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
         when(ownershipChecker.isOwned(PROFILE_ID, 10L)).thenReturn(true);
 
-        DeckCardResponse result = service().addCard(1L, new DeckCardAddRequest(10L, null, null));
+        DeckCardResponse result =
+                service().addCard(1L, new DeckCardAddRequest(10L, null, null, null));
 
         assertThat(result.ownershipStatus()).isEqualTo("OWNED");
     }
@@ -78,14 +81,15 @@ class DeckCardServiceTest {
     @Test
     void shouldMarkNewCardAsWishlistWhenPrintingNotOwned() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        stubEditableLocked(deck(1L));
         when(deckCardRepository.findByDeckIdAndCardPrintingIdAndDeckSection(
                         1L, 10L, DeckCard.Section.MAIN_DECK))
                 .thenReturn(Optional.empty());
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
         when(ownershipChecker.isOwned(PROFILE_ID, 10L)).thenReturn(false);
 
-        DeckCardResponse result = service().addCard(1L, new DeckCardAddRequest(10L, null, null));
+        DeckCardResponse result =
+                service().addCard(1L, new DeckCardAddRequest(10L, null, null, null));
 
         assertThat(result.ownershipStatus()).isEqualTo("WISHLIST");
     }
@@ -93,14 +97,14 @@ class DeckCardServiceTest {
     @Test
     void shouldMergeQuantityWhenCardAlreadyInSection() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        stubEditableLocked(deck(1L));
         DeckCard existing = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
         when(deckCardRepository.findByDeckIdAndCardPrintingIdAndDeckSection(
                         1L, 10L, DeckCard.Section.MAIN_DECK))
                 .thenReturn(Optional.of(existing));
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        DeckCardResponse result = service().addCard(1L, new DeckCardAddRequest(10L, 3, null));
+        DeckCardResponse result = service().addCard(1L, new DeckCardAddRequest(10L, 3, null, null));
 
         assertThat(result.quantity()).isEqualTo(5);
     }
@@ -108,7 +112,8 @@ class DeckCardServiceTest {
     @Test
     void shouldUpdateCardFields() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        Deck deck = deck(1L);
+        stubEditableLocked(deck);
         DeckCard card = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
         when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -116,24 +121,27 @@ class DeckCardServiceTest {
         DeckCardResponse result =
                 service()
                         .updateCard(
-                                1L, 7L, new DeckCardUpdateRequest(4, DeckCard.Section.SIDEBOARD));
+                                1L,
+                                7L,
+                                new DeckCardUpdateRequest(4, DeckCard.Section.SIDEBOARD, null));
 
         assertThat(result.quantity()).isEqualTo(4);
         assertThat(result.deckSection()).isEqualTo("SIDEBOARD");
-        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.CARD_UPDATED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CARD_UPDATED);
     }
 
     @Test
     void shouldNotRecordRevisionWhenUpdateRequestChangesNothing() {
         stubUser();
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        stubEditableLocked(deck(1L));
         DeckCard card = new DeckCard(1L, 10L, 2, DeckCard.Section.MAIN_DECK);
         when(deckCardRepository.findByIdAndDeckId(7L, 1L)).thenReturn(Optional.of(card));
         when(deckCardRepository.save(any(DeckCard.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service().updateCard(1L, 7L, new DeckCardUpdateRequest(2, DeckCard.Section.MAIN_DECK));
+        service()
+                .updateCard(1L, 7L, new DeckCardUpdateRequest(2, DeckCard.Section.MAIN_DECK, null));
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
     }
 
     @Test
@@ -215,6 +223,11 @@ class DeckCardServiceTest {
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
         when(currentUser.subject()).thenReturn(Optional.of("sub"));
         when(profileService.getOrCreate("sub")).thenReturn(profile);
+    }
+
+    private void stubEditableLocked(Deck deck) {
+        when(deckRepository.findLockedById(deck.getId())).thenReturn(Optional.of(deck));
+        when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(true);
     }
 
     private Deck deck(long id) {

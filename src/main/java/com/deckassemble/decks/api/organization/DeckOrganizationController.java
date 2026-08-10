@@ -41,7 +41,9 @@ public class DeckOrganizationController {
     public ResponseEntity<DeckCategoryResponse> create(
             @PathVariable long deckId, @Valid @RequestBody DeckCategoryRequest request) {
         DeckCategoryResponse created =
-                DeckCategoryResponse.from(deckCategoryService.create(deckId, request.name()));
+                DeckCategoryResponse.from(
+                        deckCategoryService.create(
+                                deckId, request.name(), request.expectedRevision()));
         return ResponseEntity.created(
                         URI.create("/api/v1/decks/" + deckId + "/categories/" + created.id()))
                 .body(created);
@@ -53,7 +55,8 @@ public class DeckOrganizationController {
             @PathVariable long categoryId,
             @Valid @RequestBody DeckCategoryRequest request) {
         return DeckCategoryResponse.from(
-                deckCategoryService.rename(deckId, categoryId, request.name()));
+                deckCategoryService.rename(
+                        deckId, categoryId, request.name(), request.expectedRevision()));
     }
 
     @DeleteMapping("/{categoryId}")
@@ -68,7 +71,8 @@ public class DeckOrganizationController {
             @PathVariable long categoryId,
             @Valid @RequestBody DeckCategoryAssignmentRequest request) {
         return DeckCategoryResponse.from(
-                deckCategoryService.assignCards(deckId, categoryId, request.deckCardIds()));
+                deckCategoryService.assignCards(
+                        deckId, categoryId, request.deckCardIds(), request.expectedRevision()));
     }
 
     @PostMapping("/from-template")

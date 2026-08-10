@@ -8,6 +8,7 @@ import com.deckassemble.collections.application.CollectionNotFoundException;
 import com.deckassemble.decks.application.DeckCardNotFoundException;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.application.collaboration.DeckCollaboratorNotFoundException;
+import com.deckassemble.decks.application.collaboration.DeckRevisionConflictException;
 import com.deckassemble.decks.application.organization.CategoryTemplateNotFoundException;
 import com.deckassemble.decks.application.organization.DeckCategoryNotFoundException;
 import com.deckassemble.decks.application.organization.DeckFolderNotFoundException;
@@ -74,6 +75,17 @@ public class ApiExceptionHandler {
     @ExceptionHandler(CategoryTemplateNotFoundException.class)
     ProblemDetail handleCategoryTemplateNotFound() {
         return notFound("category-template", "Category template");
+    }
+
+    @ExceptionHandler(DeckRevisionConflictException.class)
+    ProblemDetail handleDeckRevisionConflict(DeckRevisionConflictException exception) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problem.setType(URI.create("https://deckassemble.app/problems/deck-revision-conflict"));
+        problem.setTitle("Deck revision conflict");
+        problem.setProperty("code", "DECK_REVISION_CONFLICT");
+        problem.setProperty("currentRevision", exception.currentRevision());
+        return problem;
     }
 
     @ExceptionHandler(InvalidCardSearchFilterException.class)

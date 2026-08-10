@@ -60,19 +60,24 @@ class DeckCategoryServiceTest {
     private final List<DeckCategory> savedCategories = new ArrayList<>();
     private final AtomicLong nextCategoryId = new AtomicLong(100L);
 
+    private Deck deck;
+
     @BeforeEach
     void stubCommonCollaborators() {
         Profile profile = new Profile("sub", "User");
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
         when(currentUser.subject()).thenReturn(Optional.of("sub"));
         when(profileService.getOrCreate("sub")).thenReturn(profile);
-        Deck deck = new Deck(PROFILE_ID, "Deck", "COMMANDER");
+        deck = new Deck(PROFILE_ID, "Deck", "COMMANDER");
         ReflectionTestUtils.setField(deck, "id", DECK_ID);
-        when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID))
+        lenient()
+                .when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
+        lenient().when(deckRepository.findLockedById(DECK_ID)).thenReturn(Optional.of(deck));
         lenient()
                 .when(deckRepository.findLockedByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
+        lenient().when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(true);
         lenient()
                 .when(deckCategoryRepository.save(any(DeckCategory.class)))
                 .thenAnswer(
@@ -134,7 +139,7 @@ class DeckCategoryServiceTest {
         when(deckCategoryRepository.existsByDeckId(DECK_ID)).thenReturn(true);
         when(deckCategoryRepository.existsByDeckIdAndName(DECK_ID, "Combos")).thenReturn(true);
 
-        assertThatThrownBy(() -> service().create(DECK_ID, "Combos"))
+        assertThatThrownBy(() -> service().create(DECK_ID, "Combos", null))
                 .isInstanceOf(ResponseStatusException.class);
     }
 
@@ -144,12 +149,12 @@ class DeckCategoryServiceTest {
         when(deckCategoryRepository.existsByDeckIdAndName(DECK_ID, "Combos")).thenReturn(false);
         when(deckCategoryRepository.countByDeckId(DECK_ID)).thenReturn(6L);
 
-        DeckCategoryService.CategoryView created = service().create(DECK_ID, "Combos");
+        DeckCategoryService.CategoryView created = service().create(DECK_ID, "Combos", null);
 
         assertThat(created.displayOrder()).isEqualTo(6);
         assertThat(created.systemOwned()).isFalse();
         assertThat(created.functionalCategory()).isNull();
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -161,11 +166,12 @@ class DeckCategoryServiceTest {
         when(deckCategoryRepository.existsByDeckIdAndName(DECK_ID, "Mana Sources"))
                 .thenReturn(false);
 
-        DeckCategoryService.CategoryView renamed = service().rename(DECK_ID, 1L, "Mana Sources");
+        DeckCategoryService.CategoryView renamed =
+                service().rename(DECK_ID, 1L, "Mana Sources", null);
 
         assertThat(renamed.name()).isEqualTo("Mana Sources");
         assertThat(renamed.functionalCategory()).isEqualTo(CardFunctionalCategory.LAND);
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -174,9 +180,9 @@ class DeckCategoryServiceTest {
         DeckCategory land = existingCategory(1L, "Land", 0, true);
         when(deckCategoryRepository.findByIdAndDeckId(1L, DECK_ID)).thenReturn(Optional.of(land));
 
-        service().rename(DECK_ID, 1L, "Land");
+        service().rename(DECK_ID, 1L, "Land", null);
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
     }
 
     @Test
@@ -191,6 +197,20 @@ class DeckCategoryServiceTest {
     }
 
     @Test
+    void shouldRejectDeleteFromAnEditorCollaboratorWhoIsNotTheOwner() {
+        // canEdit() is true (an EDITOR collaborator, not the owner) but findLockedByIdAndProfileId
+        // — the owner-scoped lock delete() must use — finds nothing for this profile, proving
+        // delete() never falls back to the editable-collaborator path create/rename/assignCards
+        // use.
+        when(deckRepository.findLockedByIdAndProfileId(DECK_ID, PROFILE_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().delete(DECK_ID, 2L))
+                .isInstanceOf(DeckNotFoundException.class);
+        verify(deckCategoryRepository, never()).delete(any());
+    }
+
+    @Test
     void shouldDeleteUserCreatedCategory() {
         when(deckCategoryRepository.existsByDeckId(DECK_ID)).thenReturn(true);
         DeckCategory combos = existingCategory(2L, "Combos", 6, false);
@@ -200,7 +220,7 @@ class DeckCategoryServiceTest {
 
         verify(assignmentRepository).deleteByDeckCategoryId(2L);
         verify(deckCategoryRepository).delete(combos);
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -219,12 +239,12 @@ class DeckCategoryServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         DeckCategoryService.CategoryView result =
-                service().assignCards(DECK_ID, 2L, List.of(10L, 11L));
+                service().assignCards(DECK_ID, 2L, List.of(10L, 11L), null);
 
         assertThat(result.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
         verify(assignmentRepository).deleteByDeckCategoryId(2L);
         verify(assignmentRepository, times(2)).save(any(DeckCategoryAssignment.class));
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.CATEGORY_CHANGED);
     }
 
     @Test
@@ -243,9 +263,9 @@ class DeckCategoryServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         DeckCategoryService.CategoryView first =
-                service().assignCards(DECK_ID, 2L, List.of(10L, 10L, 11L));
+                service().assignCards(DECK_ID, 2L, List.of(10L, 10L, 11L), null);
         DeckCategoryService.CategoryView second =
-                service().assignCards(DECK_ID, 2L, List.of(10L, 11L));
+                service().assignCards(DECK_ID, 2L, List.of(10L, 11L), null);
 
         assertThat(first.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
         assertThat(second.assignedDeckCardIds()).containsExactlyInAnyOrder(10L, 11L);
@@ -271,9 +291,9 @@ class DeckCategoryServiceTest {
         when(assignmentRepository.save(any(DeckCategoryAssignment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        service().assignCards(DECK_ID, 2L, List.of(10L, 11L));
+        service().assignCards(DECK_ID, 2L, List.of(10L, 11L), null);
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
     }
 
     @Test
@@ -283,7 +303,7 @@ class DeckCategoryServiceTest {
         when(deckCategoryRepository.findByIdAndDeckId(2L, DECK_ID)).thenReturn(Optional.of(combos));
         when(deckCardRepository.findByIdAndDeckId(99L, DECK_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service().assignCards(DECK_ID, 2L, List.of(99L)))
+        assertThatThrownBy(() -> service().assignCards(DECK_ID, 2L, List.of(99L), null))
                 .isInstanceOf(DeckCardNotFoundException.class);
     }
 
@@ -292,13 +312,13 @@ class DeckCategoryServiceTest {
         when(deckCategoryRepository.existsByDeckId(DECK_ID)).thenReturn(true);
         when(deckCategoryRepository.findByIdAndDeckId(404L, DECK_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service().assignCards(DECK_ID, 404L, List.of(1L)))
+        assertThatThrownBy(() -> service().assignCards(DECK_ID, 404L, List.of(1L), null))
                 .isInstanceOf(DeckCategoryNotFoundException.class);
     }
 
     @Test
-    void shouldEnforceOwnerIsolation() {
-        when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID)).thenReturn(Optional.empty());
+    void shouldEnforceEditorIsolation() {
+        when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> service().list(DECK_ID)).isInstanceOf(DeckNotFoundException.class);
     }

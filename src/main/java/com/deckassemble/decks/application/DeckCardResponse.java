@@ -10,15 +10,18 @@ public record DeckCardResponse(
         int quantity,
         String deckSection,
         String ownershipStatus,
-        CardSummaryResponse card) {
+        CardSummaryResponse card,
+        int revisionNumber) {
 
-    public static DeckCardResponse from(DeckCard deckCard, CardSummaryResponse card) {
+    public static DeckCardResponse from(
+            DeckCard deckCard, CardSummaryResponse card, int revisionNumber) {
         return new DeckCardResponse(
                 deckCard.getId(),
                 deckCard.getCardPrintingId(),
                 deckCard.getQuantity(),
                 deckCard.getDeckSection().name(),
                 deckCard.getOwnershipStatus().name(),
-                card);
+                card,
+                revisionNumber);
     }
 }

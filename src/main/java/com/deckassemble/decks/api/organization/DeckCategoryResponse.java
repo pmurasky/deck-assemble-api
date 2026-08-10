@@ -10,7 +10,8 @@ public record DeckCategoryResponse(
         int displayOrder,
         boolean systemOwned,
         @Nullable String functionalCategory,
-        List<Long> assignedDeckCardIds) {
+        List<Long> assignedDeckCardIds,
+        int revisionNumber) {
 
     public static DeckCategoryResponse from(CategoryView view) {
         return new DeckCategoryResponse(
@@ -19,6 +20,7 @@ public record DeckCategoryResponse(
                 view.displayOrder(),
                 view.systemOwned(),
                 view.functionalCategory() == null ? null : view.functionalCategory().name(),
-                view.assignedDeckCardIds());
+                view.assignedDeckCardIds(),
+                view.revisionNumber());
     }
 }

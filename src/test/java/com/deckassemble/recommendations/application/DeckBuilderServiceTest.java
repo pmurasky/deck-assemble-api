@@ -574,10 +574,11 @@ class DeckBuilderServiceTest {
                 0,
                 "Tetsuko Umezawa",
                 null,
-                java.time.Instant.now());
+                java.time.Instant.now(),
+                0);
     }
 
     private DeckCardResponse cardResponse(String ownershipStatus) {
-        return new DeckCardResponse(1L, 99L, 1, "MAIN_DECK", ownershipStatus, null);
+        return new DeckCardResponse(1L, 99L, 1, "MAIN_DECK", ownershipStatus, null, 0);
     }
 }

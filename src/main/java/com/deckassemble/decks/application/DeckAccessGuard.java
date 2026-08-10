@@ -81,4 +81,19 @@ public class DeckAccessGuard {
         }
         return deck;
     }
+
+    /**
+     * Same as {@link #editable(long)} but takes a {@code PESSIMISTIC_WRITE} row lock on the deck,
+     * held for the rest of the transaction. This is what serializes concurrent collaborative edits:
+     * a mutation reads the current revision, checks the caller's {@code expectedRevision}, mutates,
+     * and records the next revision all while holding this lock, so a second edit racing from the
+     * same base revision blocks here, then re-reads a bumped revision and loses the check.
+     */
+    public Deck editableLocked(long deckId) {
+        Deck deck = deckRepository.findLockedById(deckId).orElseThrow(DeckNotFoundException::new);
+        if (!deckCollaborationPolicy.canEdit(deck, profileId())) {
+            throw new DeckNotFoundException();
+        }
+        return deck;
+    }
 }

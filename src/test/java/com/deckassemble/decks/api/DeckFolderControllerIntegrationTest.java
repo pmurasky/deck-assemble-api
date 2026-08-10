@@ -62,10 +62,12 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
         long folderA = createFolder(subject, "Folder A");
         long folderB = createFolder(subject, "Folder B");
 
-        assignFolder(subject, deckId, folderA).andExpect(status().isNoContent());
+        assignFolder(subject, deckId, folderA)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revisionNumber").isNumber());
         assertThat(deckRepository.findById(deckId).orElseThrow().getFolderId()).isEqualTo(folderA);
 
-        assignFolder(subject, deckId, folderB).andExpect(status().isNoContent());
+        assignFolder(subject, deckId, folderB).andExpect(status().isOk());
         assertThat(deckRepository.findById(deckId).orElseThrow().getFolderId()).isEqualTo(folderB);
     }
 
@@ -74,14 +76,15 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
         String subject = "auth0|folder-clear";
         long deckId = createDeck(subject, "Clear Deck");
         long folderId = createFolder(subject, "Folder");
-        assignFolder(subject, deckId, folderId).andExpect(status().isNoContent());
+        assignFolder(subject, deckId, folderId).andExpect(status().isOk());
 
         mockMvc.perform(
                         put("/decks/{deckId}/folder", deckId)
                                 .with(jwt().jwt(jwt -> jwt.subject(subject)))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"folderId\":null}"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revisionNumber").isNumber());
 
         assertThat(deckRepository.findById(deckId).orElseThrow().getFolderId()).isNull();
     }
@@ -101,7 +104,7 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
         String subject = "auth0|folder-delete";
         long deckId = createDeck(subject, "Delete Deck");
         long folderId = createFolder(subject, "Folder To Delete");
-        assignFolder(subject, deckId, folderId).andExpect(status().isNoContent());
+        assignFolder(subject, deckId, folderId).andExpect(status().isOk());
 
         mockMvc.perform(
                         delete("/deck-folders/{folderId}", folderId)
@@ -119,7 +122,7 @@ class DeckFolderControllerIntegrationTest extends AbstractIntegrationTest {
         String subject = "auth0|folder-delete-history";
         long deckId = createDeck(subject, "History Deck");
         long folderId = createFolder(subject, "Folder To Delete");
-        assignFolder(subject, deckId, folderId).andExpect(status().isNoContent());
+        assignFolder(subject, deckId, folderId).andExpect(status().isOk());
 
         mockMvc.perform(
                         delete("/deck-folders/{folderId}", folderId)

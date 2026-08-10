@@ -76,7 +76,8 @@ public class DeckService {
     }
 
     public DeckResponse update(long deckId, DeckUpdateRequest request) {
-        Deck deck = owned(deckId);
+        Deck deck = deckAccessGuard.editableLocked(deckId);
+        deckRevisionService.assertExpectedRevision(deckId, request.expectedRevision());
         MutableFields before = MutableFields.of(deck);
         applyCoreFields(deck, request);
         applyOptionFields(deck, request);
@@ -99,7 +100,7 @@ public class DeckService {
                 commanderChanged
                         ? DeckChangeType.COMMANDER_CHANGED
                         : DeckChangeType.METADATA_UPDATED;
-        deckRevisionService.record(deck.getId(), deck.getProfileId(), changeType);
+        deckRevisionService.record(deck, deckAccessGuard.profileId(), changeType);
     }
 
     /** Snapshot of a deck's user-editable fields, used to detect no-op updates. */
@@ -232,7 +233,11 @@ public class DeckService {
                         ? null
                         : cardCatalogService.getNameById(deck.getCommanderCardId());
         return DeckResponse.from(
-                deck, cardCount, commanderName, commanderSummary(deck.getCommanderCardId()));
+                deck,
+                cardCount,
+                commanderName,
+                commanderSummary(deck.getCommanderCardId()),
+                deckRevisionService.currentRevisionNumberUnchecked(deck.getId()));
     }
 
     private @Nullable CardSummaryResponse commanderSummary(@Nullable Long commanderCardId) {

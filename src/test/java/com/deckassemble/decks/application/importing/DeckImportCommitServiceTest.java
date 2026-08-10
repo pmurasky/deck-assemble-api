@@ -67,7 +67,7 @@ class DeckImportCommitServiceTest {
         assertThat(result.skipped()).isEqualTo(2);
         verify(deckCardService).addCard(eq(10L), requestCaptor.capture());
         assertThat(requestCaptor.getValue())
-                .isEqualTo(new DeckCardAddRequest(101L, 2, DeckCard.Section.MAIN_DECK));
+                .isEqualTo(new DeckCardAddRequest(101L, 2, DeckCard.Section.MAIN_DECK, null));
         assertThat(preview.getStatus()).isEqualTo(DeckImportPreview.Status.COMMITTED);
         assertThat(preview.getIdempotencyKey()).isEqualTo("key");
         assertThat(preview.getCommittedDeckId()).isEqualTo(10L);
@@ -293,6 +293,7 @@ class DeckImportCommitServiceTest {
                 cardCount,
                 null,
                 null,
-                Instant.parse("2026-08-04T00:00:00Z"));
+                Instant.parse("2026-08-04T00:00:00Z"),
+                0);
     }
 }

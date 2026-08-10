@@ -24,6 +24,14 @@ public interface DeckRepository extends JpaRepository<Deck, Long> {
     @Query("SELECT deck FROM Deck deck WHERE deck.id = :id AND deck.profileId = :profileId")
     Optional<Deck> findLockedByIdAndProfileId(Long id, Long profileId);
 
+    // Locks the deck row without an owner filter: collaborators (not just the owner) mutate the
+    // row,
+    // so DeckAccessGuard#editableLocked must be able to lock a deck it does not own. Access is
+    // enforced separately by DeckCollaborationPolicy after the lock is held.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT deck FROM Deck deck WHERE deck.id = :id")
+    Optional<Deck> findLockedById(Long id);
+
     // Deck.folderId is a plain FK with no DB constraint (see Deck's ponytail comment), so
     // deleting a folder must explicitly clear it on any decks that reference it to avoid
     // dangling ids; decks themselves are always retained.

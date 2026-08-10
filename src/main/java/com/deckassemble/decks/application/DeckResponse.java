@@ -21,13 +21,15 @@ public record DeckResponse(
         int cardCount,
         @Nullable String commanderName,
         @Nullable CardSummaryResponse commander,
-        Instant createdAt) {
+        Instant createdAt,
+        int revisionNumber) {
 
     public static DeckResponse from(
             Deck deck,
             int cardCount,
             @Nullable String commanderName,
-            @Nullable CardSummaryResponse commander) {
+            @Nullable CardSummaryResponse commander,
+            int revisionNumber) {
         return new DeckResponse(
                 deck.getId(),
                 deck.getName(),
@@ -43,6 +45,7 @@ public record DeckResponse(
                 cardCount,
                 commanderName,
                 commander,
-                deck.getCreatedAt());
+                deck.getCreatedAt(),
+                revisionNumber);
     }
 }

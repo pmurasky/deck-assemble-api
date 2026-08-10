@@ -21,6 +21,7 @@ import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
+import com.deckassemble.users.domain.ProfileRepository;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
@@ -45,6 +46,7 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
     @Autowired private DeckCategoryRepository deckCategoryRepository;
+    @Autowired private ProfileRepository profileRepository;
 
     @Test
     void shouldSeedDefaultCategoriesOrderedOnFirstList() throws Exception {
@@ -218,6 +220,92 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
         applyTemplate(subject, deckId, 999_999L)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("CATEGORY_TEMPLATE_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldLetAnEditorCollaboratorCreateRenameAndAssignButNeverDeleteACategory()
+            throws Exception {
+        String owner = "auth0|org-collab-owner";
+        String editor = "auth0|org-collab-editor";
+        long deckId = createDeck(owner, "Org Collab Deck");
+        long editorProfileId = bootstrapProfile(editor);
+        invite(owner, deckId, editorProfileId, "EDITOR");
+
+        long categoryId = createCategory(editor, deckId, "Combos");
+        mockMvc.perform(
+                        patch("/decks/{deckId}/categories/{categoryId}", deckId, categoryId)
+                                .with(jwt().jwt(jwt -> jwt.subject(editor)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Wincons\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Wincons"));
+        long cardId = addCardAndReturnId(editor, deckId, createPrinting("Org Collab Card"));
+        assignCards(editor, deckId, categoryId, "[" + cardId + "]");
+
+        // Deletion is owner-only (M4 global constraint), even for an EDITOR who can otherwise
+        // create/rename/assign — the collaborator gets the same not-found response as a stranger.
+        mockMvc.perform(
+                        delete("/decks/{deckId}/categories/{categoryId}", deckId, categoryId)
+                                .with(jwt().jwt(jwt -> jwt.subject(editor))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("DECK_NOT_FOUND"));
+
+        // The owner can still delete it.
+        mockMvc.perform(
+                        delete("/decks/{deckId}/categories/{categoryId}", deckId, categoryId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner))))
+                .andExpect(status().isNoContent());
+    }
+
+    private long bootstrapProfile(String subject) throws Exception {
+        mockMvc.perform(get("/decks").with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk());
+        return profileRepository.findByAuthProviderSubject(subject).orElseThrow().getId();
+    }
+
+    private void invite(String owner, long deckId, long profileId, String role) throws Exception {
+        mockMvc.perform(
+                        post("/decks/{deckId}/collaborators", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"profileId\":%d,\"role\":\"%s\"}"
+                                                .formatted(profileId, role)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldRejectCategoryAssignmentWithStaleExpectedRevisionAndCarryCurrent() throws Exception {
+        String subject = "auth0|org-rev-conflict";
+        long deckId = createDeck(subject, "Org Rev Deck");
+        long categoryId = createCategory(subject, deckId, "Combos");
+        long cardA = addCardAndReturnId(subject, deckId, createPrinting("Org Rev Card"));
+
+        // The deck has advanced past revision 0 through create/category/card records, so an edit
+        // claiming base revision 0 is stale and must lose with a 409 carrying the current revision.
+        mockMvc.perform(
+                        put("/decks/{deckId}/categories/{categoryId}/cards", deckId, categoryId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"deckCardIds\":[" + cardA + "],\"expectedRevision\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DECK_REVISION_CONFLICT"))
+                .andExpect(jsonPath("$.currentRevision").isNumber());
+    }
+
+    @Test
+    void shouldReturnRevisionNumberOnCategoryResponse() throws Exception {
+        String subject = "auth0|org-rev-number";
+        long deckId = createDeck(subject, "Org Rev Number Deck");
+
+        mockMvc.perform(
+                        post("/decks/{deckId}/categories", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"name\":\"Wincons\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.revisionNumber").isNumber());
     }
 
     private ResultActions applyTemplate(String subject, long deckId, long templateId)

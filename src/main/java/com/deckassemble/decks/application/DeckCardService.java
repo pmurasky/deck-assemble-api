@@ -39,27 +39,30 @@ public class DeckCardService {
 
     public List<DeckCardResponse> listCards(long deckId) {
         Deck deck = deckAccessGuard.owned(deckId);
+        int revisionNumber = deckRevisionService.currentRevisionNumberUnchecked(deckId);
         List<DeckCard> cards = deckCardRepository.findByDeckId(deckId);
-        var responses = new java.util.ArrayList<>(cards.stream().map(this::responseFor).toList());
-        addSynthesizedCommander(deck, cards, responses);
+        var responses =
+                new java.util.ArrayList<>(
+                        cards.stream().map(card -> responseFor(card, revisionNumber)).toList());
+        addSynthesizedCommander(deck, cards, responses, revisionNumber);
         return responses;
     }
 
     public DeckCardResponse addCard(long deckId, DeckCardAddRequest request) {
-        deckAccessGuard.owned(deckId);
+        Deck deck = deckAccessGuard.editableLocked(deckId);
+        deckRevisionService.assertExpectedRevision(deckId, request.expectedRevision());
         DeckCard.Section section =
                 request.deckSection() == null ? DeckCard.Section.MAIN_DECK : request.deckSection();
         int quantity = request.quantity() == null ? 1 : request.quantity();
-        DeckCardResponse response =
-                responseFor(
-                        deckCardRepository.save(mergeOrNew(deckId, request, section, quantity)));
-        deckRevisionService.record(deckId, deckAccessGuard.profileId(), DeckChangeType.CARD_ADDED);
-        return response;
+        DeckCard saved = deckCardRepository.save(mergeOrNew(deckId, request, section, quantity));
+        deckRevisionService.record(deck, deckAccessGuard.profileId(), DeckChangeType.CARD_ADDED);
+        return responseFor(saved, deckRevisionService.currentRevisionNumberUnchecked(deckId));
     }
 
     public DeckCardResponse updateCard(
             long deckId, long deckCardId, DeckCardUpdateRequest request) {
-        deckAccessGuard.owned(deckId);
+        Deck deck = deckAccessGuard.editableLocked(deckId);
+        deckRevisionService.assertExpectedRevision(deckId, request.expectedRevision());
         DeckCard card = ownedCard(deckId, deckCardId);
         int oldQuantity = card.getQuantity();
         DeckCard.Section oldSection = card.getDeckSection();
@@ -69,12 +72,12 @@ public class DeckCardService {
         if (request.deckSection() != null) {
             card.setDeckSection(request.deckSection());
         }
-        DeckCardResponse response = responseFor(deckCardRepository.save(card));
+        DeckCard saved = deckCardRepository.save(card);
         if (card.getQuantity() != oldQuantity || card.getDeckSection() != oldSection) {
             deckRevisionService.record(
-                    deckId, deckAccessGuard.profileId(), DeckChangeType.CARD_UPDATED);
+                    deck, deckAccessGuard.profileId(), DeckChangeType.CARD_UPDATED);
         }
-        return response;
+        return responseFor(saved, deckRevisionService.currentRevisionNumberUnchecked(deckId));
     }
 
     public void removeCard(long deckId, long deckCardId) {
@@ -90,15 +93,24 @@ public class DeckCardService {
                 .orElseThrow(DeckCardNotFoundException::new);
     }
 
+    // Convenience overload for callers (e.g. ownership operations) that don't already hold the
+    // deck's revision: reads the current revision from the card's deck.
     DeckCardResponse responseFor(DeckCard card) {
+        return responseFor(
+                card, deckRevisionService.currentRevisionNumberUnchecked(card.getDeckId()));
+    }
+
+    DeckCardResponse responseFor(DeckCard card, int revisionNumber) {
         return DeckCardResponse.from(
-                card, cardCatalogService.getSummaryByPrintingId(card.getCardPrintingId()));
+                card,
+                cardCatalogService.getSummaryByPrintingId(card.getCardPrintingId()),
+                revisionNumber);
     }
 
     // ponytail: commanders set only via commanderCardId have no DeckCard row; synthesize at read
     // time instead of backfilling rows. Upgrade path: persist COMMANDER rows on deck create/update.
     private void addSynthesizedCommander(
-            Deck deck, List<DeckCard> cards, List<DeckCardResponse> responses) {
+            Deck deck, List<DeckCard> cards, List<DeckCardResponse> responses, int revisionNumber) {
         Long commanderCardId = deck.getCommanderCardId();
         boolean hasCommanderRow =
                 cards.stream()
@@ -114,16 +126,23 @@ public class DeckCardService {
         if (summary == null) {
             return;
         }
-        responses.add(synthesizedCommander(printingId, summary));
+        responses.add(synthesizedCommander(printingId, summary, revisionNumber));
     }
 
-    private DeckCardResponse synthesizedCommander(long printingId, CardSummaryResponse summary) {
+    private DeckCardResponse synthesizedCommander(
+            long printingId, CardSummaryResponse summary, int revisionNumber) {
         String ownership =
                 ownershipChecker.isOwned(deckAccessGuard.profileId(), printingId)
                         ? DeckCard.OwnershipStatus.OWNED.name()
                         : DeckCard.OwnershipStatus.WISHLIST.name();
         return new DeckCardResponse(
-                null, printingId, 1, DeckCard.Section.COMMANDER.name(), ownership, summary);
+                null,
+                printingId,
+                1,
+                DeckCard.Section.COMMANDER.name(),
+                ownership,
+                summary,
+                revisionNumber);
     }
 
     private DeckCard mergeOrNew(

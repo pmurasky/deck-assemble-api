@@ -115,11 +115,12 @@ class DeckServiceTest {
     void shouldApplyOnlyProvidedFieldsOnUpdate() {
         stubUser();
         Deck deck = deck(1L);
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        stubEditableLocked(deck);
         when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
         when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
         DeckUpdateRequest request =
-                new DeckUpdateRequest("Renamed", null, null, null, null, null, null, null, null);
+                new DeckUpdateRequest(
+                        "Renamed", null, null, null, null, null, null, null, null, null);
 
         DeckResponse result = service().update(1L, request);
 
@@ -131,48 +132,69 @@ class DeckServiceTest {
     void shouldRecordMetadataUpdatedRevisionWhenNonCommanderFieldChanges() {
         stubUser();
         Deck deck = deck(1L);
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        stubEditableLocked(deck);
         when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
         when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
         DeckUpdateRequest request =
-                new DeckUpdateRequest("Renamed", null, null, null, null, null, null, null, null);
+                new DeckUpdateRequest(
+                        "Renamed", null, null, null, null, null, null, null, null, null);
 
         service().update(1L, request);
 
-        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
     }
 
     @Test
     void shouldRecordCommanderChangedRevisionWhenCommanderFieldChanges() {
         stubUser();
         Deck deck = deck(1L);
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        stubEditableLocked(deck);
         when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
         when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
         DeckUpdateRequest request =
-                new DeckUpdateRequest(null, null, null, 101L, null, null, null, null, null);
+                new DeckUpdateRequest(null, null, null, 101L, null, null, null, null, null, null);
 
         service().update(1L, request);
 
-        verify(deckRevisionService).record(1L, PROFILE_ID, DeckChangeType.COMMANDER_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.COMMANDER_CHANGED);
         verify(deckRevisionService, never())
-                .record(1L, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
+                .record(deck, PROFILE_ID, DeckChangeType.METADATA_UPDATED);
     }
 
     @Test
     void shouldNotRecordRevisionWhenUpdateRequestChangesNothing() {
         stubUser();
         Deck deck = deck(1L);
-        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck));
+        stubEditableLocked(deck);
         when(deckRepository.save(any(Deck.class))).thenAnswer(inv -> inv.getArgument(0));
         when(deckCardRepository.findByDeckId(any())).thenReturn(List.of());
         DeckUpdateRequest request =
                 new DeckUpdateRequest(
-                        "Deck", "COMMANDER", null, null, null, null, null, null, null);
+                        "Deck", "COMMANDER", null, null, null, null, null, null, null, null);
 
         service().update(1L, request);
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
+    }
+
+    @Test
+    void shouldRejectUpdateWhenExpectedRevisionStale() {
+        stubUser();
+        Deck deck = deck(1L);
+        stubEditableLocked(deck);
+        org.mockito.Mockito.doThrow(
+                        new com.deckassemble.decks.application.collaboration
+                                .DeckRevisionConflictException(7))
+                .when(deckRevisionService)
+                .assertExpectedRevision(1L, 3);
+        DeckUpdateRequest request =
+                new DeckUpdateRequest("Renamed", null, null, null, null, null, null, null, null, 3);
+
+        assertThatThrownBy(() -> service().update(1L, request))
+                .isInstanceOf(
+                        com.deckassemble.decks.application.collaboration
+                                .DeckRevisionConflictException.class);
+        verify(deckRepository, never()).save(any(Deck.class));
     }
 
     @Test
@@ -306,6 +328,11 @@ class DeckServiceTest {
         ReflectionTestUtils.setField(profile, "id", PROFILE_ID);
         when(currentUser.subject()).thenReturn(Optional.of("sub"));
         when(profileService.getOrCreate("sub")).thenReturn(profile);
+    }
+
+    private void stubEditableLocked(Deck deck) {
+        when(deckRepository.findLockedById(deck.getId())).thenReturn(Optional.of(deck));
+        when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(true);
     }
 
     private Deck deck(long id) {

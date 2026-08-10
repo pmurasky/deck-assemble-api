@@ -9,4 +9,6 @@ import org.jspecify.annotations.Nullable;
  * Partial update: a {@code null} field is left unchanged (see {@code DeckCardService.updateCard}).
  */
 public record DeckCardUpdateRequest(
-        @Min(1) @Max(9999) @Nullable Integer quantity, DeckCard.@Nullable Section deckSection) {}
+        @Min(1) @Max(9999) @Nullable Integer quantity,
+        DeckCard.@Nullable Section deckSection,
+        @Nullable Integer expectedRevision) {}

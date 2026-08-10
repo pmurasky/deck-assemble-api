@@ -57,10 +57,12 @@ class DeckTagControllerIntegrationTest extends AbstractIntegrationTest {
         long tagB = createTag(subject, "Ramp");
         long tagC = createTag(subject, "Budget");
 
-        assignTags(subject, deckId, tagA, tagB).andExpect(status().isNoContent());
+        assignTags(subject, deckId, tagA, tagB)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revisionNumber").isNumber());
         assertThat(assignmentRepository.findByDeckId(deckId)).hasSize(2);
 
-        assignTags(subject, deckId, tagB, tagC).andExpect(status().isNoContent());
+        assignTags(subject, deckId, tagB, tagC).andExpect(status().isOk());
         assertThat(assignmentRepository.findByDeckId(deckId)).hasSize(2);
         assertThat(assignmentRepository.findByDeckId(deckId))
                 .extracting("tagId")
@@ -113,7 +115,7 @@ class DeckTagControllerIntegrationTest extends AbstractIntegrationTest {
         String subject = "auth0|tag-delete";
         long deckId = createDeck(subject, "Delete Deck");
         long tagId = createTag(subject, "Doomed Tag");
-        assignTags(subject, deckId, tagId).andExpect(status().isNoContent());
+        assignTags(subject, deckId, tagId).andExpect(status().isOk());
 
         mockMvc.perform(
                         delete("/deck-tags/{tagId}", tagId)

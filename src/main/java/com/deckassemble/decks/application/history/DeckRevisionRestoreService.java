@@ -98,7 +98,7 @@ public class DeckRevisionRestoreService {
 
     private Void applyAll(long deckId, DeckSnapshot target) {
         applyState(deckId, target);
-        deckFolderService.assignToDeck(deckId, target.folderId());
+        deckFolderService.assignToDeck(deckId, target.folderId(), null);
         applyTags(deckId, target);
         applyCategories(deckId, target);
         applyCards(deckId, target);
@@ -117,7 +117,8 @@ public class DeckRevisionRestoreService {
                         target.useOwnedCardsOnly(),
                         target.budgetLimit(),
                         target.desiredPowerLevel(),
-                        target.playStyle()),
+                        target.playStyle(),
+                        null),
                 Deck.Status.valueOf(target.status()));
     }
 
@@ -129,7 +130,7 @@ public class DeckRevisionRestoreService {
                                         DeckTagService.TagView::name, DeckTagService.TagView::id));
         List<Long> targetTagIds =
                 target.tagNames().stream().map(idsByName::get).filter(Objects::nonNull).toList();
-        deckTagService.assignToDeck(deckId, targetTagIds);
+        deckTagService.assignToDeck(deckId, targetTagIds, null);
     }
 
     private void applyCategories(long deckId, DeckSnapshot target) {
@@ -141,7 +142,7 @@ public class DeckRevisionRestoreService {
                         .collect(Collectors.toSet());
         targetNames.stream()
                 .filter(name -> !currentNames.contains(name))
-                .forEach(name -> deckCategoryService.create(deckId, name));
+                .forEach(name -> deckCategoryService.create(deckId, name, null));
         current.stream()
                 .filter(
                         category ->
@@ -176,12 +177,13 @@ public class DeckRevisionRestoreService {
                     new DeckCardAddRequest(
                             entry.cardPrintingId(),
                             entry.quantity(),
-                            DeckCard.Section.valueOf(entry.deckSection())));
+                            DeckCard.Section.valueOf(entry.deckSection()),
+                            null));
         } else if (existing.quantity() != entry.quantity()) {
             deckCardService.updateCard(
                     deckId,
                     Objects.requireNonNull(existing.id()),
-                    new DeckCardUpdateRequest(entry.quantity(), null));
+                    new DeckCardUpdateRequest(entry.quantity(), null, null));
         }
     }
 

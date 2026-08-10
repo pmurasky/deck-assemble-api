@@ -193,7 +193,7 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest(title, markdown))))
+                                                new DeckPrimerRequest(title, markdown, null))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.deckId").value(deckId))
@@ -215,7 +215,8 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(
                                                 objectMapper.writeValueAsString(
-                                                        new DeckPrimerRequest("Danger", markdown))))
+                                                        new DeckPrimerRequest(
+                                                                "Danger", markdown, null))))
                         .andExpect(status().isOk())
                         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                         .andExpect(jsonPath("$.markdownSource").value(markdown))
@@ -242,7 +243,7 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest("Title", tooLong))))
+                                                new DeckPrimerRequest("Title", tooLong, null))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -258,7 +259,7 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest(tooLong, "Body"))))
+                                                new DeckPrimerRequest(tooLong, "Body", null))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -274,7 +275,7 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest("Title", "Body"))))
+                                                new DeckPrimerRequest("Title", "Body", null))))
                 .andExpect(status().isNotFound());
     }
 
@@ -288,8 +289,35 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest("Title", "Body"))))
+                                                new DeckPrimerRequest("Title", "Body", null))))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturnRevisionNumberAndRejectStalePrimerEdit() throws Exception {
+        String owner = "auth0|primer-rev-owner";
+        long deckId = createDeck(owner, "Primer Rev Deck");
+
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Guide", "Body", null))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.revisionNumber").isNumber());
+
+        // The deck already advanced past revision 0, so a primer edit claiming that base conflicts.
+        mockMvc.perform(
+                        put("/decks/{deckId}/primer", deckId)
+                                .with(jwt().jwt(jwt -> jwt.subject(owner)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new DeckPrimerRequest("Guide 2", "Body 2", 0))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DECK_REVISION_CONFLICT"));
     }
 
     @ParameterizedTest
@@ -309,7 +337,8 @@ class DeckPublishingControllerIntegrationTest extends AbstractIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new DeckPrimerRequest("Guide", "# How to play"))))
+                                                new DeckPrimerRequest(
+                                                        "Guide", "# How to play", null))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/shared/decks/{slug}", slug))

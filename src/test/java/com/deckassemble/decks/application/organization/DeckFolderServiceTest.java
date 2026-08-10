@@ -62,6 +62,8 @@ class DeckFolderServiceTest {
         lenient()
                 .when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID))
                 .thenReturn(Optional.of(deck));
+        lenient().when(deckRepository.findLockedById(DECK_ID)).thenReturn(Optional.of(deck));
+        lenient().when(deckCollaborationPolicy.canEdit(deck, PROFILE_ID)).thenReturn(true);
         lenient()
                 .when(deckFolderRepository.save(any(DeckFolder.class)))
                 .thenAnswer(
@@ -102,28 +104,30 @@ class DeckFolderServiceTest {
     }
 
     @Test
-    void shouldAssignDeckToFolderReplacingAnyPriorFolder() {
+    void shouldAssignDeckToFolderReplacingAnyPriorFolderAndReturnResultingRevision() {
         DeckFolder folder = new DeckFolder(PROFILE_ID, "Aggro");
         ReflectionTestUtils.setField(folder, "id", FOLDER_ID);
         when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
                 .thenReturn(Optional.of(folder));
         deck.setFolderId(999L);
+        when(deckRevisionService.currentRevisionNumberUnchecked(DECK_ID)).thenReturn(5);
 
-        service.assignToDeck(DECK_ID, FOLDER_ID);
+        int revisionNumber = service.assignToDeck(DECK_ID, FOLDER_ID, null);
 
         assertThat(deck.getFolderId()).isEqualTo(FOLDER_ID);
+        assertThat(revisionNumber).isEqualTo(5);
         verify(deckRepository).save(deck);
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
     }
 
     @Test
     void shouldClearFolderWhenAssigningNull() {
         deck.setFolderId(FOLDER_ID);
 
-        service.assignToDeck(DECK_ID, null);
+        service.assignToDeck(DECK_ID, null, null);
 
         assertThat(deck.getFolderId()).isNull();
-        verify(deckRevisionService).record(DECK_ID, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
+        verify(deckRevisionService).record(deck, PROFILE_ID, DeckChangeType.FOLDER_CHANGED);
     }
 
     @Test
@@ -134,9 +138,9 @@ class DeckFolderServiceTest {
                 .thenReturn(Optional.of(folder));
         deck.setFolderId(FOLDER_ID);
 
-        service.assignToDeck(DECK_ID, FOLDER_ID);
+        service.assignToDeck(DECK_ID, FOLDER_ID, null);
 
-        verify(deckRevisionService, never()).record(anyLong(), anyLong(), any());
+        verify(deckRevisionService, never()).record(any(Deck.class), anyLong(), any());
     }
 
     @Test
@@ -144,15 +148,15 @@ class DeckFolderServiceTest {
         when(deckFolderRepository.findByIdAndProfileId(FOLDER_ID, PROFILE_ID))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, FOLDER_ID))
+        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, FOLDER_ID, null))
                 .isInstanceOf(DeckFolderNotFoundException.class);
     }
 
     @Test
     void shouldRejectAssigningToForeignDeck() {
-        when(deckRepository.findByIdAndProfileId(DECK_ID, PROFILE_ID)).thenReturn(Optional.empty());
+        when(deckRepository.findLockedById(DECK_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, FOLDER_ID))
+        assertThatThrownBy(() -> service.assignToDeck(DECK_ID, FOLDER_ID, null))
                 .isInstanceOf(DeckNotFoundException.class);
     }
 

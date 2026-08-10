@@ -152,12 +152,12 @@ class CategoryTemplateServiceTest {
                 .thenReturn(
                         List.of(
                                 new DeckCategoryService.CategoryView(
-                                        1L, "Ramp", 0, false, null, List.of())));
+                                        1L, "Ramp", 0, false, null, List.of(), 0)));
 
         service.applyToDeck(DECK_ID, TEMPLATE_ID);
 
-        verify(deckCategoryService, never()).create(eq(DECK_ID), eq("Ramp"));
-        verify(deckCategoryService, times(1)).create(DECK_ID, "Removal");
+        verify(deckCategoryService, never()).create(eq(DECK_ID), eq("Ramp"), any());
+        verify(deckCategoryService, times(1)).create(DECK_ID, "Removal", null);
     }
 
     @Test
@@ -169,18 +169,18 @@ class CategoryTemplateServiceTest {
 
         service.applyToDeck(DECK_ID, TEMPLATE_ID);
 
-        verify(deckCategoryService, times(1)).create(DECK_ID, "Ramp");
+        verify(deckCategoryService, times(1)).create(DECK_ID, "Ramp", null);
 
         // Second application: deck now already has "Ramp" from the first apply.
         when(deckCategoryService.list(DECK_ID))
                 .thenReturn(
                         List.of(
                                 new DeckCategoryService.CategoryView(
-                                        1L, "Ramp", 0, false, null, List.of())));
+                                        1L, "Ramp", 0, false, null, List.of(), 0)));
 
         service.applyToDeck(DECK_ID, TEMPLATE_ID);
 
-        verify(deckCategoryService, times(1)).create(DECK_ID, "Ramp");
+        verify(deckCategoryService, times(1)).create(DECK_ID, "Ramp", null);
     }
 
     @Test

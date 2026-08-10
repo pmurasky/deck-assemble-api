@@ -248,7 +248,7 @@ class DeckAnalysisServiceTest {
 
     private static DeckCardResponse deckCard(
             Long deckCardId, int quantity, String section, String ownership) {
-        return new DeckCardResponse(deckCardId, deckCardId, quantity, section, ownership, null);
+        return new DeckCardResponse(deckCardId, deckCardId, quantity, section, ownership, null, 0);
     }
 
     private static CardAnalysisView view(

@@ -521,7 +521,7 @@ class DeckUpgradeServiceTest {
 
     private static DeckCardResponse deckCard(
             Long id, long printingId, int quantity, String section, String status, String name) {
-        return new DeckCardResponse(id, printingId, quantity, section, status, summary(name));
+        return new DeckCardResponse(id, printingId, quantity, section, status, summary(name), 0);
     }
 
     private static CardSummaryResponse summary(String name) {

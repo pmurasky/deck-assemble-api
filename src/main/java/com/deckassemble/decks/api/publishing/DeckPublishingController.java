@@ -50,8 +50,13 @@ public class DeckPublishingController {
     @PutMapping("/decks/{deckId}/primer")
     public DeckPrimerResponse updatePrimer(
             @PathVariable long deckId, @Valid @RequestBody DeckPrimerRequest request) {
-        return DeckPrimerResponse.from(
-                deckPrimerService.updatePrimer(deckId, request.title(), request.markdownSource()));
+        DeckPrimerService.PrimerResult result =
+                deckPrimerService.updatePrimer(
+                        deckId,
+                        request.title(),
+                        request.markdownSource(),
+                        request.expectedRevision());
+        return DeckPrimerResponse.from(result.deck(), result.revisionNumber());
     }
 
     @GetMapping("/shared/decks/{slug}")
