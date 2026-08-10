@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-card-oracle-tags
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: cards
+            columns:
+              - column:
+                  name: oracle_tags
+                  type: text
+      rollback:
+        - dropColumn:
+            tableName: cards
+            columnName: oracle_tags

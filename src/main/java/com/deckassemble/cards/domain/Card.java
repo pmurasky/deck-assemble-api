@@ -48,6 +48,11 @@ public class Card extends CardAttributes {
     @Column(name = "keywords", columnDefinition = "text")
     private String keywords;
 
+    // ponytail: comma-separated Tagger oracle-tag labels; a join table can be added when a
+    // query needs tag relations rather than membership checks
+    @Column(name = "oracle_tags", columnDefinition = "text")
+    private String oracleTags;
+
     @Column(name = "layout", length = 50)
     private String layout;
 
@@ -127,6 +132,14 @@ public class Card extends CardAttributes {
 
     public void setKeywords(@Nullable String keywords) {
         this.keywords = keywords;
+    }
+
+    public String getOracleTags() {
+        return oracleTags;
+    }
+
+    public void setOracleTags(@Nullable String oracleTags) {
+        this.oracleTags = oracleTags;
     }
 
     public String getLayout() {
