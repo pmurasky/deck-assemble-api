@@ -71,6 +71,23 @@ class CardCategorizerTest {
         assertThat(CardCategorizer.categorizeText("land", "")).isEqualTo(Category.LAND);
     }
 
+    @Test
+    void shouldReturnAllMatchingRolesForMultiPurposeCard() {
+        var roles = categorizer.categorizeAll(card("Creature — Elf Druid", "{T}: Add {G}. Draw a card."));
+
+        assertThat(roles).containsExactlyInAnyOrder(Category.RAMP, Category.DRAW);
+    }
+
+    @Test
+    void shouldUseOracleTagsWhenCategorizingAll() {
+        var card = card("Creature — Goblin", "Haste");
+        card.setOracleTags("ramp,draw");
+
+        assertThat(categorizer.categorizeAll(card))
+                .containsExactlyInAnyOrder(Category.RAMP, Category.DRAW);
+        assertThat(categorizer.categorize(card)).isEqualTo(Category.RAMP);
+    }
+
     private static Card card(String typeLine, String oracleText) {
         var card = new Card("oracle-1", "Test Card");
         card.getFaces().add(face(card, 0, typeLine, oracleText));

@@ -63,8 +63,14 @@ public enum CardFunctionalCategory {
             java.util.function.Predicate<String> matcher, CardFunctionalCategory category) {}
 
     public static CardFunctionalCategory categorize(String types, String text) {
-        Set<CardFunctionalCategory> all = categorizeAll(types, text, null);
-        return SINGLE_LABEL_PRIORITY.stream().filter(all::contains).findFirst().orElse(SYNERGY);
+        return prioritize(categorizeAll(types, text, null));
+    }
+
+    public static CardFunctionalCategory prioritize(Set<CardFunctionalCategory> categories) {
+        return SINGLE_LABEL_PRIORITY.stream()
+                .filter(categories::contains)
+                .findFirst()
+                .orElse(SYNERGY);
     }
 
     public static Set<CardFunctionalCategory> categorizeAll(

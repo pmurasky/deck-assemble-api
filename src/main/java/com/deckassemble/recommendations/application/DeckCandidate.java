@@ -13,14 +13,25 @@ public record DeckCandidate(
         Card card,
         Category category,
         @Nullable CardScore score,
-        List<ScoreContribution> contributions) {
+        List<ScoreContribution> contributions,
+        Set<Category> roles) {
 
     public DeckCandidate {
         contributions = List.copyOf(contributions);
+        roles = roles.isEmpty() ? Set.of(category) : Set.copyOf(roles);
     }
 
     public DeckCandidate(long printingId, Card card, Category category, @Nullable CardScore score) {
         this(printingId, card, category, score, List.of());
+    }
+
+    public DeckCandidate(
+            long printingId,
+            Card card,
+            Category category,
+            @Nullable CardScore score,
+            List<ScoreContribution> contributions) {
+        this(printingId, card, category, score, contributions, Set.of(category));
     }
 
     public boolean hasScore() {
@@ -44,7 +55,7 @@ public record DeckCandidate(
     public DeckCandidate withContribution(ScoreContribution contribution) {
         var updated = new ArrayList<>(contributions);
         updated.add(contribution);
-        return new DeckCandidate(printingId, card, category, score, updated);
+        return new DeckCandidate(printingId, card, category, score, updated, roles);
     }
 
     public static boolean isEligible(

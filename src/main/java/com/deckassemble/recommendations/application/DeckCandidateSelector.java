@@ -175,11 +175,12 @@ public class DeckCandidateSelector {
             DeckBuildRequest request,
             Set<Long> ownedPrintingIds) {
         var category = categorizer.categorize(card);
+        var roles = categorizer.categorizeAll(card);
         var score = scores.get(card.getName());
         var contributions =
                 CandidateScoreExplainer.explain(
                         card, category, score, request, ownedPrintingIds.contains(printingId));
-        return new DeckCandidate(printingId, card, category, score, contributions);
+        return new DeckCandidate(printingId, card, category, score, contributions, roles);
     }
 
     private List<DeckCandidate> collectCandidates(
