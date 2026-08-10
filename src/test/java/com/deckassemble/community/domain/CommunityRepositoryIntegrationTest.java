@@ -306,8 +306,13 @@ class CommunityRepositoryIntegrationTest extends AbstractIntegrationTest {
         assertThat(moderationReportRepository.findByStatus(ModerationReport.Status.OPEN))
                 .extracting(ModerationReport::getId)
                 .contains(report.getId());
+        // Not a blanket isEmpty(): other (non-@Transactional, MockMvc-driven) integration test
+        // classes share this same Postgres container and may commit RESOLVED reports of their own
+        // — see ModerationControllerIntegrationTest. Only this test's own report is ours to assert
+        // on.
         assertThat(moderationReportRepository.findByStatus(ModerationReport.Status.RESOLVED))
-                .isEmpty();
+                .extracting(ModerationReport::getId)
+                .doesNotContain(report.getId());
     }
 
     private Deck saveDeck() {

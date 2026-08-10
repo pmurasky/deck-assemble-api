@@ -49,6 +49,13 @@ public class DeckPublishingService {
         return deckRepository.save(deck);
     }
 
+    /** Owner-only toggle for whether new comments may be posted on this deck's shared view. */
+    public Deck setCommentsEnabled(long deckId, boolean enabled) {
+        Deck deck = deckAccessGuard.owned(deckId);
+        deck.setCommentsEnabled(enabled);
+        return deckRepository.save(deck);
+    }
+
     /**
      * Pins the deck's current revision as its shared/fork representation. Until this is called
      * (again), the shared view keeps serving whatever was pinned last — later private edits do not

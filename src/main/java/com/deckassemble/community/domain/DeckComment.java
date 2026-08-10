@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -34,6 +35,12 @@ public class DeckComment {
 
     @Column(name = "body", nullable = false, columnDefinition = "text")
     private String body;
+
+    // Soft-delete marker: a deleted comment is excluded from listing/pagination entirely (no
+    // tombstone rendering) but the row is retained rather than hard-removed, matching moderation
+    // reports' retained-audit-trail precedent (see ModerationReport).
+    @Column(name = "deleted_at")
+    private @Nullable Instant deletedAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -61,6 +68,14 @@ public class DeckComment {
 
     public void editBody(String body) {
         this.body = body;
+    }
+
+    public void softDelete() {
+        this.deletedAt = Instant.now();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public UUID getId() {
@@ -93,5 +108,9 @@ public class DeckComment {
 
     public String getUpdatedBy() {
         return updatedBy;
+    }
+
+    public @Nullable Instant getDeletedAt() {
+        return deletedAt;
     }
 }

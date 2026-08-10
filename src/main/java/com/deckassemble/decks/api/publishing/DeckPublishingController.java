@@ -47,6 +47,13 @@ public class DeckPublishingController {
         return SharedDeckResponse.from(deckPublishingService.publish(deckId));
     }
 
+    @PatchMapping("/decks/{deckId}/comments-enabled")
+    public SharedDeckResponse setCommentsEnabled(
+            @PathVariable long deckId, @Valid @RequestBody DeckCommentsEnabledRequest request) {
+        return SharedDeckResponse.from(
+                deckPublishingService.setCommentsEnabled(deckId, request.enabled()));
+    }
+
     @PutMapping("/decks/{deckId}/primer")
     public DeckPrimerResponse updatePrimer(
             @PathVariable long deckId, @Valid @RequestBody DeckPrimerRequest request) {

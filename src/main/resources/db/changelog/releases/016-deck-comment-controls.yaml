@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-deck-comments-enabled
+      author: opencode
+      changes:
+        - addColumn:
+            tableName: decks
+            columns:
+              - column:
+                  name: comments_enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 016-deck-comments-deleted-at
+      author: opencode
+      changes:
+        - addColumn:
+            tableName: deck_comments
+            columns:
+              - column:
+                  name: deleted_at
+                  type: timestamptz
+        - createIndex:
+            tableName: deck_comments
+            indexName: idx_deck_comments_profile_id_created_at
+            columns:
+              - column:
+                  name: profile_id
+              - column:
+                  name: created_at

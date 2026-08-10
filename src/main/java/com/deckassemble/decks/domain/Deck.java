@@ -106,6 +106,12 @@ public class Deck {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    // Owner-controlled toggle gating new comment creation on this deck's shared view (see
+    // CommentService); defaults enabled. Existing comments stay visible even when disabled — this
+    // only blocks new ones.
+    @Column(name = "comments_enabled", nullable = false)
+    private boolean commentsEnabled = true;
+
     // ponytail: plain FK, no DB constraint — same pattern as commanderCardId/folderId above, but
     // load-bearing here rather than incidental: DeckForkService must survive the source deck being
     // deleted or turned back PRIVATE after the fork exists (attribution is metadata about how this
@@ -286,6 +292,14 @@ public class Deck {
 
     public void setPublishedAt(@Nullable Instant publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public boolean isCommentsEnabled() {
+        return commentsEnabled;
+    }
+
+    public void setCommentsEnabled(boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
     }
 
     public Long getSourceDeckId() {

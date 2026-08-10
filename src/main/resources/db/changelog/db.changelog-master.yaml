@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/releases/014-experimentation-publishing.yaml
   - include:
       file: db/changelog/releases/015-community-physical.yaml
+  - include:
+      file: db/changelog/releases/016-deck-comment-controls.yaml

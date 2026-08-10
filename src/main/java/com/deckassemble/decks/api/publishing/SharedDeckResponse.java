@@ -24,7 +24,8 @@ public record SharedDeckResponse(
         DeckVisibility visibility,
         @Nullable String shareSlug,
         @Nullable String primerTitle,
-        @Nullable String primerMarkdown) {
+        @Nullable String primerMarkdown,
+        boolean commentsEnabled) {
 
     public static SharedDeckResponse from(Deck deck) {
         return from(deck, null);
@@ -45,6 +46,7 @@ public record SharedDeckResponse(
                 deck.getVisibility(),
                 deck.getShareSlug(),
                 deck.getPrimerTitle(),
-                deck.getPrimerMarkdown());
+                deck.getPrimerMarkdown(),
+                deck.isCommentsEnabled());
     }
 }
