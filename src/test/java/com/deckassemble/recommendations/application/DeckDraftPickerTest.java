@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class DeckDraftPickerTest {
@@ -69,6 +70,55 @@ class DeckDraftPickerTest {
     }
 
     @Test
+    void shouldPreferUnfilledRoleOverExtraFilledRoleCard() {
+        var sorted = new ArrayList<DeckCandidate>();
+        sorted.addAll(candidates(9, Category.REMOVAL, 0.9));
+        sorted.add(candidate("Draw Spell", Category.DRAW, 0.4));
+
+        var picked = DeckDraftPicker.pick(sorted, 9);
+
+        assertThat(count(picked, Category.REMOVAL)).isEqualTo(8);
+        assertThat(count(picked, Category.DRAW)).isEqualTo(1);
+    }
+
+    @Test
+    void shouldFillMultiRoleCardIntoHighestNeedRole() {
+        var sorted = new ArrayList<DeckCandidate>();
+        sorted.addAll(candidates(10, Category.RAMP));
+        var multi =
+                new DeckCandidate(
+                        nextPrintingId++,
+                        new Card("oracle-multi", "Multi"),
+                        Category.RAMP,
+                        new CardScore(0.5, 100L),
+                        List.of(),
+                        Set.of(Category.RAMP, Category.DRAW));
+        sorted.add(multi);
+        sorted.addAll(candidates(9, Category.DRAW));
+
+        var picked = DeckDraftPicker.pick(sorted, 20);
+
+        assertThat(picked).contains(multi);
+        assertThat(count(picked, Category.RAMP)).isEqualTo(11);
+        assertThat(count(picked, Category.DRAW)).isEqualTo(9);
+    }
+
+    @Test
+    void shouldPenalizeCurveCongestion() {
+        var sorted = new ArrayList<DeckCandidate>();
+        for (var index = 0; index < 16; index++) {
+            sorted.add(candidateWithMv("Two Drop " + index, 2));
+        }
+        var fourDrop = candidateWithMv("Four Drop", 4);
+        sorted.add(fourDrop);
+
+        var picked = DeckDraftPicker.pick(sorted, 16);
+
+        assertThat(picked).contains(fourDrop);
+        assertThat(count(picked, Category.SYNERGY)).isEqualTo(16);
+    }
+
+    @Test
     void shouldPreserveScoreExplanationsWhenPicking() {
         var contribution =
                 new ScoreContribution(
@@ -88,6 +138,7 @@ class DeckDraftPickerTest {
         assertThat(picked).hasSize(1);
         assertThat(picked.get(0).contributions()).containsExactly(contribution);
         assertThat(picked.get(0).totalScore()).isEqualByComparingTo("0.50");
+        assertThat(picked.get(0).roles()).containsExactly(Category.SYNERGY);
     }
 
     private long count(List<DeckCandidate> picked, Category category) {
@@ -95,18 +146,33 @@ class DeckDraftPickerTest {
     }
 
     private List<DeckCandidate> candidates(int count, Category category) {
+        return candidates(count, category, 0.5);
+    }
+
+    private List<DeckCandidate> candidates(int count, Category category, double synergy) {
         var result = new ArrayList<DeckCandidate>();
         for (var index = 0; index < count; index++) {
-            result.add(candidate(category.name() + index, category));
+            result.add(candidate(category.name() + index, category, synergy));
         }
         return result;
     }
 
     private DeckCandidate candidate(String name, Category category) {
+        return candidate(name, category, 0.5);
+    }
+
+    private DeckCandidate candidate(String name, Category category, double synergy) {
         return new DeckCandidate(
                 nextPrintingId++,
                 new Card("oracle-" + name, name),
                 category,
-                new CardScore(0.5, 100L));
+                new CardScore(synergy, 100L));
+    }
+
+    private DeckCandidate candidateWithMv(String name, int manaValue) {
+        var card = new Card("oracle-" + name, name);
+        card.setManaValue(BigDecimal.valueOf(manaValue));
+        return new DeckCandidate(
+                nextPrintingId++, card, Category.SYNERGY, new CardScore(0.5, 100L));
     }
 }
