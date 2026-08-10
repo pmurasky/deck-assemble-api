@@ -25,7 +25,9 @@ final class CardFunctionalCategoryPredicates {
                     CardFunctionalCategory.RAMP,
                     CardFunctionalCategory.DRAW,
                     CardFunctionalCategory.WIPE,
-                    CardFunctionalCategory.REMOVAL);
+                    CardFunctionalCategory.REMOVAL,
+                    CardFunctionalCategory.PROTECTION,
+                    CardFunctionalCategory.FINISHER);
 
     private CardFunctionalCategoryPredicates() {}
 
@@ -56,6 +58,9 @@ final class CardFunctionalCategoryPredicates {
             case DRAW -> contains(oracleText, CardFunctionalCategory.DRAW_MARKER, builder);
             case WIPE -> wipePredicate(oracleText, builder);
             case REMOVAL -> removalPredicate(oracleText, builder);
+            case PROTECTION -> builder.disjunction();
+            case FINISHER ->
+                    contains(oracleText, CardFunctionalCategory.WIN_THE_GAME_MARKER, builder);
             case SYNERGY -> builder.disjunction();
         };
     }

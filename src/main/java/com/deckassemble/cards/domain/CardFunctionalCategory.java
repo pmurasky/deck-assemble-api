@@ -1,10 +1,15 @@
 package com.deckassemble.cards.domain;
 
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
+
 /**
- * Pure text-based functional classification shared by card search filtering and recommendation
- * scoring. Relocated from {@code recommendations.application.CardCategorizer} so both {@code cards}
- * and {@code recommendations} can depend on it without creating a cycle between those bounded
- * contexts (only {@code recommendations} may depend on {@code cards}).
+ * Functional classification shared by card search filtering and recommendation scoring. Tags
+ * (Tagger oracle labels) and oracle-text markers both contribute; a card may fill several roles.
+ * The legacy single-label {@link #categorize(String, String)} contract is preserved for existing
+ * callers.
  *
  * <p>Callers must pass already-lowercased type/oracle text; this class performs no
  * case-normalization itself, matching the original contract.
@@ -15,6 +20,8 @@ public enum CardFunctionalCategory {
     DRAW,
     WIPE,
     REMOVAL,
+    PROTECTION,
+    FINISHER,
     SYNERGY;
 
     public static final String LAND_MARKER = "land";
@@ -25,24 +32,100 @@ public enum CardFunctionalCategory {
     public static final String EXILE_ALL_MARKER = "exile all";
     public static final String DESTROY_TARGET_MARKER = "destroy target";
     public static final String EXILE_TARGET_MARKER = "exile target";
+    public static final String WIN_THE_GAME_MARKER = "you win the game";
+
+    // ponytail: single-label priority for legacy callers; P2's picker consumes categorizeAll
+    private static final List<CardFunctionalCategory> SINGLE_LABEL_PRIORITY =
+            List.of(LAND, RAMP, DRAW, WIPE, REMOVAL, PROTECTION, FINISHER, SYNERGY);
 
     public static CardFunctionalCategory categorize(String types, String text) {
+        Set<CardFunctionalCategory> all = categorizeAll(types, text, null);
+        return SINGLE_LABEL_PRIORITY.stream().filter(all::contains).findFirst().orElse(SYNERGY);
+    }
+
+    public static Set<CardFunctionalCategory> categorizeAll(
+            String types, String text, @Nullable String tagsCsv) {
+        EnumSet<CardFunctionalCategory> categories = EnumSet.noneOf(CardFunctionalCategory.class);
         if (types.contains(LAND_MARKER)) {
-            return LAND;
+            categories.add(LAND);
         }
+        addFromText(text, categories);
+        if (tagsCsv != null) {
+            for (String tag : tagsCsv.split(",")) {
+                addFromTag(tag.trim(), categories);
+            }
+        }
+        if (categories.isEmpty()) {
+            categories.add(SYNERGY);
+        }
+        return categories;
+    }
+
+    private static void addFromText(String text, EnumSet<CardFunctionalCategory> categories) {
         if (isRamp(text)) {
-            return RAMP;
+            categories.add(RAMP);
         }
         if (text.contains(DRAW_MARKER)) {
-            return DRAW;
+            categories.add(DRAW);
         }
         if (isWipe(text)) {
-            return WIPE;
+            categories.add(WIPE);
         }
         if (isRemoval(text)) {
-            return REMOVAL;
+            categories.add(REMOVAL);
         }
-        return SYNERGY;
+        if (text.contains(WIN_THE_GAME_MARKER)) {
+            categories.add(FINISHER);
+        }
+    }
+
+    private static void addFromTag(String tag, EnumSet<CardFunctionalCategory> categories) {
+        if (tag.isEmpty()) {
+            return;
+        }
+        if (isRampTag(tag)) {
+            categories.add(RAMP);
+        } else if (isDrawTag(tag)) {
+            categories.add(DRAW);
+        } else if (isWipeTag(tag)) {
+            categories.add(WIPE);
+        } else if (isRemovalTag(tag)) {
+            categories.add(REMOVAL);
+        } else if (isProtectionTag(tag)) {
+            categories.add(PROTECTION);
+        } else if (tag.equals("alternate win condition")) {
+            categories.add(FINISHER);
+        }
+    }
+
+    private static boolean isRampTag(String tag) {
+        return tag.equals("ramp") || tag.equals("land ramp") || tag.equals("multi land ramp");
+    }
+
+    private static boolean isDrawTag(String tag) {
+        return tag.equals("draw")
+                || tag.equals("burst draw")
+                || tag.equals("draw engine")
+                || tag.equals("impulsive draw");
+    }
+
+    private static boolean isWipeTag(String tag) {
+        return tag.startsWith("sweeper") || tag.equals("board-reset");
+    }
+
+    // ponytail: counterspells count as interaction (REMOVAL) until P2 splits an INTERACTION
+    // category
+    private static boolean isRemovalTag(String tag) {
+        return tag.equals("removal")
+                || tag.startsWith("removal-")
+                || tag.equals("multi removal")
+                || tag.startsWith("counterspell");
+    }
+
+    private static boolean isProtectionTag(String tag) {
+        return tag.equals("protection")
+                || tag.startsWith("protects-")
+                || tag.equals("gives protection");
     }
 
     private static boolean isRamp(String text) {

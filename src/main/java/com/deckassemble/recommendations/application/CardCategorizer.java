@@ -17,6 +17,8 @@ public class CardCategorizer {
         DRAW,
         WIPE,
         REMOVAL,
+        PROTECTION,
+        FINISHER,
         SYNERGY
     }
 
@@ -41,6 +43,8 @@ public class CardCategorizer {
             case DRAW -> Category.DRAW;
             case WIPE -> Category.WIPE;
             case REMOVAL -> Category.REMOVAL;
+            case PROTECTION -> Category.PROTECTION;
+            case FINISHER -> Category.FINISHER;
             case SYNERGY -> Category.SYNERGY;
         };
     }
