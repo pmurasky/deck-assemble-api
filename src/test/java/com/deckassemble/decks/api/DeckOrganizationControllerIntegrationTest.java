@@ -55,12 +55,12 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
                         get("/decks/{deckId}/categories", deckId)
                                 .with(jwt().jwt(jwt -> jwt.subject(subject))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(6))
+                .andExpect(jsonPath("$.length()").value(8))
                 .andExpect(jsonPath("$[0].name").value("Land"))
                 .andExpect(jsonPath("$[0].functionalCategory").value("LAND"))
                 .andExpect(jsonPath("$[0].systemOwned").value(true))
-                .andExpect(jsonPath("$[5].name").value("Synergy"))
-                .andExpect(jsonPath("$[5].functionalCategory").value("SYNERGY"));
+                .andExpect(jsonPath("$[7].name").value("Synergy"))
+                .andExpect(jsonPath("$[7].functionalCategory").value("SYNERGY"));
     }
 
     @Test
@@ -92,7 +92,7 @@ class DeckOrganizationControllerIntegrationTest extends AbstractIntegrationTest 
         }
 
         List<?> categories = deckCategoryRepository.findByDeckIdOrderByDisplayOrderAscIdAsc(deckId);
-        assertThat(categories).hasSize(6);
+        assertThat(categories).hasSize(8);
     }
 
     @Test

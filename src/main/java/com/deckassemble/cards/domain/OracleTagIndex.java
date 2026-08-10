@@ -24,6 +24,8 @@ public final class OracleTagIndex {
     private OracleTagIndex() {}
 
     public static Map<String, Set<String>> parse(InputStream jsonl) {
+        // Suppressed: the map is confined to this single-threaded parse; no concurrent access.
+        @SuppressWarnings("PMD.UseConcurrentHashMap")
         Map<String, Set<String>> index = new HashMap<>();
         try (var reader =
                 new BufferedReader(new InputStreamReader(jsonl, StandardCharsets.UTF_8))) {

@@ -11,34 +11,39 @@ import org.jspecify.annotations.Nullable;
 public record ManaPips(int w, int u, int b, int r, int g) {
 
     private static final Pattern SYMBOL = Pattern.compile("\\{([^}]*)}");
+    private static final int WHITE = 0;
+    private static final int BLUE = 1;
+    private static final int BLACK = 2;
+    private static final int RED = 3;
+    private static final int GREEN = 4;
+    private static final int COLOR_COUNT = 5;
 
     public static ManaPips fromManaCost(@Nullable String manaCost) {
-        if (manaCost == null || manaCost.isBlank()) {
-            return new ManaPips(0, 0, 0, 0, 0);
+        int[] counts = new int[COLOR_COUNT];
+        if (manaCost != null && !manaCost.isBlank()) {
+            Matcher matcher = SYMBOL.matcher(manaCost);
+            while (matcher.find()) {
+                countSymbol(matcher.group(1), counts);
+            }
         }
-        int w = 0;
-        int u = 0;
-        int b = 0;
-        int r = 0;
-        int g = 0;
-        Matcher matcher = SYMBOL.matcher(manaCost);
-        while (matcher.find()) {
-            for (String part : matcher.group(1).split("/")) {
-                switch (part) {
-                    case "W" -> w++;
-                    case "U" -> u++;
-                    case "B" -> b++;
-                    case "R" -> r++;
-                    case "G" -> g++;
-                    default -> {
-                        // ponytail: generic, X, and colorless pips ignored — the mana-base
-                        // builder only weights colored sources; refine if Karsten validation
-                        // needs them
-                    }
+        return new ManaPips(counts[WHITE], counts[BLUE], counts[BLACK], counts[RED], counts[GREEN]);
+    }
+
+    private static void countSymbol(String symbol, int[] counts) {
+        for (String part : symbol.split("/")) {
+            switch (part) {
+                case "W" -> counts[WHITE]++;
+                case "U" -> counts[BLUE]++;
+                case "B" -> counts[BLACK]++;
+                case "R" -> counts[RED]++;
+                case "G" -> counts[GREEN]++;
+                default -> {
+                    // ponytail: generic, X, and colorless pips ignored — the mana-base
+                    // builder only weights colored sources; refine if Karsten validation
+                    // needs them
                 }
             }
         }
-        return new ManaPips(w, u, b, r, g);
     }
 
     public int total() {

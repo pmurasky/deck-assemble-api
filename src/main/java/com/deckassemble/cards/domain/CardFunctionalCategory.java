@@ -34,9 +34,33 @@ public enum CardFunctionalCategory {
     public static final String EXILE_TARGET_MARKER = "exile target";
     public static final String WIN_THE_GAME_MARKER = "you win the game";
 
+    private static final Set<String> RAMP_TAGS = Set.of("ramp", "land ramp", "multi land ramp");
+    private static final Set<String> DRAW_TAGS =
+            Set.of("draw", "burst draw", "draw engine", "impulsive draw");
+    private static final Set<String> REMOVAL_TAGS = Set.of("removal", "multi removal");
+    private static final String REMOVAL_TAG_PREFIX = "removal-";
+    private static final String COUNTERSPELL_TAG_PREFIX = "counterspell";
+    private static final Set<String> WIPE_TAGS = Set.of("board-reset");
+    private static final String SWEEPER_TAG_PREFIX = "sweeper";
+    private static final Set<String> PROTECTION_TAGS = Set.of("protection", "gives protection");
+    private static final String PROTECTS_TAG_PREFIX = "protects-";
+    private static final String FINISHER_TAG = "alternate win condition";
+
     // ponytail: single-label priority for legacy callers; P2's picker consumes categorizeAll
     private static final List<CardFunctionalCategory> SINGLE_LABEL_PRIORITY =
             List.of(LAND, RAMP, DRAW, WIPE, REMOVAL, PROTECTION, FINISHER, SYNERGY);
+
+    private static final List<TagRule> TAG_RULES =
+            List.of(
+                    new TagRule(RAMP_TAGS::contains, RAMP),
+                    new TagRule(DRAW_TAGS::contains, DRAW),
+                    new TagRule(CardFunctionalCategory::isWipeTag, WIPE),
+                    new TagRule(CardFunctionalCategory::isRemovalTag, REMOVAL),
+                    new TagRule(CardFunctionalCategory::isProtectionTag, PROTECTION),
+                    new TagRule(FINISHER_TAG::equals, FINISHER));
+
+    private record TagRule(
+            java.util.function.Predicate<String> matcher, CardFunctionalCategory category) {}
 
     public static CardFunctionalCategory categorize(String types, String text) {
         Set<CardFunctionalCategory> all = categorizeAll(types, text, null);
@@ -45,7 +69,7 @@ public enum CardFunctionalCategory {
 
     public static Set<CardFunctionalCategory> categorizeAll(
             String types, String text, @Nullable String tagsCsv) {
-        EnumSet<CardFunctionalCategory> categories = EnumSet.noneOf(CardFunctionalCategory.class);
+        Set<CardFunctionalCategory> categories = EnumSet.noneOf(CardFunctionalCategory.class);
         if (types.contains(LAND_MARKER)) {
             categories.add(LAND);
         }
@@ -61,7 +85,7 @@ public enum CardFunctionalCategory {
         return categories;
     }
 
-    private static void addFromText(String text, EnumSet<CardFunctionalCategory> categories) {
+    private static void addFromText(String text, Set<CardFunctionalCategory> categories) {
         if (isRamp(text)) {
             categories.add(RAMP);
         }
@@ -79,53 +103,30 @@ public enum CardFunctionalCategory {
         }
     }
 
-    private static void addFromTag(String tag, EnumSet<CardFunctionalCategory> categories) {
+    private static void addFromTag(String tag, Set<CardFunctionalCategory> categories) {
         if (tag.isEmpty()) {
             return;
         }
-        if (isRampTag(tag)) {
-            categories.add(RAMP);
-        } else if (isDrawTag(tag)) {
-            categories.add(DRAW);
-        } else if (isWipeTag(tag)) {
-            categories.add(WIPE);
-        } else if (isRemovalTag(tag)) {
-            categories.add(REMOVAL);
-        } else if (isProtectionTag(tag)) {
-            categories.add(PROTECTION);
-        } else if (tag.equals("alternate win condition")) {
-            categories.add(FINISHER);
-        }
-    }
-
-    private static boolean isRampTag(String tag) {
-        return tag.equals("ramp") || tag.equals("land ramp") || tag.equals("multi land ramp");
-    }
-
-    private static boolean isDrawTag(String tag) {
-        return tag.equals("draw")
-                || tag.equals("burst draw")
-                || tag.equals("draw engine")
-                || tag.equals("impulsive draw");
+        TAG_RULES.stream()
+                .filter(rule -> rule.matcher().test(tag))
+                .findFirst()
+                .ifPresent(rule -> categories.add(rule.category()));
     }
 
     private static boolean isWipeTag(String tag) {
-        return tag.startsWith("sweeper") || tag.equals("board-reset");
+        return tag.startsWith(SWEEPER_TAG_PREFIX) || WIPE_TAGS.contains(tag);
     }
 
     // ponytail: counterspells count as interaction (REMOVAL) until P2 splits an INTERACTION
     // category
     private static boolean isRemovalTag(String tag) {
-        return tag.equals("removal")
-                || tag.startsWith("removal-")
-                || tag.equals("multi removal")
-                || tag.startsWith("counterspell");
+        return REMOVAL_TAGS.contains(tag)
+                || tag.startsWith(REMOVAL_TAG_PREFIX)
+                || tag.startsWith(COUNTERSPELL_TAG_PREFIX);
     }
 
     private static boolean isProtectionTag(String tag) {
-        return tag.equals("protection")
-                || tag.startsWith("protects-")
-                || tag.equals("gives protection");
+        return PROTECTION_TAGS.contains(tag) || tag.startsWith(PROTECTS_TAG_PREFIX);
     }
 
     private static boolean isRamp(String text) {

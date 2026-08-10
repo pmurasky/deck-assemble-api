@@ -63,8 +63,15 @@ public class OracleTagImportService {
         Map<String, Card> cardsByOracleId =
                 cardRepository.findAll().stream()
                         .collect(Collectors.toMap(Card::getScryfallOracleId, Function.identity()));
+        List<Card> changed = applyTagsToCards(cardsByOracleId, index);
+        cardRepository.saveAll(changed);
+        return new ImportResult(
+                runId, index.size(), 0, changed.size(), skipped(index, cardsByOracleId));
+    }
+
+    private List<Card> applyTagsToCards(
+            Map<String, Card> cardsByOracleId, Map<String, Set<String>> index) {
         List<Card> changed = new ArrayList<>();
-        int skipped = 0;
         for (Card card : cardsByOracleId.values()) {
             Set<String> labels = index.get(card.getScryfallOracleId());
             String tags = labels == null ? null : String.join(",", new TreeSet<>(labels));
@@ -73,12 +80,16 @@ public class OracleTagImportService {
                 changed.add(card);
             }
         }
+        return changed;
+    }
+
+    private int skipped(Map<String, Set<String>> index, Map<String, Card> cardsByOracleId) {
+        int skipped = 0;
         for (String oracleId : index.keySet()) {
             if (!cardsByOracleId.containsKey(oracleId)) {
                 skipped++;
             }
         }
-        cardRepository.saveAll(changed);
-        return new ImportResult(runId, index.size(), 0, changed.size(), skipped);
+        return skipped;
     }
 }
