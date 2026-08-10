@@ -5,6 +5,7 @@ import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardPrice;
 import com.deckassemble.cards.domain.CardSearchPage;
+import com.deckassemble.cards.domain.OracleTagIndex;
 import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCard;
 import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallCardFace;
@@ -14,7 +15,10 @@ import com.deckassemble.cards.infrastructure.scryfall.dto.ScryfallPrices;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.zip.GZIPInputStream;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -22,6 +26,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.JsonNode;
 
 @Component
 class RestClientScryfallClient implements ScryfallClient {
@@ -69,6 +74,37 @@ class RestClientScryfallClient implements ScryfallClient {
     @Override
     public CardSearchPage searchCards(URI nextPageUri) {
         return toPage(execute(() -> restClient.get().uri(nextPageUri).retrieve().body(CARD_LIST)));
+    }
+
+    @Override
+    public Map<String, Set<String>> fetchOracleTagAssignments() {
+        URI downloadUri = oracleTagBulkUri();
+        return execute(
+                () ->
+                        restClient
+                                .get()
+                                .uri(downloadUri)
+                                .exchange(
+                                        (request, response) -> {
+                                            try (var decompressed =
+                                                    new GZIPInputStream(response.getBody())) {
+                                                return OracleTagIndex.parse(decompressed);
+                                            }
+                                        }));
+    }
+
+    private URI oracleTagBulkUri() {
+        JsonNode manifest =
+                execute(() -> restClient.get().uri("/bulk-data").retrieve().body(JsonNode.class));
+        if (manifest == null) {
+            throw new IllegalStateException("Scryfall bulk-data manifest was empty");
+        }
+        for (JsonNode entry : manifest.path("data")) {
+            if ("oracle_tags".equals(entry.path("type").asString())) {
+                return URI.create(entry.path("jsonl_download_uri").asString());
+            }
+        }
+        throw new IllegalStateException("Scryfall bulk-data manifest has no oracle_tags entry");
     }
 
     @Override
