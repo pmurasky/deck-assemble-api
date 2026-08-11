@@ -1,0 +1,163 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-storage-locations
+      author: opencode
+      changes:
+        - createTable:
+            tableName: storage_locations
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_storage_locations
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parent_id
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: storage_locations
+            columnNames: profile_id, parent_id, name
+            constraintName: uq_storage_locations_profile_parent_name
+        - addForeignKeyConstraint:
+            baseTableName: storage_locations
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_storage_locations_profile
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: storage_locations
+            baseColumnNames: parent_id
+            referencedTableName: storage_locations
+            referencedColumnNames: id
+            constraintName: fk_storage_locations_parent
+            onDelete: CASCADE
+        - createIndex:
+            tableName: storage_locations
+            indexName: idx_storage_locations_profile_parent_name
+            columns:
+              - column:
+                  name: profile_id
+              - column:
+                  name: parent_id
+              - column:
+                  name: name
+  - changeSet:
+      id: 019-collection-card-physical-metadata
+      author: opencode
+      changes:
+        - createTable:
+            tableName: collection_card_physical_metadata
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_collection_card_physical_metadata
+                    nullable: false
+              - column:
+                  name: collection_card_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: condition
+                  type: varchar(30)
+              - column:
+                  name: language
+                  type: varchar(10)
+              - column:
+                  name: finish
+                  type: varchar(20)
+              - column:
+                  name: purchase_price
+                  type: numeric(12, 2)
+              - column:
+                  name: purchase_currency
+                  type: varchar(3)
+              - column:
+                  name: purchase_date
+                  type: date
+              - column:
+                  name: notes
+                  type: varchar(2000)
+              - column:
+                  name: storage_location_id
+                  type: uuid
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addUniqueConstraint:
+            tableName: collection_card_physical_metadata
+            columnNames: collection_card_id
+            constraintName: uq_collection_card_physical_metadata_card
+        - addForeignKeyConstraint:
+            baseTableName: collection_card_physical_metadata
+            baseColumnNames: collection_card_id
+            referencedTableName: collection_cards
+            referencedColumnNames: id
+            constraintName: fk_collection_card_physical_metadata_card
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: collection_card_physical_metadata
+            baseColumnNames: storage_location_id
+            referencedTableName: storage_locations
+            referencedColumnNames: id
+            constraintName: fk_collection_card_physical_metadata_location
+        - createIndex:
+            tableName: collection_card_physical_metadata
+            indexName: idx_collection_card_physical_metadata_location
+            columns:
+              - column:
+                  name: storage_location_id
+        - createIndex:
+            tableName: collection_card_physical_metadata
+            indexName: idx_collection_card_physical_metadata_filters
+            columns:
+              - column:
+                  name: condition
+              - column:
+                  name: language
+              - column:
+                  name: finish
