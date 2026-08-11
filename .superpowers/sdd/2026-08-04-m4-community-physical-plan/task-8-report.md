@@ -111,6 +111,34 @@ BUILD SUCCESSFUL in 1m 18s
 GRADLE_CHECK_EXIT_CODE=0
 ```
 
+## Re-review Round 2 Fix: Sleep-free Lock Blocking Harness
+
+### What changed
+
+- Removed the old latch-before-call race test and the reflection-only lock annotation test.
+- Replaced the timing-flaky 300ms sleep proof with a latch-controlled `PhysicalCardInventory` spy around the locked read path.
+- The new harness starts transaction A, waits until A has completed the real locked read, then parks A before returning from the spy so A's transaction remains open and holds the row lock.
+- It then starts transaction B, waits until B has entered the same locked-read call, and asserts `bReadCompleted.await(200, MILLISECONDS)` returns `false` while A holds the lock. This is the mutation-sensitive negative assertion: removing `PESSIMISTIC_WRITE` lets B complete the read and fails the test.
+- After `allowAProceed` opens, A inserts and commits; B's locked read completes, sees A's allocation, and returns the expected conflict. The test asserts A=`allocated`, B=`conflict`, and exactly one allocation row exists.
+
+### Covering test files
+
+- `src/test/java/com/deckassemble/collections/application/physical/PhysicalCardAllocationServiceTest.java`
+- `src/test/java/com/deckassemble/collections/api/physical/PhysicalCardAllocationControllerIntegrationTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckOwnershipServiceTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckServiceTest.java`
+
+### Commands and exit-code evidence
+
+```text
+rtk gradlew test --tests '*Allocation*' --tests '*Ownership*' --tests '*DeckService*'
+COVERING_TEST_EXIT_CODE=0
+
+rtk gradlew check
+BUILD SUCCESSFUL in 1m 19s
+GRADLE_CHECK_EXIT_CODE=0
+```
+
 ## Re-review Fix: Complete Split Response and Lock-Window Proof
 
 ### What changed

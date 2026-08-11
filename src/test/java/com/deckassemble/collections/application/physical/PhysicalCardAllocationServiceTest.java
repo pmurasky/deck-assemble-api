@@ -27,7 +27,6 @@ import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.users.domain.Profile;
 import com.deckassemble.users.domain.ProfileRepository;
-import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -36,7 +35,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -139,65 +137,12 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldPreventConcurrentAllocationBeyondAvailability() throws Exception {
+    void shouldBlockSecondAllocationReadUntilFirstAllocationCommits() throws Exception {
         Fixture fixture = fixture("race", 1, true, false);
         long competingDeckId = createDeck(fixture.profileId(), "Competing Deck");
         long competingDeckCardId = addDeckCard(competingDeckId, fixture.exactPrintingId(), 1);
-        var ready = new CountDownLatch(2);
-        var start = new CountDownLatch(1);
-
-        try (var pool = Executors.newFixedThreadPool(2)) {
-            var futures =
-                    List.of(fixture.deckCardId(), competingDeckCardId).stream()
-                            .map(
-                                    deckCardId ->
-                                            pool.submit(
-                                                    () -> {
-                                                        authenticate(fixture.subject());
-                                                        ready.countDown();
-                                                        start.await(5, TimeUnit.SECONDS);
-                                                        return tryAllocate(
-                                                                deckCardId == fixture.deckCardId()
-                                                                        ? fixture.deckId()
-                                                                        : competingDeckId,
-                                                                deckCardId);
-                                                    }))
-                            .toList();
-
-            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
-            start.countDown();
-            var outcomes = futures.stream().map(future -> await(future)).toList();
-
-            assertThat(outcomes).containsExactlyInAnyOrder("allocated", "conflict");
-        }
-
-        assertThat(
-                        allocationRepository.findByDeckIdOrderById(fixture.deckId()).size()
-                                + allocationRepository
-                                        .findByDeckIdOrderById(competingDeckId)
-                                        .size())
-                .isEqualTo(1);
-    }
-
-    @Test
-    void shouldUsePessimisticWriteLockForCompatibleOwnedCards() throws Exception {
-        var method =
-                CollectionCardRepository.class.getMethod(
-                        "findCompatibleOwnedCardsLocked", Long.class, Long.class);
-
-        assertThat(method.getAnnotation(Lock.class).value())
-                .isEqualTo(LockModeType.PESSIMISTIC_WRITE);
-    }
-
-    @Test
-    void shouldBlockSecondAllocationAtLockedReadUntilFirstTransactionFinishes() throws Exception {
-        Fixture fixture = fixture("blocked-race", 1, true, false);
-        long competingDeckId = createDeck(fixture.profileId(), "Competing Deck");
-        long competingDeckCardId = addDeckCard(competingDeckId, fixture.exactPrintingId(), 1);
-        var firstLockedRead = new CountDownLatch(1);
-        var releaseFirst = new CountDownLatch(1);
-        var lockedReads = new AtomicInteger();
-        pauseFirstLockedRead(firstLockedRead, releaseFirst, lockedReads);
+        var latches = new LockedReadLatches();
+        pauseFirstReadAfterLockCompletes(latches);
 
         try (var pool = Executors.newFixedThreadPool(2)) {
             var first =
@@ -206,7 +151,7 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
                                 authenticate(fixture.subject());
                                 return tryAllocate(fixture.deckId(), fixture.deckCardId());
                             });
-            assertThat(firstLockedRead.await(5, TimeUnit.SECONDS)).isTrue();
+            await(latches.aReadCompleted());
 
             var second =
                     pool.submit(
@@ -214,13 +159,22 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
                                 authenticate(fixture.subject());
                                 return tryAllocate(competingDeckId, competingDeckCardId);
                             });
-            TimeUnit.MILLISECONDS.sleep(300);
-            assertThat(lockedReads).hasValue(1);
+            await(latches.bReadEntered());
+            assertThat(latches.bReadCompleted().await(200, TimeUnit.MILLISECONDS)).isFalse();
 
-            releaseFirst.countDown();
-            assertThat(List.of(await(first), await(second)))
-                    .containsExactlyInAnyOrder("allocated", "conflict");
+            latches.allowAProceed().countDown();
+
+            assertThat(await(first)).isEqualTo("allocated");
+            await(latches.bReadCompleted());
+            assertThat(await(second)).isEqualTo("conflict");
         }
+
+        assertThat(
+                        allocationRepository.findByDeckIdOrderById(fixture.deckId()).size()
+                                + allocationRepository
+                                        .findByDeckIdOrderById(competingDeckId)
+                                        .size())
+                .isEqualTo(1);
     }
 
     @Test
@@ -274,21 +228,38 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
         }
     }
 
-    private void pauseFirstLockedRead(
-            CountDownLatch firstLockedRead,
-            CountDownLatch releaseFirst,
-            AtomicInteger lockedReads) {
+    private void pauseFirstReadAfterLockCompletes(LockedReadLatches latches) {
+        var invocationCount = new AtomicInteger();
         doAnswer(
                         invocation -> {
+                            int call = invocationCount.incrementAndGet();
+                            enteredLatch(latches, call).countDown();
                             Object result = invocation.callRealMethod();
-                            if (lockedReads.incrementAndGet() == 1) {
-                                firstLockedRead.countDown();
-                                assertThat(releaseFirst.await(5, TimeUnit.SECONDS)).isTrue();
+                            completedLatch(latches, call).countDown();
+                            if (call == 1) {
+                                latches.allowAProceed().await();
                             }
                             return result;
                         })
                 .when(inventory)
                 .lockedCards(any());
+    }
+
+    private CountDownLatch enteredLatch(LockedReadLatches latches, int call) {
+        return call == 1 ? latches.aReadEntered() : latches.bReadEntered();
+    }
+
+    private CountDownLatch completedLatch(LockedReadLatches latches, int call) {
+        return call == 1 ? latches.aReadCompleted() : latches.bReadCompleted();
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(exception);
+        }
     }
 
     private String await(java.util.concurrent.Future<String> future) {
@@ -389,4 +360,21 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
             long collectionId,
             long exactPrintingId,
             long alternatePrintingId) {}
+
+    private record LockedReadLatches(
+            CountDownLatch aReadEntered,
+            CountDownLatch aReadCompleted,
+            CountDownLatch bReadEntered,
+            CountDownLatch bReadCompleted,
+            CountDownLatch allowAProceed) {
+
+        LockedReadLatches() {
+            this(
+                    new CountDownLatch(1),
+                    new CountDownLatch(1),
+                    new CountDownLatch(1),
+                    new CountDownLatch(1),
+                    new CountDownLatch(1));
+        }
+    }
 }
