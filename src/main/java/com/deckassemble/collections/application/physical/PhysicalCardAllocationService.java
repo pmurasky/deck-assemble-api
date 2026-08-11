@@ -1,17 +1,12 @@
 package com.deckassemble.collections.application.physical;
 
-import com.deckassemble.collections.application.CollectionAccessGuard;
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
 import com.deckassemble.collections.application.physical.PhysicalDeckLookup.DeckCardView;
 import com.deckassemble.collections.domain.CollectionCard;
-import com.deckassemble.collections.domain.CollectionCardRepository;
 import com.deckassemble.collections.domain.physical.PhysicalCardAllocation;
 import com.deckassemble.collections.domain.physical.PhysicalCardAllocationRepository;
-import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,19 +18,22 @@ import org.springframework.web.server.ResponseStatusException;
 public class PhysicalCardAllocationService {
 
     private final PhysicalDeckLookup deckLookup;
-    private final CollectionAccessGuard collectionAccessGuard;
-    private final CollectionCardRepository collectionCardRepository;
+    private final PhysicalCardInventory inventory;
     private final PhysicalCardAllocationRepository allocationRepository;
+    private final PhysicalCardAvailabilityCalculator availabilityCalculator;
+    private final PhysicalCardAllocationViews allocationViews;
 
     public PhysicalCardAllocationService(
             PhysicalDeckLookup deckLookup,
-            CollectionAccessGuard collectionAccessGuard,
-            CollectionCardRepository collectionCardRepository,
-            PhysicalCardAllocationRepository allocationRepository) {
+            PhysicalCardInventory inventory,
+            PhysicalCardAllocationRepository allocationRepository,
+            PhysicalCardAvailabilityCalculator availabilityCalculator,
+            PhysicalCardAllocationViews allocationViews) {
         this.deckLookup = deckLookup;
-        this.collectionAccessGuard = collectionAccessGuard;
-        this.collectionCardRepository = collectionCardRepository;
+        this.inventory = inventory;
         this.allocationRepository = allocationRepository;
+        this.availabilityCalculator = availabilityCalculator;
+        this.allocationViews = allocationViews;
     }
 
     public AllocationView allocate(long deckId, AllocationCommand command) {
@@ -44,19 +42,19 @@ public class PhysicalCardAllocationService {
                 deckLookup.deckCard(deckId, requiredDeckCardId(command.deckCardId()));
         int quantity = requestedQuantity(command.quantity(), deckCard.quantity());
         List<CollectionCard> cards = lockedCards(deckCard);
-        Map<Long, Integer> allocated = allocatedByCollectionCardId(cards, null);
+        Map<Long, Integer> allocated = inventory.allocatedByCollectionCardId(cards, null);
         CollectionCard selected =
                 selectedCard(cards, allocated, command.collectionCardId(), quantity);
         assertDeckCardCapacity(deckCard, quantity, null);
         PhysicalCardAllocation saved = saveAllocation(deckId, deckCard, selected, quantity);
-        return viewFor(saved);
+        return allocationViews.forAllocation(saved);
     }
 
     @Transactional(readOnly = true)
     public List<AllocationView> list(long deckId) {
         deckLookup.owned(deckId);
         return allocationRepository.findByDeckIdOrderById(deckId).stream()
-                .map(this::viewFor)
+                .map(allocationViews::forAllocation)
                 .toList();
     }
 
@@ -69,7 +67,7 @@ public class PhysicalCardAllocationService {
         assertAvailable(card, quantity, allocationId);
         assertDeckCardCapacity(deckCard, quantity, allocationId);
         allocation.setQuantity(quantity);
-        return viewFor(allocationRepository.save(allocation));
+        return allocationViews.forAllocation(allocationRepository.save(allocation));
     }
 
     public void release(long deckId, long allocationId) {
@@ -85,56 +83,16 @@ public class PhysicalCardAllocationService {
     @Transactional(readOnly = true)
     public List<AllocationView> unavailable(long deckId) {
         deckLookup.owned(deckId);
-        return availabilityFor(
-                        collectionAccessGuard.profileId(), deckId, availabilityRequests(deckId))
-                .stream()
+        return availabilityFor(inventory.profileId(), deckId, availabilityRequests(deckId)).stream()
                 .filter(availability -> availability.missingQuantity() > 0)
-                .map(availability -> unavailableView(deckId, availability))
+                .map(availability -> allocationViews.unavailable(deckId, availability))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<CardAvailability> availabilityFor(
             long profileId, long deckId, List<DeckCardAvailabilityRequest> deckCards) {
-        return deckCards.stream()
-                .map(card -> availability(profileId, deckId, card))
-                .sorted(Comparator.comparing(CardAvailability::deckCardId))
-                .toList();
-    }
-
-    private CardAvailability availability(
-            long profileId, long deckId, DeckCardAvailabilityRequest card) {
-        List<CollectionCard> cards = compatibleCards(profileId, card.cardPrintingId());
-        int owned = cards.stream().mapToInt(this::ownedQuantity).sum();
-        int allocated =
-                allocatedByCollectionCardId(cards, null).values().stream().mapToInt(i -> i).sum();
-        int current = currentDeckCardAllocated(deckId, card.deckCardId());
-        int available = Math.max(0, owned - allocated + current);
-        return new CardAvailability(
-                card.deckCardId(),
-                card.cardPrintingId(),
-                card.quantity(),
-                owned,
-                current,
-                available,
-                Math.max(0, card.quantity() - available));
-    }
-
-    private AllocationView unavailableView(long deckId, CardAvailability availability) {
-        return new AllocationView(
-                null,
-                deckId,
-                availability.deckCardId(),
-                availability.cardPrintingId(),
-                null,
-                null,
-                availability.deckQuantity(),
-                0,
-                availability.ownedQuantity(),
-                availability.allocatedQuantity(),
-                availability.availableQuantity(),
-                availability.missingQuantity(),
-                false);
+        return availabilityCalculator.availabilityFor(profileId, deckId, deckCards);
     }
 
     private PhysicalCardAllocation saveAllocation(
@@ -166,7 +124,8 @@ public class PhysicalCardAllocationService {
                                         || card.getId().equals(requestedCollectionCardId))
                 .filter(
                         card ->
-                                ownedQuantity(card) - allocated.getOrDefault(card.getId(), 0)
+                                inventory.ownedQuantity(card)
+                                                - allocated.getOrDefault(card.getId(), 0)
                                         >= quantity)
                 .findFirst()
                 .orElseThrow(PhysicalCardAllocationService::notEnoughCopies);
@@ -174,9 +133,10 @@ public class PhysicalCardAllocationService {
 
     private void assertAvailable(CollectionCard card, int quantity, @Nullable Long excludedId) {
         int allocated =
-                allocatedByCollectionCardId(List.of(card), excludedId)
+                inventory
+                        .allocatedByCollectionCardId(List.of(card), excludedId)
                         .getOrDefault(card.getId(), 0);
-        if (ownedQuantity(card) - allocated < quantity) {
+        if (inventory.ownedQuantity(card) - allocated < quantity) {
             throw notEnoughCopies();
         }
     }
@@ -191,29 +151,6 @@ public class PhysicalCardAllocationService {
         }
     }
 
-    private AllocationView viewFor(PhysicalCardAllocation allocation) {
-        DeckCardView deckCard =
-                deckLookup.deckCard(allocation.getDeckId(), allocation.getDeckCardId());
-        CollectionCard card = collectionCard(allocation.getCollectionCardId());
-        int allocated =
-                allocatedByCollectionCardId(List.of(card), null).getOrDefault(card.getId(), 0);
-        int owned = ownedQuantity(card);
-        return new AllocationView(
-                allocation.getId(),
-                allocation.getDeckId(),
-                allocation.getDeckCardId(),
-                deckCard.cardPrintingId(),
-                allocation.getCollectionCardId(),
-                card.getCardPrintingId(),
-                deckCard.quantity(),
-                allocation.getQuantity(),
-                owned,
-                allocated,
-                owned - allocated,
-                Math.max(0, deckCard.quantity() - allocation.getQuantity()),
-                deckCard.cardPrintingId() == card.getCardPrintingId());
-    }
-
     private CollectionCard lockedAllocationCard(DeckCardView deckCard, long collectionCardId) {
         return lockedCards(deckCard).stream()
                 .filter(card -> card.getId().equals(collectionCardId))
@@ -222,36 +159,7 @@ public class PhysicalCardAllocationService {
     }
 
     private List<CollectionCard> lockedCards(DeckCardView deckCard) {
-        return collectionCardRepository.findCompatibleOwnedCardsLocked(
-                collectionAccessGuard.profileId(), deckCard.cardPrintingId());
-    }
-
-    private List<CollectionCard> compatibleCards(long profileId, long cardPrintingId) {
-        return collectionCardRepository.findCompatibleOwnedCards(profileId, cardPrintingId);
-    }
-
-    private Map<Long, Integer> allocatedByCollectionCardId(
-            Collection<CollectionCard> cards, @Nullable Long excludedAllocationId) {
-        List<Long> ids = cards.stream().map(CollectionCard::getId).toList();
-        if (ids.isEmpty()) {
-            return Map.of();
-        }
-        return allocationRepository
-                .sumByCollectionCardIdsExcluding(ids, excludedAllocationId)
-                .stream()
-                .collect(
-                        Collectors.toMap(
-                                PhysicalCardAllocationRepository.CollectionCardAllocationTotal
-                                        ::getCollectionCardId,
-                                PhysicalCardAllocationRepository.CollectionCardAllocationTotal
-                                        ::getQuantity));
-    }
-
-    private int currentDeckCardAllocated(long deckId, long deckCardId) {
-        return allocationRepository.findByDeckIdOrderById(deckId).stream()
-                .filter(allocation -> allocation.getDeckCardId().equals(deckCardId))
-                .mapToInt(PhysicalCardAllocation::getQuantity)
-                .sum();
+        return inventory.lockedCards(deckCard);
     }
 
     private List<DeckCardAvailabilityRequest> availabilityRequests(long deckId) {
@@ -285,16 +193,6 @@ public class PhysicalCardAllocationService {
         return allocationRepository
                 .findByIdAndDeckId(allocationId, deckId)
                 .orElseThrow(CollectionCardNotFoundException::new);
-    }
-
-    private CollectionCard collectionCard(long collectionCardId) {
-        return collectionCardRepository
-                .findById(collectionCardId)
-                .orElseThrow(CollectionCardNotFoundException::new);
-    }
-
-    private int ownedQuantity(CollectionCard card) {
-        return card.getRegularQuantity() + card.getFoilQuantity();
     }
 
     private static ResponseStatusException notEnoughCopies() {

@@ -83,3 +83,30 @@ Allocation picks the first compatible row with enough unallocated quantity, so e
 
 - I could not capture the final Gradle exit code because the context-mode call timed out before the long-running Gradle process finished; report artifacts after completion were clean.
 - The API allocates one collection-card row per request. If a caller wants to split a multi-copy deck card across exact and alternate printings, it should send multiple allocation requests with explicit smaller quantities.
+
+## Static Analysis Gate Fix
+
+The follow-up controller check found the prior verification report was wrong because it inferred `check` success from generated reports without a Gradle exit code. I fixed the root cause in this pass by only reporting command results with explicit exit-code lines.
+
+### What changed
+
+- Extracted inventory operations into `PhysicalCardInventory` so row-lock lookup, compatible-card lookup, allocation totals, current deck allocation totals, and owned-quantity calculation are no longer private responsibilities of `PhysicalCardAllocationService`.
+- Extracted availability computation into `PhysicalCardAvailabilityCalculator`, reducing `PhysicalCardAllocationService` method count without suppressing PMD `TooManyMethods`.
+- Extracted response assembly into `PhysicalCardAllocationViews`, removing the 22-line `viewFor` method and keeping `PhysicalCardAllocationService` under Checkstyle `MethodLength`.
+- Wrapped the concurrent allocation test executor in try-with-resources so `ExecutorService` is closed and PMD `CloseResource` is satisfied.
+- Ran Spotless after the first `check` retry found formatting-only violations introduced by the refactor.
+
+### Covering tests
+
+- Focused regression command: `rtk gradlew test --tests '*Allocation*' --tests '*Ownership*' --tests '*DeckService*'`
+- Result: `FOCUSED_TEST_EXIT_CODE=0`
+- Full gate command: `rtk gradlew check`
+- Result: `GRADLE_CHECK_EXIT_CODE=0`
+
+### Exit-code evidence
+
+```text
+FOCUSED_TEST_EXIT_CODE=0
+BUILD SUCCESSFUL in 1m 18s
+GRADLE_CHECK_EXIT_CODE=0
+```

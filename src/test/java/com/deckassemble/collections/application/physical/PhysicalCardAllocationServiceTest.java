@@ -100,33 +100,34 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
         Fixture fixture = fixture("race", 1, true, false);
         long competingDeckId = createDeck(fixture.profileId(), "Competing Deck");
         long competingDeckCardId = addDeckCard(competingDeckId, fixture.exactPrintingId(), 1);
-        var pool = Executors.newFixedThreadPool(2);
         var ready = new CountDownLatch(2);
         var start = new CountDownLatch(1);
 
-        var futures =
-                List.of(fixture.deckCardId(), competingDeckCardId).stream()
-                        .map(
-                                deckCardId ->
-                                        pool.submit(
-                                                () -> {
-                                                    authenticate(fixture.subject());
-                                                    ready.countDown();
-                                                    start.await(5, TimeUnit.SECONDS);
-                                                    return tryAllocate(
-                                                            deckCardId == fixture.deckCardId()
-                                                                    ? fixture.deckId()
-                                                                    : competingDeckId,
-                                                            deckCardId);
-                                                }))
-                        .toList();
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var futures =
+                    List.of(fixture.deckCardId(), competingDeckCardId).stream()
+                            .map(
+                                    deckCardId ->
+                                            pool.submit(
+                                                    () -> {
+                                                        authenticate(fixture.subject());
+                                                        ready.countDown();
+                                                        start.await(5, TimeUnit.SECONDS);
+                                                        return tryAllocate(
+                                                                deckCardId == fixture.deckCardId()
+                                                                        ? fixture.deckId()
+                                                                        : competingDeckId,
+                                                                deckCardId);
+                                                    }))
+                            .toList();
 
-        assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
-        start.countDown();
-        var outcomes = futures.stream().map(future -> await(future)).toList();
-        pool.shutdownNow();
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            var outcomes = futures.stream().map(future -> await(future)).toList();
 
-        assertThat(outcomes).containsExactlyInAnyOrder("allocated", "conflict");
+            assertThat(outcomes).containsExactlyInAnyOrder("allocated", "conflict");
+        }
+
         assertThat(
                         allocationRepository.findByDeckIdOrderById(fixture.deckId()).size()
                                 + allocationRepository
