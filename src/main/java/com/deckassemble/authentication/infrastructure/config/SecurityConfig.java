@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 .permitAll()
                                 .requestMatchers(HttpMethod.GET, "/shared/decks/**")
                                 .permitAll()
+                                .requestMatchers(HttpMethod.GET, "/community/decks")
+                                .permitAll()
                                 .anyRequest()
                                 .authenticated());
     }

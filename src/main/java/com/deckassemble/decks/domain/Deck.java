@@ -246,6 +246,10 @@ public class Deck {
         return createdAt;
     }
 
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
     public DeckVisibility getVisibility() {
         return visibility;
     }

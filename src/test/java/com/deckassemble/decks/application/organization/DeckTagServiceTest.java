@@ -196,7 +196,8 @@ class DeckTagServiceTest {
 
         verify(assignmentRepository).deleteByTagId(TAG_ID_A);
         verify(deckTagRepository).delete(tag);
-        verify(deckRepository, org.mockito.Mockito.never()).delete(any());
+        verify(deckRepository, org.mockito.Mockito.never())
+                .delete(any(com.deckassemble.decks.domain.Deck.class));
     }
 
     @Test

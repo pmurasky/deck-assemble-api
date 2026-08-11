@@ -8,6 +8,7 @@ import com.deckassemble.cards.domain.CommanderPairingRules;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.jspecify.annotations.Nullable;
@@ -20,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 // Justified: query facade over card repositories; methods are thin delegations (tracked in #3).
-@SuppressWarnings("PMD.CyclomaticComplexity")
+@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 public class CardCatalogService {
 
     private final CardRepository cardRepository;
@@ -158,6 +159,24 @@ public class CardCatalogService {
                 .findById(cardId)
                 .filter(Card::getActive)
                 .orElseThrow(CardNotFoundException::new);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> getActiveCardIdsByColorIdentity(Collection<String> colorIdentities) {
+        if (colorIdentities.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> normalized =
+                colorIdentities.stream().map(String::toUpperCase).collect(Collectors.toSet());
+        return cardRepository
+                .findAll(
+                        (root, query, builder) ->
+                                builder.and(
+                                        builder.isTrue(root.get("active")),
+                                        builder.upper(root.get("colorIdentity")).in(normalized)))
+                .stream()
+                .map(Card::getId)
+                .collect(Collectors.toSet());
     }
 
     /**
