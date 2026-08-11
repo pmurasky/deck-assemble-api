@@ -2,12 +2,14 @@ package com.deckassemble.community.application;
 
 import com.deckassemble.community.domain.DeckComment;
 import com.deckassemble.community.domain.DeckCommentRepository;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.publishing.DeckPublishingService;
 import com.deckassemble.decks.domain.Deck;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -38,14 +40,17 @@ public class CommentService {
     private final DeckCommentRepository deckCommentRepository;
     private final DeckPublishingService deckPublishingService;
     private final DeckAccessGuard deckAccessGuard;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CommentService(
             DeckCommentRepository deckCommentRepository,
             DeckPublishingService deckPublishingService,
-            DeckAccessGuard deckAccessGuard) {
+            DeckAccessGuard deckAccessGuard,
+            ApplicationEventPublisher eventPublisher) {
         this.deckCommentRepository = deckCommentRepository;
         this.deckPublishingService = deckPublishingService;
         this.deckAccessGuard = deckAccessGuard;
+        this.eventPublisher = eventPublisher;
     }
 
     /** Paginated, most-recent-first, non-deleted comments on a visible shared deck. */
@@ -67,7 +72,19 @@ public class CommentService {
         }
         long profileId = deckAccessGuard.profileId();
         enforceRateLimit(profileId);
-        return deckCommentRepository.save(new DeckComment(deck.getId(), profileId, body));
+        DeckComment comment =
+                deckCommentRepository.save(new DeckComment(deck.getId(), profileId, body));
+        publishCommentEvent(deck, profileId);
+        return comment;
+    }
+
+    private void publishCommentEvent(Deck deck, long profileId) {
+        eventPublisher.publishEvent(
+                new CommunityEvent(
+                        Reason.NEW_COMMENT,
+                        profileId,
+                        deck.getProfileId(),
+                        String.valueOf(deck.getId())));
     }
 
     public DeckComment edit(String slug, UUID commentId, String body) {

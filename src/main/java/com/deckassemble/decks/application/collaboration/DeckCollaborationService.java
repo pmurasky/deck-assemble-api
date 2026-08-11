@@ -1,5 +1,7 @@
 package com.deckassemble.decks.application.collaboration;
 
+import com.deckassemble.community.application.CommunityEvent;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.collaboration.DeckCollaborator;
@@ -7,6 +9,8 @@ import com.deckassemble.decks.domain.collaboration.DeckCollaboratorRepository;
 import com.deckassemble.decks.domain.collaboration.DeckCollaboratorRole;
 import com.deckassemble.users.domain.ProfileRepository;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +29,17 @@ public class DeckCollaborationService {
     private final DeckAccessGuard deckAccessGuard;
     private final DeckCollaboratorRepository deckCollaboratorRepository;
     private final ProfileRepository profileRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public DeckCollaborationService(
             DeckAccessGuard deckAccessGuard,
             DeckCollaboratorRepository deckCollaboratorRepository,
-            ProfileRepository profileRepository) {
+            ProfileRepository profileRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.deckAccessGuard = deckAccessGuard;
         this.deckCollaboratorRepository = deckCollaboratorRepository;
         this.profileRepository = profileRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<DeckCollaborator> list(long deckId) {
@@ -48,13 +55,15 @@ public class DeckCollaborationService {
     public DeckCollaborator invite(long deckId, long profileId, DeckCollaboratorRole role) {
         Deck deck = deckAccessGuard.owned(deckId);
         assertValidInvitee(deck, profileId);
-        return deckCollaboratorRepository
-                .findByDeckIdAndProfileId(deckId, profileId)
-                .map(existing -> saveWithRole(existing, role))
-                .orElseGet(
-                        () ->
-                                deckCollaboratorRepository.save(
-                                        new DeckCollaborator(deckId, profileId, role)));
+        Optional<DeckCollaborator> existing =
+                deckCollaboratorRepository.findByDeckIdAndProfileId(deckId, profileId);
+        if (existing.isPresent()) {
+            return saveWithRole(existing.get(), role);
+        }
+        DeckCollaborator collaborator =
+                deckCollaboratorRepository.save(new DeckCollaborator(deckId, profileId, role));
+        publish(deck, profileId, Reason.COLLABORATOR_ADDED);
+        return collaborator;
     }
 
     private void assertValidInvitee(Deck deck, long profileId) {
@@ -74,11 +83,18 @@ public class DeckCollaborationService {
     }
 
     public void revoke(long deckId, long profileId) {
-        deckAccessGuard.owned(deckId);
+        Deck deck = deckAccessGuard.owned(deckId);
         DeckCollaborator collaborator =
                 deckCollaboratorRepository
                         .findByDeckIdAndProfileId(deckId, profileId)
                         .orElseThrow(DeckCollaboratorNotFoundException::new);
         deckCollaboratorRepository.delete(collaborator);
+        publish(deck, profileId, Reason.COLLABORATOR_REMOVED);
+    }
+
+    private void publish(Deck deck, long recipientId, Reason reason) {
+        eventPublisher.publishEvent(
+                new CommunityEvent(
+                        reason, deck.getProfileId(), recipientId, String.valueOf(deck.getId())));
     }
 }

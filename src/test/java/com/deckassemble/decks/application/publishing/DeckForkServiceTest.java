@@ -12,6 +12,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.deckassemble.community.application.CommunityEvent;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -55,6 +58,7 @@ class DeckForkServiceTest {
     @Mock private DeckCategoryService deckCategoryService;
     @Mock private DeckTagService deckTagService;
     @Mock private DeckRevisionService deckRevisionService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private DeckForkService service() {
         return new DeckForkService(
@@ -64,7 +68,8 @@ class DeckForkServiceTest {
                 deckCardService,
                 deckCategoryService,
                 deckTagService,
-                deckRevisionService);
+                deckRevisionService,
+                eventPublisher);
     }
 
     @Test
@@ -139,6 +144,7 @@ class DeckForkServiceTest {
         verify(deckTagService).assignToDeck(99L, List.of(55L), null);
         verify(deckRevisionService).record(99L, 1L, DeckChangeType.FORKED);
         verify(deckRevisionService, times(1)).record(anyLong(), anyLong(), any());
+        verify(eventPublisher).publishEvent(new CommunityEvent(Reason.DECK_FORKED, 1L, 9L, "5"));
         assertThat(result.getSourceDeckId()).isEqualTo(5L);
         assertThat(result.getSourceRevisionNumber()).isEqualTo(2);
     }

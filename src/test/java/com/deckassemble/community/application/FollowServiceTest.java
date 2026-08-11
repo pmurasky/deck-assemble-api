@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.community.domain.ProfileFollow;
 import com.deckassemble.community.domain.ProfileFollowRepository;
 import com.deckassemble.decks.application.DeckAccessGuard;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,12 +27,15 @@ class FollowServiceTest {
     @Mock private DeckAccessGuard deckAccessGuard;
     @Mock private ProfileFollowRepository followRepository;
     @Mock private ProfileRepository profileRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private FollowService service;
 
     @BeforeEach
     void setUp() {
-        service = new FollowService(deckAccessGuard, followRepository, profileRepository);
+        service =
+                new FollowService(
+                        deckAccessGuard, followRepository, profileRepository, eventPublisher);
     }
 
     @Test
@@ -48,6 +53,8 @@ class FollowServiceTest {
         assertThat(created.getFollowerId()).isEqualTo(10L);
         assertThat(retried.getFolloweeId()).isEqualTo(20L);
         verify(followRepository).save(any(ProfileFollow.class));
+        verify(eventPublisher)
+                .publishEvent(new CommunityEvent(Reason.NEW_FOLLOWER, 10L, 20L, "10"));
     }
 
     @Test

@@ -28,9 +28,12 @@ public class Notification {
     /** Why this notification was raised. */
     public enum Reason {
         NEW_COMMENT,
+        COMMENT_REPLY,
         NEW_FOLLOWER,
         DECK_FAVORITED,
-        COLLABORATOR_ADDED
+        COLLABORATOR_ADDED,
+        COLLABORATOR_REMOVED,
+        DECK_FORKED
     }
 
     @Id

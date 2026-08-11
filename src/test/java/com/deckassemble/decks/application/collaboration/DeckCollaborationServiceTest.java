@@ -7,6 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.deckassemble.community.application.CommunityEvent;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.DeckNotFoundException;
 import com.deckassemble.decks.domain.Deck;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,6 +37,7 @@ class DeckCollaborationServiceTest {
     @Mock private DeckAccessGuard deckAccessGuard;
     @Mock private DeckCollaboratorRepository deckCollaboratorRepository;
     @Mock private ProfileRepository profileRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private DeckCollaborationService service;
     private Deck deck;
@@ -42,7 +46,10 @@ class DeckCollaborationServiceTest {
     void setUp() {
         service =
                 new DeckCollaborationService(
-                        deckAccessGuard, deckCollaboratorRepository, profileRepository);
+                        deckAccessGuard,
+                        deckCollaboratorRepository,
+                        profileRepository,
+                        eventPublisher);
         deck = new Deck(OWNER_ID, "Deck", "COMMANDER");
         ReflectionTestUtils.setField(deck, "id", DECK_ID);
     }
@@ -79,6 +86,9 @@ class DeckCollaborationServiceTest {
         assertThat(result.getDeckId()).isEqualTo(DECK_ID);
         assertThat(result.getProfileId()).isEqualTo(INVITEE_ID);
         assertThat(result.getRole()).isEqualTo(DeckCollaboratorRole.EDITOR);
+        verify(eventPublisher)
+                .publishEvent(
+                        new CommunityEvent(Reason.COLLABORATOR_ADDED, OWNER_ID, INVITEE_ID, "10"));
     }
 
     @Test
@@ -97,6 +107,7 @@ class DeckCollaborationServiceTest {
         // Same row updated in place, not a second row created for the same (deck, profile) pair.
         assertThat(result).isSameAs(existing);
         assertThat(result.getRole()).isEqualTo(DeckCollaboratorRole.EDITOR);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -137,6 +148,10 @@ class DeckCollaborationServiceTest {
         service.revoke(DECK_ID, INVITEE_ID);
 
         verify(deckCollaboratorRepository).delete(existing);
+        verify(eventPublisher)
+                .publishEvent(
+                        new CommunityEvent(
+                                Reason.COLLABORATOR_REMOVED, OWNER_ID, INVITEE_ID, "10"));
     }
 
     @Test

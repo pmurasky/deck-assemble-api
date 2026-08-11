@@ -1,9 +1,11 @@
 package com.deckassemble.community.application;
 
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.community.domain.ProfileFollow;
 import com.deckassemble.community.domain.ProfileFollowRepository;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.users.domain.ProfileRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,14 +18,17 @@ public class FollowService {
     private final DeckAccessGuard deckAccessGuard;
     private final ProfileFollowRepository followRepository;
     private final ProfileRepository profileRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public FollowService(
             DeckAccessGuard deckAccessGuard,
             ProfileFollowRepository followRepository,
-            ProfileRepository profileRepository) {
+            ProfileRepository profileRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.deckAccessGuard = deckAccessGuard;
         this.followRepository = followRepository;
         this.profileRepository = profileRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public FollowResult follow(long followeeId) {
@@ -52,7 +57,11 @@ public class FollowService {
     }
 
     private ProfileFollow saveFollow(long followerId, long followeeId) {
-        return followRepository.save(new ProfileFollow(followerId, followeeId));
+        ProfileFollow follow = followRepository.save(new ProfileFollow(followerId, followeeId));
+        eventPublisher.publishEvent(
+                new CommunityEvent(
+                        Reason.NEW_FOLLOWER, followerId, followeeId, String.valueOf(followerId)));
+        return follow;
     }
 
     public record FollowResult(ProfileFollow follow, boolean created) {}

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.community.domain.DeckComment;
 import com.deckassemble.community.domain.DeckCommentRepository;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.publishing.DeckPublishingService;
 import com.deckassemble.decks.domain.Deck;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -34,12 +36,18 @@ class CommentServiceTest {
     @Mock private DeckCommentRepository deckCommentRepository;
     @Mock private DeckPublishingService deckPublishingService;
     @Mock private DeckAccessGuard deckAccessGuard;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private CommentService service;
 
     @BeforeEach
     void setUp() {
-        service = new CommentService(deckCommentRepository, deckPublishingService, deckAccessGuard);
+        service =
+                new CommentService(
+                        deckCommentRepository,
+                        deckPublishingService,
+                        deckAccessGuard,
+                        eventPublisher);
     }
 
     private Deck publishedDeck(long deckId, long ownerId) {
@@ -85,6 +93,7 @@ class CommentServiceTest {
         assertThat(created.getDeckId()).isEqualTo(7L);
         assertThat(created.getProfileId()).isEqualTo(5L);
         assertThat(created.getBody()).isEqualTo("Nice deck!");
+        verify(eventPublisher).publishEvent(new CommunityEvent(Reason.NEW_COMMENT, 5L, 1L, "7"));
     }
 
     @Test

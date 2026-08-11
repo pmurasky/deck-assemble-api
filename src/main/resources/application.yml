@@ -32,6 +32,10 @@ logging:
   level:
     com.deckassemble: INFO
 
+community:
+  notifications:
+    dedupe-window: PT5M
+
 deckassemble:
   scryfall:
     base-url: ${SCRYFALL_BASE_URL:https://api.scryfall.com}

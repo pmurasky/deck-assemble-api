@@ -2,12 +2,14 @@ package com.deckassemble.community.application;
 
 import com.deckassemble.community.domain.DeckFavorite;
 import com.deckassemble.community.domain.DeckFavoriteRepository;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.publishing.DeckPublishingService;
 import com.deckassemble.decks.domain.Deck;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,14 +22,17 @@ public class FavoriteService {
     private final DeckAccessGuard deckAccessGuard;
     private final DeckFavoriteRepository favoriteRepository;
     private final DeckPublishingService deckPublishingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public FavoriteService(
             DeckAccessGuard deckAccessGuard,
             DeckFavoriteRepository favoriteRepository,
-            DeckPublishingService deckPublishingService) {
+            DeckPublishingService deckPublishingService,
+            ApplicationEventPublisher eventPublisher) {
         this.deckAccessGuard = deckAccessGuard;
         this.favoriteRepository = favoriteRepository;
         this.deckPublishingService = deckPublishingService;
+        this.eventPublisher = eventPublisher;
     }
 
     public FavoriteResult favorite(String slug) {
@@ -36,7 +41,7 @@ public class FavoriteService {
         return favoriteRepository
                 .findByProfileIdAndDeckId(profileId, deck.getId())
                 .map(favorite -> new FavoriteResult(favorite, false))
-                .orElseGet(() -> new FavoriteResult(saveFavorite(profileId, deck.getId()), true));
+                .orElseGet(() -> new FavoriteResult(saveFavorite(profileId, deck), true));
     }
 
     public void unfavorite(String slug) {
@@ -63,8 +68,15 @@ public class FavoriteService {
         return new PageImpl<>(items, pageable, page.getTotalElements());
     }
 
-    private DeckFavorite saveFavorite(long profileId, long deckId) {
-        return favoriteRepository.save(new DeckFavorite(profileId, deckId));
+    private DeckFavorite saveFavorite(long profileId, Deck deck) {
+        DeckFavorite favorite = favoriteRepository.save(new DeckFavorite(profileId, deck.getId()));
+        eventPublisher.publishEvent(
+                new CommunityEvent(
+                        Reason.DECK_FAVORITED,
+                        profileId,
+                        deck.getProfileId(),
+                        String.valueOf(deck.getId())));
+        return favorite;
     }
 
     private Map<Long, Long> favoriteCounts(Set<Long> deckIds) {

@@ -1,5 +1,7 @@
 package com.deckassemble.decks.application.publishing;
 
+import com.deckassemble.community.application.CommunityEvent;
+import com.deckassemble.community.domain.Notification.Reason;
 import com.deckassemble.decks.application.DeckCardAddRequest;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckCreateRequest;
@@ -19,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +50,7 @@ public class DeckForkService {
     private final DeckCategoryService deckCategoryService;
     private final DeckTagService deckTagService;
     private final DeckRevisionService deckRevisionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Suppressed: cohesive fork-composition collaborators — gated source resolution, persistence
     // for source attribution, one service per mutation primitive (deck metadata, cards,
@@ -60,7 +64,8 @@ public class DeckForkService {
             DeckCardService deckCardService,
             DeckCategoryService deckCategoryService,
             DeckTagService deckTagService,
-            DeckRevisionService deckRevisionService) {
+            DeckRevisionService deckRevisionService,
+            ApplicationEventPublisher eventPublisher) {
         this.deckPublishingService = deckPublishingService;
         this.deckRepository = deckRepository;
         this.deckService = deckService;
@@ -68,6 +73,7 @@ public class DeckForkService {
         this.deckCategoryService = deckCategoryService;
         this.deckTagService = deckTagService;
         this.deckRevisionService = deckRevisionService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -83,6 +89,12 @@ public class DeckForkService {
         long forkedDeckId = deckRevisionService.withoutRecording(() -> buildFork(snapshot)).id();
         Deck forked = attributeSource(forkedDeckId, sourceDeckId, sourceRevisionNumber);
         deckRevisionService.record(forkedDeckId, forked.getProfileId(), DeckChangeType.FORKED);
+        eventPublisher.publishEvent(
+                new CommunityEvent(
+                        Reason.DECK_FORKED,
+                        forked.getProfileId(),
+                        shared.deck().getProfileId(),
+                        String.valueOf(sourceDeckId)));
         return forked;
     }
 
