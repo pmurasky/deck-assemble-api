@@ -47,23 +47,56 @@ public final class DeckDraftPicker {
     // EnumMap is single-threaded local state; no concurrency needed
     public static List<DeckCandidate> pick(
             List<DeckCandidate> sortedCandidates, int slots, Map<Category, Integer> quotas) {
-        var picked = new ArrayList<DeckCandidate>(slots);
-        var pickedOracles = new HashSet<String>();
-        Map<Category, Integer> filled = new EnumMap<>(Category.class);
-        var curve = new int[CURVE_BUCKET_COUNT];
-        var remaining = new ArrayList<>(sortedCandidates);
-        while (picked.size() < slots && !remaining.isEmpty()) {
-            var best = bestCandidate(remaining, pickedOracles, filled, curve, quotas);
+        var draft = new Draft(slots, sortedCandidates);
+        pickLands(draft, Math.min(slots, quotas.getOrDefault(Category.LAND, 0)), quotas);
+        pickUntil(draft, selectableSlots(draft, slots, quotas), quotas);
+        return draft.picked();
+    }
+
+    private static void pickLands(Draft draft, int landSlots, Map<Category, Integer> quotas) {
+        while (draft.picked().size() < landSlots) {
+            var lands =
+                    draft.remaining().stream()
+                            .filter(candidate -> candidate.roles().contains(Category.LAND))
+                            .toList();
+            var best =
+                    bestCandidate(
+                            lands, draft.pickedOracles(), draft.filled(), draft.curve(), quotas);
             if (best == null) {
-                break;
+                return;
             }
-            picked.add(best);
-            pickedOracles.add(best.card().getScryfallOracleId());
-            filled.merge(bestRole(best, filled, quotas), 1, Integer::sum);
-            recordCurve(best, curve);
-            remaining.remove(best);
+            add(draft, best, quotas);
         }
-        return picked;
+    }
+
+    private static int selectableSlots(Draft draft, int slots, Map<Category, Integer> quotas) {
+        var missingLands =
+                Math.max(0, quotas.getOrDefault(Category.LAND, 0) - draft.picked().size());
+        return slots - Math.min(slots - draft.picked().size(), missingLands);
+    }
+
+    private static void pickUntil(Draft draft, int slots, Map<Category, Integer> quotas) {
+        while (draft.picked().size() < slots && !draft.remaining().isEmpty()) {
+            var best =
+                    bestCandidate(
+                            draft.remaining(),
+                            draft.pickedOracles(),
+                            draft.filled(),
+                            draft.curve(),
+                            quotas);
+            if (best == null) {
+                return;
+            }
+            add(draft, best, quotas);
+        }
+    }
+
+    private static void add(Draft draft, DeckCandidate candidate, Map<Category, Integer> quotas) {
+        draft.picked().add(candidate);
+        draft.pickedOracles().add(candidate.card().getScryfallOracleId());
+        draft.filled().merge(bestRole(candidate, draft.filled(), quotas), 1, Integer::sum);
+        recordCurve(candidate, draft.curve());
+        draft.remaining().remove(candidate);
     }
 
     @Nullable private static DeckCandidate bestCandidate(
@@ -179,5 +212,21 @@ public final class DeckDraftPicker {
         quotas.put(Category.PROTECTION, PROTECTION_QUOTA);
         quotas.put(Category.FINISHER, FINISHER_QUOTA);
         return Collections.unmodifiableMap(quotas);
+    }
+
+    private record Draft(
+            List<DeckCandidate> picked,
+            List<DeckCandidate> remaining,
+            Set<String> pickedOracles,
+            Map<Category, Integer> filled,
+            int[] curve) {
+        private Draft(int slots, List<DeckCandidate> candidates) {
+            this(
+                    new ArrayList<>(slots),
+                    new ArrayList<>(candidates),
+                    new HashSet<>(),
+                    new EnumMap<>(Category.class),
+                    new int[CURVE_BUCKET_COUNT]);
+        }
     }
 }

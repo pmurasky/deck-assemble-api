@@ -27,6 +27,8 @@ import com.deckassemble.recommendations.domain.DeckBuildRepository;
 import com.deckassemble.users.application.ProfileService;
 import com.deckassemble.users.domain.Profile;
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -117,6 +119,40 @@ class DeckBuilderServiceTest {
         assertThat(createCaptor.getValue().useOwnedCardsOnly()).isTrue();
         verify(deckCardService, times(100)).addCard(anyLong(), any(DeckCardAddRequest.class));
         verify(deckBuildRepository).save(any(DeckBuild.class));
+    }
+
+    @Test
+    void shouldReserveBasicLandSlotsWhenMostCandidatesAreSpells() {
+        var commander = commander();
+        var pool = landShortfallPool();
+        var ownedPrintingIds = Set.copyOf(pool.keySet());
+        var island = basicLand("Island");
+        stubUser();
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(ownedPrintingIds);
+        when(cardCatalogService.getCardsByPrintingIds(ownedPrintingIds)).thenReturn(pool);
+        when(edhrecCommanderService.getCardScores(any(), any())).thenReturn(scoresFor(pool));
+        when(cardCategorizer.categorize(any()))
+                .thenAnswer(call -> categoryFor(call.getArgument(0)));
+        when(cardCategorizer.categorizeAll(any()))
+                .thenAnswer(call -> Set.of(categoryFor(call.getArgument(0))));
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(printingIdsFor(pool, island));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckCardService.addCard(anyLong(), any())).thenAnswer(call -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        builderService.build(new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+
+        var captor = ArgumentCaptor.forClass(DeckCardAddRequest.class);
+        verify(deckCardService, times(100)).addCard(anyLong(), captor.capture());
+        assertThat(captor.getAllValues())
+                .filteredOn(request -> request.cardPrintingId().equals(99L))
+                .hasSize(30);
+        assertThat(captor.getAllValues())
+                .extracting(DeckCardAddRequest::cardPrintingId)
+                .containsAll(landShortfallPrintingIds());
     }
 
     @Test
@@ -510,6 +546,41 @@ class DeckBuilderServiceTest {
                 .filter(candidate -> candidate.printingId() == printingId)
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private Map<Long, Card> landShortfallPool() {
+        var pool = new LinkedHashMap<Long, Card>();
+        for (var id = 1_000L; id < 1_006L; id++) {
+            pool.put(id, poolCard(id, "Land " + id));
+        }
+        for (var id = 1_100L; id < 1_193L; id++) {
+            pool.put(id, poolCard(id, "Spell " + id));
+        }
+        return pool;
+    }
+
+    private Map<String, CardScore> scoresFor(Map<Long, Card> pool) {
+        return pool.values().stream()
+                .filter(card -> card.getName().startsWith("Spell"))
+                .collect(
+                        java.util.stream.Collectors.toMap(
+                                Card::getName, card -> new CardScore(0.9, 1_000L)));
+    }
+
+    private static Category categoryFor(Card card) {
+        return card.getName().startsWith("Land") ? Category.LAND : Category.SYNERGY;
+    }
+
+    private Map<Long, Long> printingIdsFor(Map<Long, Card> pool, Card island) {
+        var printingIds = new HashMap<Long, Long>();
+        printingIds.put(COMMANDER_ID, 90L);
+        pool.keySet().forEach(id -> printingIds.put(id, id));
+        printingIds.put(island.getId(), 99L);
+        return printingIds;
+    }
+
+    private Set<Long> landShortfallPrintingIds() {
+        return Set.of(1_000L, 1_001L, 1_002L, 1_003L, 1_004L, 1_005L);
     }
 
     private Card commander() {

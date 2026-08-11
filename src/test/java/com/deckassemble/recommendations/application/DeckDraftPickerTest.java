@@ -45,9 +45,22 @@ class DeckDraftPickerTest {
 
         var picked = DeckDraftPicker.pick(sorted, 60);
 
-        assertThat(picked).hasSize(60);
+        assertThat(picked).hasSize(44);
         assertThat(count(picked, Category.LAND)).isEqualTo(20);
-        assertThat(count(picked, Category.SYNERGY)).isEqualTo(40);
+        assertThat(count(picked, Category.SYNERGY)).isEqualTo(24);
+    }
+
+    @Test
+    void shouldReserveSlotsForBasicLandsWhenCandidateLandsFallShort() {
+        var sorted = new ArrayList<DeckCandidate>();
+        sorted.addAll(candidates(6, Category.LAND, 0.0));
+        sorted.addAll(candidates(93, Category.SYNERGY, 1.0));
+
+        var picked = DeckDraftPicker.pick(sorted, 99);
+
+        assertThat(picked).hasSize(69);
+        assertThat(count(picked, Category.LAND)).isEqualTo(6);
+        assertThat(count(picked, Category.SYNERGY)).isEqualTo(63);
     }
 
     @Test
@@ -76,7 +89,7 @@ class DeckDraftPickerTest {
         sorted.addAll(candidates(9, Category.REMOVAL, 0.9));
         sorted.add(candidate("Draw Spell", Category.DRAW, 0.4));
 
-        var picked = DeckDraftPicker.pick(sorted, 9);
+        var picked = DeckDraftPicker.pick(sorted, 9, quotasWithoutLands());
 
         assertThat(count(picked, Category.REMOVAL)).isEqualTo(8);
         assertThat(count(picked, Category.DRAW)).isEqualTo(1);
@@ -97,7 +110,7 @@ class DeckDraftPickerTest {
         sorted.add(multi);
         sorted.addAll(candidates(9, Category.DRAW));
 
-        var picked = DeckDraftPicker.pick(sorted, 20);
+        var picked = DeckDraftPicker.pick(sorted, 20, quotasWithoutLands());
 
         assertThat(picked).contains(multi);
         assertThat(count(picked, Category.RAMP)).isEqualTo(11);
@@ -113,7 +126,7 @@ class DeckDraftPickerTest {
         var fourDrop = candidateWithMv("Four Drop", 4);
         sorted.add(fourDrop);
 
-        var picked = DeckDraftPicker.pick(sorted, 16);
+        var picked = DeckDraftPicker.pick(sorted, 16, quotasWithoutLands());
 
         assertThat(picked).contains(fourDrop);
         assertThat(count(picked, Category.SYNERGY)).isEqualTo(16);
@@ -125,6 +138,7 @@ class DeckDraftPickerTest {
         sorted.addAll(candidates(10, Category.FINISHER));
         sorted.addAll(candidates(20, Category.SYNERGY));
         var quotas = new EnumMap<Category, Integer>(DeckDraftPicker.QUOTAS);
+        quotas.put(Category.LAND, 0);
         quotas.put(Category.FINISHER, 6);
 
         var picked = DeckDraftPicker.pick(sorted, 20, quotas);
@@ -148,7 +162,7 @@ class DeckDraftPickerTest {
                         new CardScore(0.5, 100L),
                         List.of(contribution));
 
-        var picked = DeckDraftPicker.pick(List.of(candidate), 1);
+        var picked = DeckDraftPicker.pick(List.of(candidate), 1, quotasWithoutLands());
 
         assertThat(picked).hasSize(1);
         assertThat(picked.get(0).contributions()).containsExactly(contribution);
@@ -158,6 +172,12 @@ class DeckDraftPickerTest {
 
     private long count(List<DeckCandidate> picked, Category category) {
         return picked.stream().filter(candidate -> candidate.category() == category).count();
+    }
+
+    private Map<Category, Integer> quotasWithoutLands() {
+        var quotas = new EnumMap<Category, Integer>(DeckDraftPicker.QUOTAS);
+        quotas.put(Category.LAND, 0);
+        return quotas;
     }
 
     private List<DeckCandidate> candidates(int count, Category category) {
