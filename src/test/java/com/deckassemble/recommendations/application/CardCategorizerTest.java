@@ -73,7 +73,9 @@ class CardCategorizerTest {
 
     @Test
     void shouldReturnAllMatchingRolesForMultiPurposeCard() {
-        var roles = categorizer.categorizeAll(card("Creature — Elf Druid", "{T}: Add {G}. Draw a card."));
+        var roles =
+                categorizer.categorizeAll(
+                        card("Creature — Elf Druid", "{T}: Add {G}. Draw a card."));
 
         assertThat(roles).containsExactlyInAnyOrder(Category.RAMP, Category.DRAW);
     }
