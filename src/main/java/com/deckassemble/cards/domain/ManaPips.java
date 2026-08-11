@@ -10,6 +10,8 @@ import org.jspecify.annotations.Nullable;
  */
 public record ManaPips(int w, int u, int b, int r, int g) {
 
+    public static final ManaPips ZERO = new ManaPips(0, 0, 0, 0, 0);
+
     private static final Pattern SYMBOL = Pattern.compile("\\{([^}]*)}");
     private static final int WHITE = 0;
     private static final int BLUE = 1;
@@ -48,5 +50,9 @@ public record ManaPips(int w, int u, int b, int r, int g) {
 
     public int total() {
         return w + u + b + r + g;
+    }
+
+    public ManaPips plus(ManaPips other) {
+        return new ManaPips(w + other.w, u + other.u, b + other.b, r + other.r, g + other.g);
     }
 }

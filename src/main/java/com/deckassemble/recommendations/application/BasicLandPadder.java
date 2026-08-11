@@ -2,17 +2,19 @@ package com.deckassemble.recommendations.application;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.domain.Card;
+import com.deckassemble.cards.domain.ManaPips;
 import com.deckassemble.recommendations.application.CardCategorizer.Category;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
- * Pads a drafted main deck to its target size with basic lands matching the commanders' color
- * identity, recording a gap when no basics are available in the catalog.
+ * Pads a drafted main deck to its target size with basic lands, weighted by the deck's colored pip
+ * demand, recording a gap when no basics are available in the catalog.
  */
 @Service
 public class BasicLandPadder {
@@ -44,11 +46,27 @@ public class BasicLandPadder {
             gaps.add(missing + " slots could not be filled from your collection");
             return cards;
         }
-        var names = new ArrayList<>(basics.keySet());
-        for (var i = 0; i < missing; i++) {
-            cards.add(basics.get(names.get(i % names.size())));
-        }
+        var available =
+                COLOR_ORDER.stream()
+                        .filter(color -> basics.containsKey(COLOR_TO_BASIC.get(color)))
+                        .collect(Collectors.toSet());
+        var allocation = BasicLandAllocation.byPips(available, deckPips(picked), missing);
+        allocation.forEach(
+                (color, count) -> {
+                    var basic = basics.get(COLOR_TO_BASIC.get(color));
+                    for (var i = 0; i < count; i++) {
+                        cards.add(basic);
+                    }
+                });
         return cards;
+    }
+
+    private ManaPips deckPips(List<DeckCandidate> picked) {
+        var total = ManaPips.ZERO;
+        for (var candidate : picked) {
+            total = total.plus(ManaPips.fromManaCost(candidate.card().getManaCost()));
+        }
+        return total;
     }
 
     private Map<String, DeckCandidate> basicLands(Set<String> identity) {
