@@ -85,6 +85,15 @@ class PhysicalCardMetadataServiceTest {
     }
 
     @Test
+    void shouldRejectInvalidCurrency() {
+        stubOwnedCard();
+
+        assertThatThrownBy(() -> service().update(1L, 7L, request(null, BigDecimal.ONE, "US1")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("currency");
+    }
+
+    @Test
     void shouldRejectAnotherUsersLocation() {
         UUID locationId = UUID.randomUUID();
         stubOwnedCard();

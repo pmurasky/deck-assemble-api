@@ -116,6 +116,9 @@ public class PhysicalCardMetadataService {
         if (currency == null) {
             return null;
         }
+        if (!currency.matches("[A-Za-z]{3}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid purchase currency.");
+        }
         return currency.toUpperCase(Locale.ROOT);
     }
 

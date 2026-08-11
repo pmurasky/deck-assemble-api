@@ -11,6 +11,7 @@ import com.deckassemble.collections.application.CollectionAccessGuard;
 import com.deckassemble.collections.domain.physical.CollectionCardPhysicalMetadataRepository;
 import com.deckassemble.collections.domain.physical.StorageLocation;
 import com.deckassemble.collections.domain.physical.StorageLocationRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -68,9 +69,34 @@ class StorageLocationServiceTest {
         when(accessGuard.profileId()).thenReturn(PROFILE_ID);
         when(locationRepository.findByIdAndProfileId(locationId, PROFILE_ID))
                 .thenReturn(Optional.of(location(locationId, null, "Box")));
+        when(locationRepository.findByProfileIdOrderByParentIdAscNameAsc(PROFILE_ID))
+                .thenReturn(List.of(location(locationId, null, "Box")));
         when(metadataRepository.existsByStorageLocationId(locationId)).thenReturn(true);
 
         assertThatThrownBy(() -> service().delete(locationId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("contains cards");
+        verify(locationRepository, never()).delete(any());
+    }
+
+    @Test
+    void shouldRejectDeleteWhenCardsReferenceDescendantLocation() {
+        UUID rootId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        UUID grandchildId = UUID.randomUUID();
+        when(accessGuard.profileId()).thenReturn(PROFILE_ID);
+        when(locationRepository.findByIdAndProfileId(rootId, PROFILE_ID))
+                .thenReturn(Optional.of(location(rootId, null, "Root")));
+        when(locationRepository.findByProfileIdOrderByParentIdAscNameAsc(PROFILE_ID))
+                .thenReturn(
+                        List.of(
+                                location(rootId, null, "Root"),
+                                location(childId, rootId, "Child"),
+                                location(grandchildId, childId, "Grandchild")));
+        when(metadataRepository.existsByStorageLocationId(any()))
+                .thenAnswer(inv -> inv.getArgument(0).equals(grandchildId));
+
+        assertThatThrownBy(() -> service().delete(rootId))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("contains cards");
         verify(locationRepository, never()).delete(any());

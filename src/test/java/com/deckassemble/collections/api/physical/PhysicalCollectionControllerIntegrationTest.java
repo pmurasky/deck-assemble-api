@@ -59,10 +59,10 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
     }
 
     @Test
-    void shouldRejectInvalidEnumsAndPriceCurrency() throws Exception {
-        String subject = "auth0|physical-validation";
+    void shouldRejectInvalidConditionEnum() throws Exception {
+        String subject = "auth0|physical-invalid-enum";
         long collectionId = createCollection(subject);
-        long collectionCardId = addCard(subject, collectionId, createPrinting("validation"));
+        long collectionCardId = addCard(subject, collectionId, createPrinting("bad-enum"));
 
         mockMvc.perform(
                         patch(
@@ -71,7 +71,41 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
                                         collectionCardId)
                                 .with(jwt().jwt(jwt -> jwt.subject(subject)))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(metadata(null, "MINTY", "1.999", "US")))
+                                .content(metadata(null, "MINTY", "1.00", "USD")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidPriceScale() throws Exception {
+        String subject = "auth0|physical-invalid-price";
+        long collectionId = createCollection(subject);
+        long collectionCardId = addCard(subject, collectionId, createPrinting("bad-price"));
+
+        mockMvc.perform(
+                        patch(
+                                        "/collections/{collectionId}/cards/{cardId}/physical",
+                                        collectionId,
+                                        collectionCardId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(metadata(null, "NEAR_MINT", "1.999", "USD")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectInvalidCurrency() throws Exception {
+        String subject = "auth0|physical-invalid-currency";
+        long collectionId = createCollection(subject);
+        long collectionCardId = addCard(subject, collectionId, createPrinting("bad-cur"));
+
+        mockMvc.perform(
+                        patch(
+                                        "/collections/{collectionId}/cards/{cardId}/physical",
+                                        collectionId,
+                                        collectionCardId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(metadata(null, "NEAR_MINT", "1.00", "US1")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -104,6 +138,7 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
         long collectionCardId = addCard(subject, collectionId, createPrinting("tree"));
         String rootId = createLocation(subject, "Root", null);
         String childId = createLocation(subject, "Child", rootId);
+        String grandchildId = createLocation(subject, "Grandchild", childId);
 
         mockMvc.perform(
                         patch("/collection-locations/{id}", rootId)
@@ -119,7 +154,7 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
                                         collectionCardId)
                                 .with(jwt().jwt(jwt -> jwt.subject(subject)))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(metadata(rootId, "LIGHTLY_PLAYED", "2.00", "EUR")))
+                                .content(metadata(grandchildId, "LIGHTLY_PLAYED", "2.00", "EUR")))
                 .andExpect(status().isOk());
         mockMvc.perform(
                         delete("/collection-locations/{id}", rootId)

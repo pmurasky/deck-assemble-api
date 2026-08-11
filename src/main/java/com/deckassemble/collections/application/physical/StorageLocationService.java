@@ -4,7 +4,11 @@ import com.deckassemble.collections.application.CollectionAccessGuard;
 import com.deckassemble.collections.domain.physical.CollectionCardPhysicalMetadataRepository;
 import com.deckassemble.collections.domain.physical.StorageLocation;
 import com.deckassemble.collections.domain.physical.StorageLocationRepository;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -48,11 +52,34 @@ public class StorageLocationService {
     }
 
     public void delete(UUID id) {
-        StorageLocation location = owned(id, profileId());
-        if (metadataRepository.existsByStorageLocationId(id)) {
+        long profileId = profileId();
+        StorageLocation location = owned(id, profileId);
+        if (containsCardsInSubtree(id, profileId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Location contains cards.");
         }
         locationRepository.delete(location);
+    }
+
+    private boolean containsCardsInSubtree(UUID rootId, long profileId) {
+        Set<UUID> subtree = subtreeIds(rootId, profileId);
+        return subtree.stream().anyMatch(metadataRepository::existsByStorageLocationId);
+    }
+
+    private Set<UUID> subtreeIds(UUID rootId, long profileId) {
+        List<StorageLocation> locations =
+                locationRepository.findByProfileIdOrderByParentIdAscNameAsc(profileId);
+        Set<UUID> subtree = new HashSet<>();
+        Queue<UUID> queue = new ArrayDeque<>();
+        queue.add(rootId);
+        while (!queue.isEmpty()) {
+            UUID current = queue.remove();
+            subtree.add(current);
+            locations.stream()
+                    .filter(location -> current.equals(location.getParentId()))
+                    .map(StorageLocation::getId)
+                    .forEach(queue::add);
+        }
+        return subtree;
     }
 
     private StorageLocation owned(UUID id, long profileId) {
