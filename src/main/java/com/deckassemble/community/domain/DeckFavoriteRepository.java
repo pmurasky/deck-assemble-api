@@ -23,6 +23,18 @@ public interface DeckFavoriteRepository extends JpaRepository<DeckFavorite, UUID
 
     Page<DeckFavorite> findByProfileIdOrderByCreatedAtDesc(Long profileId, Pageable pageable);
 
+    @Query(
+            """
+            select deck
+            from DeckFavorite favorite, Deck deck
+            where favorite.profileId = :profileId
+              and favorite.deckId = deck.id
+              and deck.visibility <> com.deckassemble.decks.domain.publishing.DeckVisibility.PRIVATE
+            order by favorite.createdAt desc, favorite.id asc
+            """)
+    Page<com.deckassemble.decks.domain.Deck> findVisibleFavoriteDecks(
+            Long profileId, Pageable pageable);
+
     List<DeckFavorite> findByDeckId(Long deckId);
 
     Optional<DeckFavorite> findByProfileIdAndDeckId(Long profileId, Long deckId);

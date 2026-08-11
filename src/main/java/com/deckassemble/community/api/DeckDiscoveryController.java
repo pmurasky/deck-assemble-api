@@ -1,6 +1,7 @@
 package com.deckassemble.community.api;
 
 import com.deckassemble.community.application.DeckDiscoveryService;
+import com.deckassemble.decks.application.DeckAccessGuard;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,9 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeckDiscoveryController {
 
     private final DeckDiscoveryService deckDiscoveryService;
+    private final DeckAccessGuard deckAccessGuard;
 
-    public DeckDiscoveryController(DeckDiscoveryService deckDiscoveryService) {
+    public DeckDiscoveryController(
+            DeckDiscoveryService deckDiscoveryService, DeckAccessGuard deckAccessGuard) {
         this.deckDiscoveryService = deckDiscoveryService;
+        this.deckAccessGuard = deckAccessGuard;
     }
 
     @GetMapping("/community/decks")
@@ -31,5 +35,11 @@ public class DeckDiscoveryController {
                                 query.getUpdatedBefore(),
                                 query.getFavorited()),
                         pageable));
+    }
+
+    @GetMapping("/community/feed")
+    public DeckDiscoveryResponse feed(@PageableDefault(size = 20) Pageable pageable) {
+        return DeckDiscoveryResponse.from(
+                deckDiscoveryService.feed(deckAccessGuard.profileId(), pageable));
     }
 }

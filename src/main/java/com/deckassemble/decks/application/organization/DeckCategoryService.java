@@ -110,7 +110,8 @@ public class DeckCategoryService {
         assertNameAvailable(deckId, name);
         int order = (int) deckCategoryRepository.countByDeckId(deckId);
         DeckCategory saved =
-                deckCategoryRepository.save(new DeckCategory(deckId, name, order, false));
+                deckCategoryRepository.save(
+                        new DeckCategory(deckId, deck.getProfileId(), name, order, false));
         recordChange(deck);
         return viewOf(saved, List.of(), currentRevisionNumber(deckId));
     }
@@ -218,7 +219,12 @@ public class DeckCategoryService {
         int order = 0;
         for (CardFunctionalCategory functionalCategory : CardFunctionalCategory.values()) {
             DeckCategory category =
-                    new DeckCategory(deckId, displayName(functionalCategory), order++, true);
+                    new DeckCategory(
+                            deckId,
+                            deck.getProfileId(),
+                            displayName(functionalCategory),
+                            order++,
+                            true);
             category.setFunctionalCategory(functionalCategory);
             deckCategoryRepository.save(category);
         }

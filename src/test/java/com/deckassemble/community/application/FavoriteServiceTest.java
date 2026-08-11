@@ -9,9 +9,7 @@ import com.deckassemble.community.domain.DeckFavorite;
 import com.deckassemble.community.domain.DeckFavoriteRepository;
 import com.deckassemble.decks.application.DeckAccessGuard;
 import com.deckassemble.decks.application.publishing.DeckPublishingService;
-import com.deckassemble.decks.application.publishing.DeckVisibilityPolicy;
 import com.deckassemble.decks.domain.Deck;
-import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.publishing.DeckVisibility;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,19 +25,12 @@ class FavoriteServiceTest {
     @Mock private DeckAccessGuard deckAccessGuard;
     @Mock private DeckFavoriteRepository favoriteRepository;
     @Mock private DeckPublishingService deckPublishingService;
-    @Mock private DeckRepository deckRepository;
 
     private FavoriteService service;
 
     @BeforeEach
     void setUp() {
-        service =
-                new FavoriteService(
-                        deckAccessGuard,
-                        favoriteRepository,
-                        deckPublishingService,
-                        deckRepository,
-                        new DeckVisibilityPolicy());
+        service = new FavoriteService(deckAccessGuard, favoriteRepository, deckPublishingService);
     }
 
     @Test

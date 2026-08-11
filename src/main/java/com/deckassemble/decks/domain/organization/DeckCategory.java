@@ -36,6 +36,9 @@ public class DeckCategory {
     @Column(name = "deck_id", nullable = false)
     private Long deckId;
 
+    @Column(name = "profile_id", nullable = false)
+    private Long profileId;
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -67,8 +70,10 @@ public class DeckCategory {
 
     protected DeckCategory() {}
 
-    public DeckCategory(Long deckId, String name, int displayOrder, boolean systemOwned) {
+    public DeckCategory(
+            Long deckId, Long profileId, String name, int displayOrder, boolean systemOwned) {
         this.deckId = deckId;
+        this.profileId = profileId;
         this.name = name;
         this.displayOrder = displayOrder;
         this.systemOwned = systemOwned;
@@ -80,6 +85,10 @@ public class DeckCategory {
 
     public Long getDeckId() {
         return deckId;
+    }
+
+    public Long getProfileId() {
+        return profileId;
     }
 
     public String getName() {

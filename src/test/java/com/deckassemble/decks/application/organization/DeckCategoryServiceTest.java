@@ -381,7 +381,7 @@ class DeckCategoryServiceTest {
     }
 
     private DeckCategory existingCategory(long id, String name, int order, boolean systemOwned) {
-        DeckCategory category = new DeckCategory(DECK_ID, name, order, systemOwned);
+        DeckCategory category = new DeckCategory(DECK_ID, PROFILE_ID, name, order, systemOwned);
         ReflectionTestUtils.setField(category, "id", id);
         return category;
     }

@@ -113,7 +113,7 @@ class DeckSnapshotBuilderTest {
     }
 
     private static DeckCategory category(String name, int order) {
-        return new DeckCategory(DECK_ID, name, order, false);
+        return new DeckCategory(DECK_ID, PROFILE_ID, name, order, false);
     }
 
     private static DeckTag tag(long id, String name) {

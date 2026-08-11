@@ -14,6 +14,8 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
+import com.deckassemble.decks.domain.organization.DeckCategory;
+import com.deckassemble.decks.domain.organization.DeckCategoryRepository;
 import com.deckassemble.decks.domain.organization.DeckTag;
 import com.deckassemble.decks.domain.organization.DeckTagAssignment;
 import com.deckassemble.decks.domain.organization.DeckTagAssignmentRepository;
@@ -22,6 +24,7 @@ import com.deckassemble.decks.domain.publishing.DeckVisibility;
 import com.deckassemble.users.domain.Profile;
 import com.deckassemble.users.domain.ProfileRepository;
 import jakarta.persistence.EntityManagerFactory;
+import java.time.Instant;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.hibernate.SessionFactory;
@@ -39,6 +42,7 @@ class CommunityDiscoveryControllerIntegrationTest extends AbstractIntegrationTes
     @Autowired private DeckRepository deckRepository;
     @Autowired private ProfileRepository profileRepository;
     @Autowired private CardRepository cardRepository;
+    @Autowired private DeckCategoryRepository categoryRepository;
     @Autowired private DeckTagRepository tagRepository;
     @Autowired private DeckTagAssignmentRepository tagAssignmentRepository;
     @Autowired private EntityManagerFactory entityManagerFactory;
@@ -98,6 +102,74 @@ class CommunityDiscoveryControllerIntegrationTest extends AbstractIntegrationTes
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].deckId").value(deck.getId()));
+    }
+
+    @Test
+    void shouldRejectTagAndCategoryAssignmentsOwnedByAnotherProfile() throws Exception {
+        Profile owner = profile("auth|owner-scope-owner");
+        Profile otherOwner = profile("auth|owner-scope-other-owner");
+        Deck deck = deck(owner, "Owner Scoped", DeckVisibility.PUBLIC);
+        DeckTag otherTag = tagRepository.saveAndFlush(new DeckTag(otherOwner.getId(), "Rogue"));
+        tagAssignmentRepository.saveAndFlush(new DeckTagAssignment(deck.getId(), otherTag.getId()));
+        categoryRepository.saveAndFlush(
+                new DeckCategory(deck.getId(), otherOwner.getId(), "Rogue", 0, false));
+
+        mockMvc.perform(get("/community/decks").param("tags", "rogue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+        mockMvc.perform(get("/community/decks").param("category", "rogue"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
+    void shouldPageFavoritesAfterFilteringPrivateDecks() throws Exception {
+        String owner = "auth|favorite-page-owner";
+        String viewer = "auth|favorite-page-viewer";
+        long visibleDeckId = createDeck(owner, "Visible Favorite");
+        long staleDeckId = createDeck(owner, "Stale Favorite");
+        String visibleSlug = publish(owner, visibleDeckId, DeckVisibility.PUBLIC);
+        String staleSlug = publish(owner, staleDeckId, DeckVisibility.PUBLIC);
+
+        favorite(viewer, visibleSlug);
+        favorite(viewer, staleSlug);
+        publish(owner, staleDeckId, DeckVisibility.PRIVATE);
+
+        mockMvc.perform(
+                        get("/community/favorites")
+                                .with(jwt().jwt(jwt -> jwt.subject(viewer)))
+                                .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].deckId").value(visibleDeckId))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldListFollowedPublicDecksNewestPublishedFirst() throws Exception {
+        Profile followee = profile("auth|feed-followee");
+        Profile outsider = profile("auth|feed-outsider");
+        Deck older = deck(followee, "Older", DeckVisibility.PUBLIC);
+        older.setPublishedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        Deck newer = deck(followee, "Newer", DeckVisibility.PUBLIC);
+        newer.setPublishedAt(Instant.parse("2026-01-02T00:00:00Z"));
+        Deck hidden = deck(followee, "Hidden", DeckVisibility.UNLISTED);
+        hidden.setPublishedAt(Instant.parse("2026-01-03T00:00:00Z"));
+        Deck notFollowed = deck(outsider, "Outsider", DeckVisibility.PUBLIC);
+        notFollowed.setPublishedAt(Instant.parse("2026-01-04T00:00:00Z"));
+        deckRepository.saveAllAndFlush(java.util.List.of(older, newer, hidden, notFollowed));
+        String follower = "auth|feed-follower";
+
+        mockMvc.perform(
+                        post("/community/profiles/{profileId}/follow", followee.getId())
+                                .with(jwt().jwt(jwt -> jwt.subject(follower))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/community/feed").with(jwt().jwt(jwt -> jwt.subject(follower))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].deckId").value(newer.getId()))
+                .andExpect(jsonPath("$.content[1].deckId").value(older.getId()));
     }
 
     @Test
@@ -192,6 +264,13 @@ class CommunityDiscoveryControllerIntegrationTest extends AbstractIntegrationTes
                         .matcher(result.getResponse().getContentAsString());
         assertThat(matcher.find()).isTrue();
         return matcher.group(1);
+    }
+
+    private void favorite(String subject, String slug) throws Exception {
+        mockMvc.perform(
+                        post("/shared/decks/{slug}/favorite", slug)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isCreated());
     }
 
     @SuppressWarnings("unused")

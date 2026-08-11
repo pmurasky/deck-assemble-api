@@ -4,6 +4,7 @@ import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.community.domain.DeckFavorite;
 import com.deckassemble.community.domain.DeckFavoriteRepository;
+import com.deckassemble.community.domain.ProfileFollow;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.decks.domain.organization.DeckCategory;
@@ -75,6 +76,12 @@ public class DeckDiscoveryService {
         Long viewerProfileId = viewerProfileId();
         Page<Deck> page =
                 deckRepository.findAll(spec(query, viewerProfileId), safePageable(pageable));
+        Decorations decorations = decorations(page, viewerProfileId);
+        return page.map(deck -> item(deck, decorations));
+    }
+
+    public Page<Item> feed(long viewerProfileId, Pageable pageable) {
+        Page<Deck> page = deckRepository.findAll(feedSpec(viewerProfileId), feedPageable(pageable));
         Decorations decorations = decorations(page, viewerProfileId);
         return page.map(deck -> item(deck, decorations));
     }
@@ -188,6 +195,7 @@ public class DeckDiscoveryService {
             subquery.select(deckCategory.get("id"));
             subquery.where(
                     builder.equal(deckCategory.get("deckId"), root.get("id")),
+                    builder.equal(deckCategory.get("profileId"), root.get("profileId")),
                     builder.equal(
                             builder.lower(deckCategory.get("name")),
                             name.toLowerCase(Locale.ROOT)));
@@ -237,6 +245,19 @@ public class DeckDiscoveryService {
         };
     }
 
+    private Specification<Deck> feedSpec(long viewerProfileId) {
+        return publicPublished()
+                .and(
+                        (root, criteria, builder) -> {
+                            Subquery<Long> subquery = criteria.subquery(Long.class);
+                            Root<ProfileFollow> follow = subquery.from(ProfileFollow.class);
+                            subquery.select(follow.get("followeeId"));
+                            subquery.where(
+                                    builder.equal(follow.get("followerId"), viewerProfileId));
+                            return root.get("profileId").in(subquery);
+                        });
+    }
+
     private Specification<Deck> impossible() {
         return (root, criteria, builder) -> builder.disjunction();
     }
@@ -251,6 +272,13 @@ public class DeckDiscoveryService {
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 sort.and(Sort.by("id").ascending()));
+    }
+
+    private Pageable feedPageable(Pageable pageable) {
+        return PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.asc("id")));
     }
 
     private Sort translateSort(Sort requested) {
