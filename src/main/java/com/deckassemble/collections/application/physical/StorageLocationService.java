@@ -73,10 +73,13 @@ public class StorageLocationService {
         queue.add(rootId);
         while (!queue.isEmpty()) {
             UUID current = queue.remove();
-            subtree.add(current);
+            if (!subtree.add(current)) {
+                continue;
+            }
             locations.stream()
                     .filter(location -> current.equals(location.getParentId()))
                     .map(StorageLocation::getId)
+                    .filter(id -> !subtree.contains(id))
                     .forEach(queue::add);
         }
         return subtree;

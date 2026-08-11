@@ -15,6 +15,9 @@ import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.MagicSet;
 import com.deckassemble.cards.domain.MagicSetRepository;
+import com.deckassemble.collections.domain.physical.StorageLocation;
+import com.deckassemble.collections.domain.physical.StorageLocationRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -27,6 +30,7 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
     @Autowired private CardRepository cardRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository cardPrintingRepository;
+    @Autowired private StorageLocationRepository storageLocationRepository;
 
     @Test
     void shouldManageLocationsAndPhysicalMetadataForOwner() throws Exception {
@@ -156,6 +160,35 @@ class PhysicalCollectionControllerIntegrationTest extends AbstractIntegrationTes
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(metadata(grandchildId, "LIGHTLY_PLAYED", "2.00", "EUR")))
                 .andExpect(status().isOk());
+        mockMvc.perform(
+                        delete("/collection-locations/{id}", rootId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldRejectDeletingCyclicLocationSubtreeWithCards() throws Exception {
+        String subject = "auth0|physical-cyclic-delete";
+        long collectionId = createCollection(subject);
+        long collectionCardId = addCard(subject, collectionId, createPrinting("cycle"));
+        String rootId = createLocation(subject, "Cycle Root", null);
+        String childId = createLocation(subject, "Cycle Child", rootId);
+
+        StorageLocation root =
+                storageLocationRepository.findById(UUID.fromString(rootId)).orElseThrow();
+        root.update("Cycle Root", UUID.fromString(childId));
+        storageLocationRepository.saveAndFlush(root);
+
+        mockMvc.perform(
+                        patch(
+                                        "/collections/{collectionId}/cards/{cardId}/physical",
+                                        collectionId,
+                                        collectionCardId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(metadata(childId, "LIGHTLY_PLAYED", "2.00", "EUR")))
+                .andExpect(status().isOk());
+
         mockMvc.perform(
                         delete("/collection-locations/{id}", rootId)
                                 .with(jwt().jwt(jwt -> jwt.subject(subject))))
