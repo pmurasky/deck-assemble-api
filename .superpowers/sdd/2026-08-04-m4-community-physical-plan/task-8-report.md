@@ -111,6 +111,33 @@ BUILD SUCCESSFUL in 1m 18s
 GRADLE_CHECK_EXIT_CODE=0
 ```
 
+## Re-review Round 3 Fix: Harness Failure Cleanup
+
+### What changed
+
+- Wrapped the deterministic race-harness assertion sequence in `try/finally`, so `allowAProceed` is always released even if the negative blocking assertion or setup awaits fail.
+- Replaced the unbounded `CountDownLatch` helper with a bounded 30-second await that names the stalled latch in the assertion message.
+- Kept the approved proof sequence unchanged: A completes the locked read and parks, B enters the locked read, B completion must time out while A holds the lock, A proceeds, B completes and conflicts.
+- Kept the executor in try-with-resources, so failed assertions still close the pool after the finally releases A.
+
+### Covering test files
+
+- `src/test/java/com/deckassemble/collections/application/physical/PhysicalCardAllocationServiceTest.java`
+- `src/test/java/com/deckassemble/collections/api/physical/PhysicalCardAllocationControllerIntegrationTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckOwnershipServiceTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckServiceTest.java`
+
+### Commands and exit-code evidence
+
+```text
+rtk gradlew test --tests '*Allocation*' --tests '*Ownership*' --tests '*DeckService*'
+COVERING_TEST_EXIT_CODE=0
+
+rtk gradlew check
+BUILD SUCCESSFUL in 1m 14s
+GRADLE_CHECK_EXIT_CODE=0
+```
+
 ## Re-review Round 2 Fix: Sleep-free Lock Blocking Harness
 
 ### What changed

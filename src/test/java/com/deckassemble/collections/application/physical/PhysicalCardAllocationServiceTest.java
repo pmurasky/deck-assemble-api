@@ -30,6 +30,7 @@ import com.deckassemble.users.domain.ProfileRepository;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -151,21 +152,26 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
                                 authenticate(fixture.subject());
                                 return tryAllocate(fixture.deckId(), fixture.deckCardId());
                             });
-            await(latches.aReadCompleted());
+            Future<String> second = null;
+            try {
+                await(latches.aReadCompleted(), "A locked read completed");
 
-            var second =
-                    pool.submit(
-                            () -> {
-                                authenticate(fixture.subject());
-                                return tryAllocate(competingDeckId, competingDeckCardId);
-                            });
-            await(latches.bReadEntered());
-            assertThat(latches.bReadCompleted().await(200, TimeUnit.MILLISECONDS)).isFalse();
-
-            latches.allowAProceed().countDown();
+                second =
+                        pool.submit(
+                                () -> {
+                                    authenticate(fixture.subject());
+                                    return tryAllocate(competingDeckId, competingDeckCardId);
+                                });
+                await(latches.bReadEntered(), "B locked read entered");
+                assertThat(latches.bReadCompleted().await(200, TimeUnit.MILLISECONDS))
+                        .as("B locked read must stay blocked while A holds the row lock")
+                        .isFalse();
+            } finally {
+                latches.allowAProceed().countDown();
+            }
 
             assertThat(await(first)).isEqualTo("allocated");
-            await(latches.bReadCompleted());
+            await(latches.bReadCompleted(), "B locked read completed");
             assertThat(await(second)).isEqualTo("conflict");
         }
 
@@ -237,7 +243,7 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
                             Object result = invocation.callRealMethod();
                             completedLatch(latches, call).countDown();
                             if (call == 1) {
-                                latches.allowAProceed().await();
+                                await(latches.allowAProceed(), "allow A proceed");
                             }
                             return result;
                         })
@@ -253,9 +259,9 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
         return call == 1 ? latches.aReadCompleted() : latches.bReadCompleted();
     }
 
-    private void await(CountDownLatch latch) {
+    private void await(CountDownLatch latch, String name) {
         try {
-            latch.await();
+            assertThat(latch.await(30, TimeUnit.SECONDS)).as(name).isTrue();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new AssertionError(exception);
