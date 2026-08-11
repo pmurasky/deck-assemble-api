@@ -3,6 +3,8 @@ package com.deckassemble.collections.application.physical;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.web.server.ResponseStatusException;
 
 class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
@@ -53,6 +57,7 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
     @Autowired private CardRepository cardRepository;
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository printingRepository;
+    @MockitoSpyBean private PhysicalCardInventory inventory;
 
     @AfterEach
     void clearSecurityContext() {
@@ -79,6 +84,14 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
 
         assertThat(result.collectionCardPrintingId()).isEqualTo(fixture.alternatePrintingId());
         assertThat(result.exactPrinting()).isFalse();
+        assertThat(result.allocations())
+                .singleElement()
+                .satisfies(
+                        part -> {
+                            assertThat(part.collectionCardPrintingId())
+                                    .isEqualTo(fixture.alternatePrintingId());
+                            assertThat(part.quantity()).isEqualTo(1);
+                        });
     }
 
     @Test
@@ -88,7 +101,15 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
         addCollectionCard(fixture.collectionId(), fixture.alternatePrintingId(), 1);
         authenticate(fixture.subject());
 
-        allocationService.allocate(fixture.deckId(), request(fixture.deckCardId(), 2));
+        var result = allocationService.allocate(fixture.deckId(), request(fixture.deckCardId(), 2));
+
+        assertThat(result.quantity()).isEqualTo(2);
+        assertThat(result.collectionCardId()).isNull();
+        assertThat(result.allocations())
+                .extracting("collectionCardPrintingId", "quantity", "exactPrinting")
+                .containsExactly(
+                        tuple(fixture.exactPrintingId(), 1, true),
+                        tuple(fixture.alternatePrintingId(), 1, false));
 
         assertThat(allocationRepository.findByDeckIdOrderById(fixture.deckId()))
                 .extracting(
@@ -169,6 +190,40 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldBlockSecondAllocationAtLockedReadUntilFirstTransactionFinishes() throws Exception {
+        Fixture fixture = fixture("blocked-race", 1, true, false);
+        long competingDeckId = createDeck(fixture.profileId(), "Competing Deck");
+        long competingDeckCardId = addDeckCard(competingDeckId, fixture.exactPrintingId(), 1);
+        var firstLockedRead = new CountDownLatch(1);
+        var releaseFirst = new CountDownLatch(1);
+        var lockedReads = new AtomicInteger();
+        pauseFirstLockedRead(firstLockedRead, releaseFirst, lockedReads);
+
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first =
+                    pool.submit(
+                            () -> {
+                                authenticate(fixture.subject());
+                                return tryAllocate(fixture.deckId(), fixture.deckCardId());
+                            });
+            assertThat(firstLockedRead.await(5, TimeUnit.SECONDS)).isTrue();
+
+            var second =
+                    pool.submit(
+                            () -> {
+                                authenticate(fixture.subject());
+                                return tryAllocate(competingDeckId, competingDeckCardId);
+                            });
+            TimeUnit.MILLISECONDS.sleep(300);
+            assertThat(lockedReads).hasValue(1);
+
+            releaseFirst.countDown();
+            assertThat(List.of(await(first), await(second)))
+                    .containsExactlyInAnyOrder("allocated", "conflict");
+        }
+    }
+
+    @Test
     void shouldReleaseAllocationsWhenDeckIsDeleted() {
         Fixture fixture = fixture("delete", 1, true, false);
         authenticate(fixture.subject());
@@ -217,6 +272,23 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
         } catch (ResponseStatusException exception) {
             return exception.getStatusCode().equals(HttpStatus.CONFLICT) ? "conflict" : "error";
         }
+    }
+
+    private void pauseFirstLockedRead(
+            CountDownLatch firstLockedRead,
+            CountDownLatch releaseFirst,
+            AtomicInteger lockedReads) {
+        doAnswer(
+                        invocation -> {
+                            Object result = invocation.callRealMethod();
+                            if (lockedReads.incrementAndGet() == 1) {
+                                firstLockedRead.countDown();
+                                assertThat(releaseFirst.await(5, TimeUnit.SECONDS)).isTrue();
+                            }
+                            return result;
+                        })
+                .when(inventory)
+                .lockedCards(any());
     }
 
     private String await(java.util.concurrent.Future<String> future) {

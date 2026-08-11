@@ -48,7 +48,7 @@ public class PhysicalCardAllocationService {
                 PhysicalCardAllocationPlanner.plan(
                         cards, allocated, command.collectionCardId(), quantity);
         assertDeckCardCapacity(deckCard, quantity, null);
-        return allocationViews.forAllocation(saveAllocations(deckId, deckCard, slices).getFirst());
+        return allocationViews.forAllocations(saveAllocations(deckId, deckCard, slices));
     }
 
     @Transactional(readOnly = true)
@@ -218,5 +218,13 @@ public class PhysicalCardAllocationService {
             int allocatedQuantity,
             int availableQuantity,
             int missingQuantity,
+            boolean exactPrinting,
+            List<AllocationPartView> allocations) {}
+
+    public record AllocationPartView(
+            Long id,
+            Long collectionCardId,
+            Long collectionCardPrintingId,
+            int quantity,
             boolean exactPrinting) {}
 }

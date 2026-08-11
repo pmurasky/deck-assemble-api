@@ -111,6 +111,33 @@ BUILD SUCCESSFUL in 1m 18s
 GRADLE_CHECK_EXIT_CODE=0
 ```
 
+## Re-review Fix: Complete Split Response and Lock-Window Proof
+
+### What changed
+
+- Fixed split allocation responses: default allocation now returns an aggregate `AllocationView` with the total requested quantity and an additive `allocations` slice list. Single-row responses keep the existing top-level fields; multi-row responses set ambiguous top-level collection-card fields to `null` and expose exact/alternate slice details in `allocations`.
+- Added additive API response field `allocations`, containing allocation id, collection card id, collection-card printing id, quantity, and exact-printing flag for each persisted slice.
+- Added `PhysicalCardAllocationServiceTest.shouldAllocateAcrossExactAndAlternatePrintingsExactFirst` assertions for both persisted rows and aggregate response content: quantity 2, top-level collection row null, exact slice first, alternate slice second.
+- Added `shouldBlockSecondAllocationAtLockedReadUntilFirstTransactionFinishes`: a Mockito spy pauses the first transaction immediately after `PhysicalCardInventory.lockedCards(...)` returns from the real locked repository query. The second transaction starts while the first is paused; the test asserts the second cannot complete its locked read (`lockedReads` remains 1) until the first transaction is released. Removing the pessimistic lock lets the second pass that point and fails this assertion.
+
+### Covering test files
+
+- `src/test/java/com/deckassemble/collections/application/physical/PhysicalCardAllocationServiceTest.java`
+- `src/test/java/com/deckassemble/collections/api/physical/PhysicalCardAllocationControllerIntegrationTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckOwnershipServiceTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckServiceTest.java`
+
+### Commands and exit-code evidence
+
+```text
+rtk gradlew test --tests '*Allocation*' --tests '*Ownership*' --tests '*DeckService*'
+COVERING_TEST_EXIT_CODE=0
+
+rtk gradlew check
+BUILD SUCCESSFUL in 1m 28s
+GRADLE_CHECK_EXIT_CODE=0
+```
+
 ## Reviewer Findings Fix
 
 ### What changed

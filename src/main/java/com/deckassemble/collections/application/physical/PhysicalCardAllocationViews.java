@@ -1,6 +1,7 @@
 package com.deckassemble.collections.application.physical;
 
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
+import com.deckassemble.collections.application.physical.PhysicalCardAllocationService.AllocationPartView;
 import com.deckassemble.collections.application.physical.PhysicalCardAllocationService.AllocationView;
 import com.deckassemble.collections.application.physical.PhysicalCardAllocationService.CardAvailability;
 import com.deckassemble.collections.application.physical.PhysicalDeckLookup.DeckCardView;
@@ -37,6 +38,39 @@ public class PhysicalCardAllocationViews {
         return allocationView(allocation, deckCard, card, allocated);
     }
 
+    public AllocationView forAllocations(List<PhysicalCardAllocation> allocations) {
+        if (allocations.size() == 1) {
+            return forAllocation(allocations.getFirst());
+        }
+        List<AllocationView> views = allocations.stream().map(this::forAllocation).toList();
+        return aggregateView(views);
+    }
+
+    private AllocationView aggregateView(List<AllocationView> views) {
+        AllocationView first = views.getFirst();
+        int quantity = sum(views, AllocationView::quantity);
+        return new AllocationView(
+                first.id(),
+                first.deckId(),
+                first.deckCardId(),
+                first.deckCardPrintingId(),
+                null,
+                null,
+                first.deckQuantity(),
+                quantity,
+                sum(views, AllocationView::ownedQuantity),
+                sum(views, AllocationView::allocatedQuantity),
+                sum(views, AllocationView::availableQuantity),
+                Math.max(0, first.deckQuantity() - quantity),
+                views.stream().allMatch(AllocationView::exactPrinting),
+                views.stream().flatMap(view -> view.allocations().stream()).toList());
+    }
+
+    private int sum(
+            List<AllocationView> views, java.util.function.ToIntFunction<AllocationView> mapper) {
+        return views.stream().mapToInt(mapper).sum();
+    }
+
     public AllocationView unavailable(long deckId, CardAvailability availability) {
         return new AllocationView(
                 null,
@@ -51,7 +85,8 @@ public class PhysicalCardAllocationViews {
                 availability.allocatedQuantity(),
                 availability.availableQuantity(),
                 availability.missingQuantity(),
-                false);
+                false,
+                List.of());
     }
 
     private AllocationView allocationView(
@@ -73,6 +108,17 @@ public class PhysicalCardAllocationViews {
                 allocated,
                 owned - allocated,
                 Math.max(0, deckCard.quantity() - allocation.getQuantity()),
+                deckCard.cardPrintingId() == card.getCardPrintingId(),
+                List.of(part(allocation, card, deckCard)));
+    }
+
+    private AllocationPartView part(
+            PhysicalCardAllocation allocation, CollectionCard card, DeckCardView deckCard) {
+        return new AllocationPartView(
+                allocation.getId(),
+                allocation.getCollectionCardId(),
+                card.getCardPrintingId(),
+                allocation.getQuantity(),
                 deckCard.cardPrintingId() == card.getCardPrintingId());
     }
 
