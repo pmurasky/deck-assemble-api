@@ -3,6 +3,7 @@ package com.deckassemble.decks.application;
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.CardSummaryResponse;
+import com.deckassemble.collections.application.physical.PhysicalCardAllocationService;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
 import com.deckassemble.decks.domain.DeckCard;
@@ -26,6 +27,7 @@ public class DeckService {
     private final CardCatalogService cardCatalogService;
     private final CommanderLegalityEvaluator commanderLegalityEvaluator;
     private final DeckRevisionService deckRevisionService;
+    private final PhysicalCardAllocationService allocationService;
 
     // Suppressed: cohesive deck-mutation collaborators (persistence, card lookups, ownership,
     // legality, and history recording); no natural subgrouping without an artificial wrapper, same
@@ -37,13 +39,15 @@ public class DeckService {
             DeckAccessGuard deckAccessGuard,
             CardCatalogService cardCatalogService,
             CommanderLegalityEvaluator commanderLegalityEvaluator,
-            DeckRevisionService deckRevisionService) {
+            DeckRevisionService deckRevisionService,
+            PhysicalCardAllocationService allocationService) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.deckAccessGuard = deckAccessGuard;
         this.cardCatalogService = cardCatalogService;
         this.commanderLegalityEvaluator = commanderLegalityEvaluator;
         this.deckRevisionService = deckRevisionService;
+        this.allocationService = allocationService;
     }
 
     public List<DeckResponse> list() {
@@ -163,6 +167,7 @@ public class DeckService {
     }
 
     public void delete(long deckId) {
+        allocationService.releaseDeck(deckId);
         deckRepository.delete(owned(deckId));
     }
 

@@ -2,12 +2,14 @@ package com.deckassemble.decks.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.application.CardCatalogService;
 import com.deckassemble.collections.application.CollectionService;
+import com.deckassemble.collections.application.physical.PhysicalCardAllocationService;
 import com.deckassemble.decks.application.collaboration.DeckCollaborationPolicy;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.domain.Deck;
@@ -37,6 +39,7 @@ class DeckOwnershipServiceTest {
     @Mock private CardCatalogService cardCatalogService;
     @Mock private OwnershipChecker ownershipChecker;
     @Mock private CollectionService collectionService;
+    @Mock private PhysicalCardAllocationService allocationService;
     @Mock private DeckRevisionService deckRevisionService;
     @Mock private DeckCollaborationPolicy deckCollaborationPolicy;
 
@@ -48,8 +51,7 @@ class DeckOwnershipServiceTest {
         card.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
         ReflectionTestUtils.setField(card, "id", 7L);
         when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of(10L));
+        stubAvailable(1L, card, 1, 0);
 
         var result = service().syncOwnership(1L);
 
@@ -67,8 +69,7 @@ class DeckOwnershipServiceTest {
         DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
         ReflectionTestUtils.setField(card, "id", 7L);
         when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of());
+        stubAvailable(1L, card, 0, 1);
 
         var result = service().syncOwnership(1L);
 
@@ -84,14 +85,45 @@ class DeckOwnershipServiceTest {
         card.setOwnershipStatus(DeckCard.OwnershipStatus.PROXY);
         ReflectionTestUtils.setField(card, "id", 7L);
         when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
-        when(ownershipChecker.filterOwnedPrintingIds(PROFILE_ID, List.of(10L)))
-                .thenReturn(java.util.Set.of());
+        stubAvailable(1L, card, 0, 1);
 
         var result = service().syncOwnership(1L);
 
         assertThat(result.changedCount()).isZero();
         assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.PROXY);
         verify(deckCardRepository, never()).save(any(DeckCard.class));
+    }
+
+    @Test
+    void shouldMarkWishlistOwnedWhenAlternatePhysicalPrintingIsAvailable() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
+        card.setOwnershipStatus(DeckCard.OwnershipStatus.WISHLIST);
+        ReflectionTestUtils.setField(card, "id", 7L);
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
+        stubAvailable(1L, card, 1, 0);
+
+        var result = service().syncOwnership(1L);
+
+        assertThat(result.changedCount()).isEqualTo(1);
+        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.OWNED);
+    }
+
+    @Test
+    void shouldMarkOwnedCardUnavailableWhenPhysicalCopyIsAllocatedElsewhere() {
+        stubUser();
+        when(deckRepository.findByIdAndProfileId(1L, PROFILE_ID)).thenReturn(Optional.of(deck(1L)));
+        DeckCard card = new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK);
+        ReflectionTestUtils.setField(card, "id", 7L);
+        when(deckCardRepository.findByDeckId(1L)).thenReturn(List.of(card));
+        stubAvailable(1L, card, 0, 1);
+
+        var result = service().syncOwnership(1L);
+
+        assertThat(card.getOwnershipStatus()).isEqualTo(DeckCard.OwnershipStatus.WISHLIST);
+        assertThat(result.unavailableCount()).isEqualTo(1);
+        assertThat(result.physicalAvailability().get(0).missingQuantity()).isEqualTo(1);
     }
 
     @Test
@@ -138,8 +170,22 @@ class DeckOwnershipServiceTest {
                         cardCatalogService,
                         ownershipChecker,
                         deckRevisionService),
-                ownershipChecker,
-                collectionService);
+                collectionService,
+                allocationService);
+    }
+
+    private void stubAvailable(long deckId, DeckCard card, int available, int missing) {
+        when(allocationService.availabilityFor(eq(PROFILE_ID), eq(deckId), any()))
+                .thenReturn(
+                        List.of(
+                                new PhysicalCardAllocationService.CardAvailability(
+                                        card.getId(),
+                                        card.getCardPrintingId(),
+                                        card.getQuantity(),
+                                        available + missing,
+                                        0,
+                                        available,
+                                        missing)));
     }
 
     private void stubUser() {

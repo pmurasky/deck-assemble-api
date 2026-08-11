@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/releases/018-notification-dedupe-keys.yaml
   - include:
       file: db/changelog/releases/019-physical-metadata.yaml
+  - include:
+      file: db/changelog/releases/020-physical-card-allocations.yaml
