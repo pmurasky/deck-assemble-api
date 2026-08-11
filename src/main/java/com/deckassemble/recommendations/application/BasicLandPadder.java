@@ -51,6 +51,14 @@ public class BasicLandPadder {
                         .filter(color -> basics.containsKey(COLOR_TO_BASIC.get(color)))
                         .collect(Collectors.toSet());
         var allocation = BasicLandAllocation.byPips(available, deckPips(picked), missing);
+        appendAllocatedBasics(cards, basics, allocation);
+        return cards;
+    }
+
+    private void appendAllocatedBasics(
+            List<DeckCandidate> cards,
+            Map<String, DeckCandidate> basics,
+            Map<String, Integer> allocation) {
         allocation.forEach(
                 (color, count) -> {
                     var basic = basics.get(COLOR_TO_BASIC.get(color));
@@ -58,7 +66,6 @@ public class BasicLandPadder {
                         cards.add(basic);
                     }
                 });
-        return cards;
     }
 
     private ManaPips deckPips(List<DeckCandidate> picked) {

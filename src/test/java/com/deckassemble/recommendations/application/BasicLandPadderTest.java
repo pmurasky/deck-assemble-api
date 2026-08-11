@@ -32,7 +32,7 @@ class BasicLandPadderTest {
     @Test
     void shouldWeightBasicsByPipDemand() {
         // Given
-        var basics = basicsInCatalog(true, true, false);
+        basicsInCatalog(true, true, false);
         var picked = new ArrayList<DeckCandidate>();
         picked.addAll(picked("{2}{U}", 40));
         picked.addAll(picked("{2}{B}", 20));

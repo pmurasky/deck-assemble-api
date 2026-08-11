@@ -23,6 +23,26 @@ public record ManaBaseCheck(
     // ponytail: Karsten's commander offset (~1.35 sources) rounded down to 1
     private static final int COMMANDER_OFFSET = 1;
     private static final int MAX_PIPS = 3;
+    private static final int MAX_MV = 5;
+    // Karsten 99-card table (~90% on-curve): sources required per (pips, mana value)
+    private static final int ONE_PIP_MV1 = 19;
+    private static final int ONE_PIP_MV2 = 18;
+    private static final int ONE_PIP_MV3 = 16;
+    private static final int ONE_PIP_MV4 = 15;
+    private static final int ONE_PIP_MV5 = 14;
+    private static final int TWO_PIP_MV2 = 26;
+    private static final int TWO_PIP_MV3 = 23;
+    private static final int TWO_PIP_MV4 = 22;
+    private static final int TWO_PIP_MV5 = 20;
+    private static final int THREE_PIP_MV3 = 28;
+    private static final int THREE_PIP_MV4 = 26;
+    private static final int THREE_PIP_MV5 = 23;
+    private static final int[][] REQUIRED_TABLE = {
+        {0, 0, 0, 0, 0, 0},
+        {0, ONE_PIP_MV1, ONE_PIP_MV2, ONE_PIP_MV3, ONE_PIP_MV4, ONE_PIP_MV5},
+        {0, 0, TWO_PIP_MV2, TWO_PIP_MV3, TWO_PIP_MV4, TWO_PIP_MV5},
+        {0, 0, 0, THREE_PIP_MV3, THREE_PIP_MV4, THREE_PIP_MV5},
+    };
 
     public Map<String, Integer> shortfalls() {
         var shortfalls = new LinkedHashMap<String, Integer>();
@@ -92,41 +112,7 @@ public record ManaBaseCheck(
     }
 
     static int requiredSources(int manaValue, int pips) {
-        return switch (Math.min(pips, MAX_PIPS)) {
-            case 0 -> 0;
-            case 1 -> singlePipRequirement(manaValue);
-            case 2 -> doublePipRequirement(manaValue);
-            default -> triplePipRequirement(manaValue);
-        };
-    }
-
-    private static int singlePipRequirement(int manaValue) {
-        if (manaValue <= 1) {
-            return 19;
-        }
-        if (manaValue == 2) {
-            return 18;
-        }
-        if (manaValue == 3) {
-            return 16;
-        }
-        return manaValue == 4 ? 15 : 14;
-    }
-
-    private static int doublePipRequirement(int manaValue) {
-        if (manaValue <= 2) {
-            return 26;
-        }
-        if (manaValue == 3) {
-            return 23;
-        }
-        return manaValue == 4 ? 22 : 20;
-    }
-
-    private static int triplePipRequirement(int manaValue) {
-        if (manaValue <= 3) {
-            return 28;
-        }
-        return manaValue == 4 ? 26 : 23;
+        var row = REQUIRED_TABLE[Math.min(pips, MAX_PIPS)];
+        return row[Math.min(Math.max(manaValue, 0), MAX_MV)];
     }
 }
