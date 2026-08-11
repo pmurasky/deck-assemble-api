@@ -2,6 +2,7 @@ package com.deckassemble.collections.application.physical;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.cards.domain.Card;
@@ -15,6 +16,7 @@ import com.deckassemble.collections.domain.CardCollection;
 import com.deckassemble.collections.domain.CardCollectionRepository;
 import com.deckassemble.collections.domain.CollectionCard;
 import com.deckassemble.collections.domain.CollectionCardRepository;
+import com.deckassemble.collections.domain.physical.PhysicalCardAllocation;
 import com.deckassemble.collections.domain.physical.PhysicalCardAllocationRepository;
 import com.deckassemble.decks.application.DeckService;
 import com.deckassemble.decks.domain.Deck;
@@ -23,6 +25,7 @@ import com.deckassemble.decks.domain.DeckCardRepository;
 import com.deckassemble.decks.domain.DeckRepository;
 import com.deckassemble.users.domain.Profile;
 import com.deckassemble.users.domain.ProfileRepository;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -30,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -75,6 +79,24 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
 
         assertThat(result.collectionCardPrintingId()).isEqualTo(fixture.alternatePrintingId());
         assertThat(result.exactPrinting()).isFalse();
+    }
+
+    @Test
+    void shouldAllocateAcrossExactAndAlternatePrintingsExactFirst() {
+        Fixture fixture = fixture("split", 2, false, false);
+        addCollectionCard(fixture.collectionId(), fixture.exactPrintingId(), 1);
+        addCollectionCard(fixture.collectionId(), fixture.alternatePrintingId(), 1);
+        authenticate(fixture.subject());
+
+        allocationService.allocate(fixture.deckId(), request(fixture.deckCardId(), 2));
+
+        assertThat(allocationRepository.findByDeckIdOrderById(fixture.deckId()))
+                .extracting(
+                        PhysicalCardAllocation::getCollectionCardId,
+                        PhysicalCardAllocation::getQuantity)
+                .containsExactly(
+                        tuple(collectionCardId(fixture.exactPrintingId()), 1),
+                        tuple(collectionCardId(fixture.alternatePrintingId()), 1));
     }
 
     @Test
@@ -134,6 +156,16 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
                                         .findByDeckIdOrderById(competingDeckId)
                                         .size())
                 .isEqualTo(1);
+    }
+
+    @Test
+    void shouldUsePessimisticWriteLockForCompatibleOwnedCards() throws Exception {
+        var method =
+                CollectionCardRepository.class.getMethod(
+                        "findCompatibleOwnedCardsLocked", Long.class, Long.class);
+
+        assertThat(method.getAnnotation(Lock.class).value())
+                .isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     @Test
@@ -215,7 +247,13 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
             addCollectionCard(collectionId, alternatePrintingId, deckQuantity);
         }
         return new Fixture(
-                subject, profileId, deckId, deckCardId, exactPrintingId, alternatePrintingId);
+                subject,
+                profileId,
+                deckId,
+                deckCardId,
+                collectionId,
+                exactPrintingId,
+                alternatePrintingId);
     }
 
     private long createProfile(String subject) {
@@ -240,6 +278,14 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
 
     private void addCollectionCard(long collectionId, long printingId, int quantity) {
         collectionCardRepository.save(new CollectionCard(collectionId, printingId, quantity, 0));
+    }
+
+    private long collectionCardId(long printingId) {
+        return collectionCardRepository.findAll().stream()
+                .filter(card -> card.getCardPrintingId().equals(printingId))
+                .findFirst()
+                .orElseThrow()
+                .getId();
     }
 
     private long createPrinting(Card card, String key) {
@@ -268,6 +314,7 @@ class PhysicalCardAllocationServiceTest extends AbstractIntegrationTest {
             long profileId,
             long deckId,
             long deckCardId,
+            long collectionId,
             long exactPrintingId,
             long alternatePrintingId) {}
 }

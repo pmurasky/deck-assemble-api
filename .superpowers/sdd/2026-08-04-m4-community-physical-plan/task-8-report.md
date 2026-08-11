@@ -110,3 +110,30 @@ FOCUSED_TEST_EXIT_CODE=0
 BUILD SUCCESSFUL in 1m 18s
 GRADLE_CHECK_EXIT_CODE=0
 ```
+
+## Reviewer Findings Fix
+
+### What changed
+
+- Changed default allocation from "one compatible `CollectionCard` must satisfy the whole request" to exact-printing-first allocation slices across compatible rows inside the same locked transaction. A request for two copies can now consume one exact printing and one alternate printing automatically when both are available.
+- Added `PhysicalCardAllocationPlanner` to produce those allocation slices before any insert/update occurs; if total compatible availability is insufficient, it throws before writing and the transaction remains clean.
+- Kept the mutation path on the existing locked compatible-card query, so the split allocation still runs after `findCompatibleOwnedCardsLocked(...)` takes `PESSIMISTIC_WRITE` locks.
+- Strengthened the concurrency proof with `shouldUsePessimisticWriteLockForCompatibleOwnedCards`, which reflects the repository method and asserts the lock annotation is present with `LockModeType.PESSIMISTIC_WRITE`. This complements the existing best-effort two-thread race test and fails under the reviewer's lock-removal mutation.
+
+### Covering test files
+
+- `src/test/java/com/deckassemble/collections/application/physical/PhysicalCardAllocationServiceTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckOwnershipServiceTest.java`
+- `src/test/java/com/deckassemble/decks/application/DeckServiceTest.java`
+- `src/test/java/com/deckassemble/collections/api/physical/PhysicalCardAllocationControllerIntegrationTest.java` (covered by `*Allocation*`)
+
+### Commands and exit-code evidence
+
+```text
+rtk gradlew test --tests '*Allocation*' --tests '*Ownership*' --tests '*DeckService*'
+COVERING_TEST_EXIT_CODE=0
+
+rtk gradlew check
+BUILD SUCCESSFUL in 1m 13s
+GRADLE_CHECK_EXIT_CODE=0
+```

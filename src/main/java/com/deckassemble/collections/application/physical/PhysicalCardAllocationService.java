@@ -1,6 +1,7 @@
 package com.deckassemble.collections.application.physical;
 
 import com.deckassemble.collections.application.CollectionCardNotFoundException;
+import com.deckassemble.collections.application.physical.PhysicalCardAllocationPlanner.AllocationSlice;
 import com.deckassemble.collections.application.physical.PhysicalDeckLookup.DeckCardView;
 import com.deckassemble.collections.domain.CollectionCard;
 import com.deckassemble.collections.domain.physical.PhysicalCardAllocation;
@@ -43,11 +44,11 @@ public class PhysicalCardAllocationService {
         int quantity = requestedQuantity(command.quantity(), deckCard.quantity());
         List<CollectionCard> cards = lockedCards(deckCard);
         Map<Long, Integer> allocated = inventory.allocatedByCollectionCardId(cards, null);
-        CollectionCard selected =
-                selectedCard(cards, allocated, command.collectionCardId(), quantity);
+        List<AllocationSlice> slices =
+                PhysicalCardAllocationPlanner.plan(
+                        cards, allocated, command.collectionCardId(), quantity);
         assertDeckCardCapacity(deckCard, quantity, null);
-        PhysicalCardAllocation saved = saveAllocation(deckId, deckCard, selected, quantity);
-        return allocationViews.forAllocation(saved);
+        return allocationViews.forAllocation(saveAllocations(deckId, deckCard, slices).getFirst());
     }
 
     @Transactional(readOnly = true)
@@ -95,6 +96,13 @@ public class PhysicalCardAllocationService {
         return availabilityCalculator.availabilityFor(profileId, deckId, deckCards);
     }
 
+    private List<PhysicalCardAllocation> saveAllocations(
+            long deckId, DeckCardView deckCard, List<AllocationSlice> slices) {
+        return slices.stream()
+                .map(slice -> saveAllocation(deckId, deckCard, slice.card(), slice.quantity()))
+                .toList();
+    }
+
     private PhysicalCardAllocation saveAllocation(
             long deckId, DeckCardView deckCard, CollectionCard card, int quantity) {
         return allocationRepository
@@ -110,25 +118,6 @@ public class PhysicalCardAllocationService {
     private PhysicalCardAllocation increase(PhysicalCardAllocation allocation, int quantity) {
         allocation.setQuantity(allocation.getQuantity() + quantity);
         return allocationRepository.save(allocation);
-    }
-
-    private CollectionCard selectedCard(
-            List<CollectionCard> cards,
-            Map<Long, Integer> allocated,
-            @Nullable Long requestedCollectionCardId,
-            int quantity) {
-        return cards.stream()
-                .filter(
-                        card ->
-                                requestedCollectionCardId == null
-                                        || card.getId().equals(requestedCollectionCardId))
-                .filter(
-                        card ->
-                                inventory.ownedQuantity(card)
-                                                - allocated.getOrDefault(card.getId(), 0)
-                                        >= quantity)
-                .findFirst()
-                .orElseThrow(PhysicalCardAllocationService::notEnoughCopies);
     }
 
     private void assertAvailable(CollectionCard card, int quantity, @Nullable Long excludedId) {
@@ -195,7 +184,7 @@ public class PhysicalCardAllocationService {
                 .orElseThrow(CollectionCardNotFoundException::new);
     }
 
-    private static ResponseStatusException notEnoughCopies() {
+    static ResponseStatusException notEnoughCopies() {
         return new ResponseStatusException(
                 HttpStatus.CONFLICT, "Not enough physical copies available.");
     }
