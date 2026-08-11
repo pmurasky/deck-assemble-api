@@ -150,3 +150,95 @@ LSP diagnostics were attempted for `NotificationService.java`; no Java language 
 ## Concerns
 
 - Reply notification emission is pending the existence of a comment reply model/API/source. The enum is present, but no current code path can publish it without adding non-notification product behavior.
+
+---
+
+## Fix Report: Review Follow-Up
+
+### Human Ruling / Re-scope
+
+The original plan text said `comment/reply`, but the human partner ruled Task 6 is comments-only because no reply model/API exists in the codebase. I did not add reply wiring or a reply model. I added an inline comment on `Notification.Reason.COMMENT_REPLY` marking it as reserved for the future reply feature.
+
+### Finding 2 Fix
+
+Replaced the race-prone check-then-insert dedupe path with a persisted dedupe key table:
+
+- Added `notification_dedupe_keys` in Liquibase release `018-notification-dedupe-keys.yaml` and registered it in `db.changelog-master.yaml`.
+- Added `NotificationDedupeKey` and `NotificationDedupeKeyRepository`.
+- `NotificationService.create` now:
+  1. suppresses self-actions,
+  2. inserts a dedupe key with PostgreSQL `on conflict do nothing`,
+  3. creates the notification if the key was newly inserted,
+  4. otherwise locks the existing dedupe key row with `PESSIMISTIC_WRITE`,
+  5. skips if the locked row is inside the dedupe window,
+  6. updates the timestamp and creates a notification if the prior key is outside the window.
+
+This closes the concurrent identical-event race because the database primary key serializes contenders for the same recipient/reason/resource/actor key, and the losing insert path treats the conflict as a duplicate candidate instead of an error.
+
+### Covering Tests
+
+Changed/covering test files:
+
+- `src/test/java/com/deckassemble/community/application/NotificationServiceTest.java`
+- `src/test/java/com/deckassemble/community/api/NotificationControllerIntegrationTest.java`
+
+Added coverage in `NotificationServiceTest.shouldCreateExactlyOneNotificationWhenDuplicateKeyAlreadyExistsInsideWindow`: two identical create attempts where the second hits an existing dedupe key save exactly one notification.
+
+### Commands and Output
+
+Focused command:
+
+```bash
+./gradlew --console=plain test \
+  --tests 'com.deckassemble.community.application.NotificationServiceTest' \
+  --tests 'com.deckassemble.community.api.NotificationControllerIntegrationTest'
+```
+
+Output:
+
+```text
+exit 0
+> Task :compileJava
+> Task :processResources
+> Task :classes
+> Task :compileTestJava
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses
+> Task :test
+BUILD SUCCESSFUL in 31s
+```
+
+Full command:
+
+```bash
+./gradlew --console=plain check
+```
+
+Output:
+
+```text
+exit 0
+> Task :compileJava
+> Task :processResources UP-TO-DATE
+> Task :classes
+> Task :compileTestJava
+> Task :processTestResources UP-TO-DATE
+> Task :testClasses
+> Task :checkstyleTest SKIPPED
+> Task :cpdCheck
+> Task :checkstyleMain
+> Task :test
+> Task :spotbugsTest SKIPPED
+> Task :spotlessInternalRegisterDependencies UP-TO-DATE
+> Task :spotlessJava
+> Task :spotlessJavaCheck
+> Task :spotlessCheck
+> Task :jacocoTestCoverageVerification
+> Task :pmdMain
+> Task :pmdTest
+> Task :spotbugsMain
+> Task :check
+BUILD SUCCESSFUL in 1m 14s
+```
+
+LSP diagnostics were attempted for `NotificationService.java`; no Java language server was available in the session (`No language server found`). Gradle compile/check covered diagnostics.

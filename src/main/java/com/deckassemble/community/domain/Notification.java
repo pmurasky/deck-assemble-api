@@ -28,6 +28,7 @@ public class Notification {
     /** Why this notification was raised. */
     public enum Reason {
         NEW_COMMENT,
+        // Reserved for the future reply feature: no reply model/API exists yet.
         COMMENT_REPLY,
         NEW_FOLLOWER,
         DECK_FAVORITED,

@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-notification-dedupe-keys
+      author: opencode
+      changes:
+        - createTable:
+            tableName: notification_dedupe_keys
+            columns:
+              - column:
+                  name: dedupe_key
+                  type: varchar(200)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_notification_dedupe_keys
+                    nullable: false
+              - column:
+                  name: last_notification_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false

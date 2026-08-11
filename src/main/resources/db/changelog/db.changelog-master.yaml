@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/releases/016-deck-comment-controls.yaml
   - include:
       file: db/changelog/releases/017-community-discovery-owner-scope.yaml
+  - include:
+      file: db/changelog/releases/018-notification-dedupe-keys.yaml

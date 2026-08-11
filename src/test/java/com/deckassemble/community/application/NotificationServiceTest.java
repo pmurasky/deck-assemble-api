@@ -7,10 +7,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.community.domain.Notification;
 import com.deckassemble.community.domain.Notification.Reason;
+import com.deckassemble.community.domain.NotificationDedupeKey;
+import com.deckassemble.community.domain.NotificationDedupeKeyRepository;
 import com.deckassemble.community.domain.NotificationRepository;
 import com.deckassemble.users.domain.Profile;
 import java.time.Duration;
@@ -31,19 +34,20 @@ import org.springframework.web.server.ResponseStatusException;
 class NotificationServiceTest {
 
     @Mock private NotificationRepository notificationRepository;
+    @Mock private NotificationDedupeKeyRepository dedupeKeyRepository;
 
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new NotificationService(notificationRepository, Duration.ofMinutes(5));
+        service =
+                new NotificationService(
+                        notificationRepository, dedupeKeyRepository, Duration.ofMinutes(5));
     }
 
     @Test
     void shouldCreateNotificationWhenNoUnreadDuplicateExists() {
-        when(notificationRepository.existsUnreadDuplicate(
-                        eq(20L), eq(Reason.NEW_FOLLOWER), eq("10"), eq(10L), any()))
-                .thenReturn(false);
+        when(dedupeKeyRepository.insertIfAbsent(eq("20|NEW_FOLLOWER|10|10"), any())).thenReturn(1);
         when(notificationRepository.save(any(Notification.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -60,14 +64,31 @@ class NotificationServiceTest {
     @Test
     void shouldSuppressSelfActionsAndUnreadDuplicates() {
         service.create(new CommunityEvent(Reason.DECK_FAVORITED, 10L, 10L, "7"));
-        verify(notificationRepository, never()).save(any());
+        verifyNoInteractions(dedupeKeyRepository);
 
-        when(notificationRepository.existsUnreadDuplicate(
-                        eq(20L), eq(Reason.DECK_FAVORITED), eq("7"), eq(10L), any()))
-                .thenReturn(true);
+        when(dedupeKeyRepository.insertIfAbsent(eq("20|DECK_FAVORITED|7|10"), any())).thenReturn(0);
+        when(dedupeKeyRepository.findLockedById("20|DECK_FAVORITED|7|10"))
+                .thenReturn(
+                        Optional.of(
+                                new NotificationDedupeKey(
+                                        "20|DECK_FAVORITED|7|10", Instant.now())));
         service.create(new CommunityEvent(Reason.DECK_FAVORITED, 10L, 20L, "7"));
 
         verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldCreateExactlyOneNotificationWhenDuplicateKeyAlreadyExistsInsideWindow() {
+        String key = "20|DECK_FAVORITED|7|10";
+        when(dedupeKeyRepository.insertIfAbsent(eq(key), any())).thenReturn(1, 0);
+        when(dedupeKeyRepository.findLockedById(key))
+                .thenReturn(Optional.of(new NotificationDedupeKey(key, Instant.now())));
+
+        CommunityEvent event = new CommunityEvent(Reason.DECK_FAVORITED, 10L, 20L, "7");
+        service.create(event);
+        service.create(event);
+
+        verify(notificationRepository, times(1)).save(any(Notification.class));
     }
 
     @Test
