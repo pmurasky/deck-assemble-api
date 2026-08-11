@@ -1,0 +1,126 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-trade-lists
+      author: opencode
+      changes:
+        - createTable:
+            tableName: trade_lists
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trade_lists
+                    nullable: false
+              - column:
+                  name: profile_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visibility
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(255)
+              - column:
+                  name: updated_at
+                  type: timestamptz
+              - column:
+                  name: updated_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: trade_lists
+            baseColumnNames: profile_id
+            referencedTableName: profiles
+            referencedColumnNames: id
+            constraintName: fk_trade_lists_profile
+            onDelete: CASCADE
+        - createIndex:
+            tableName: trade_lists
+            indexName: idx_trade_lists_profile_visibility
+            columns:
+              - column:
+                  name: profile_id
+              - column:
+                  name: visibility
+        - createTable:
+            tableName: trade_list_items
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_trade_list_items
+                    nullable: false
+              - column:
+                  name: trade_list_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_printing_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: condition
+                  type: varchar(30)
+              - column:
+                  name: finish
+                  type: varchar(20)
+              - column:
+                  name: language
+                  type: varchar(10)
+        - addForeignKeyConstraint:
+            baseTableName: trade_list_items
+            baseColumnNames: trade_list_id
+            referencedTableName: trade_lists
+            referencedColumnNames: id
+            constraintName: fk_trade_list_items_list
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: trade_list_items
+            baseColumnNames: card_printing_id
+            referencedTableName: card_printings
+            referencedColumnNames: id
+            constraintName: fk_trade_list_items_printing
+        - createIndex:
+            tableName: trade_list_items
+            indexName: idx_trade_list_items_list
+            columns:
+              - column:
+                  name: trade_list_id
+        - createIndex:
+            tableName: trade_list_items
+            indexName: idx_trade_list_items_printing
+            columns:
+              - column:
+                  name: card_printing_id

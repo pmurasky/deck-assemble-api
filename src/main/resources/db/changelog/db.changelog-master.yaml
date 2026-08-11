@@ -39,3 +39,5 @@ databaseChangeLog:
       file: db/changelog/releases/019-physical-metadata.yaml
   - include:
       file: db/changelog/releases/020-physical-card-allocations.yaml
+  - include:
+      file: db/changelog/releases/021-trade-lists.yaml
