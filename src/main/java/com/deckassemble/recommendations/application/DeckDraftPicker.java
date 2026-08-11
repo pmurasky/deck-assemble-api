@@ -40,19 +40,26 @@ public final class DeckDraftPicker {
     @SuppressWarnings("PMD.UseConcurrentHashMap")
     // EnumMap is single-threaded local state; no concurrency needed
     public static List<DeckCandidate> pick(List<DeckCandidate> sortedCandidates, int slots) {
+        return pick(sortedCandidates, slots, QUOTAS);
+    }
+
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
+    // EnumMap is single-threaded local state; no concurrency needed
+    public static List<DeckCandidate> pick(
+            List<DeckCandidate> sortedCandidates, int slots, Map<Category, Integer> quotas) {
         var picked = new ArrayList<DeckCandidate>(slots);
         var pickedOracles = new HashSet<String>();
         Map<Category, Integer> filled = new EnumMap<>(Category.class);
         var curve = new int[CURVE_BUCKET_COUNT];
         var remaining = new ArrayList<>(sortedCandidates);
         while (picked.size() < slots && !remaining.isEmpty()) {
-            var best = bestCandidate(remaining, pickedOracles, filled, curve);
+            var best = bestCandidate(remaining, pickedOracles, filled, curve, quotas);
             if (best == null) {
                 break;
             }
             picked.add(best);
             pickedOracles.add(best.card().getScryfallOracleId());
-            filled.merge(bestRole(best, filled), 1, Integer::sum);
+            filled.merge(bestRole(best, filled, quotas), 1, Integer::sum);
             recordCurve(best, curve);
             remaining.remove(best);
         }
@@ -63,11 +70,12 @@ public final class DeckDraftPicker {
             List<DeckCandidate> remaining,
             Set<String> pickedOracles,
             Map<Category, Integer> filled,
-            int[] curve) {
+            int[] curve,
+            Map<Category, Integer> quotas) {
         DeckCandidate best = null;
         var bestScore = Double.NEGATIVE_INFINITY;
         for (var candidate : remaining) {
-            var effective = effectiveScore(candidate, pickedOracles, filled, curve);
+            var effective = effectiveScore(candidate, pickedOracles, filled, curve, quotas);
             if (effective != null && (best == null || effective > bestScore)) {
                 best = candidate;
                 bestScore = effective;
@@ -80,21 +88,23 @@ public final class DeckDraftPicker {
             DeckCandidate candidate,
             Set<String> pickedOracles,
             Map<Category, Integer> filled,
-            int[] curve) {
+            int[] curve,
+            Map<Category, Integer> quotas) {
         if (pickedOracles.contains(candidate.card().getScryfallOracleId())) {
             return null;
         }
         return candidate.scoreValue()
-                + ROLE_WEIGHT * maxRoleNeed(candidate, filled)
+                + ROLE_WEIGHT * maxRoleNeed(candidate, filled, quotas)
                 - CURVE_WEIGHT * curveExcess(candidate, curve);
     }
 
-    private static double maxRoleNeed(DeckCandidate candidate, Map<Category, Integer> filled) {
+    private static double maxRoleNeed(
+            DeckCandidate candidate, Map<Category, Integer> filled, Map<Category, Integer> quotas) {
         var max = 0.0;
         var any = false;
         for (var role : candidate.roles()) {
-            if (QUOTAS.containsKey(role)) {
-                var need = roleNeed(role, filled);
+            if (quotas.containsKey(role)) {
+                var need = roleNeed(role, filled, quotas);
                 max = !any || need > max ? need : max;
                 any = true;
             }
@@ -102,12 +112,13 @@ public final class DeckDraftPicker {
         return max;
     }
 
-    private static Category bestRole(DeckCandidate candidate, Map<Category, Integer> filled) {
+    private static Category bestRole(
+            DeckCandidate candidate, Map<Category, Integer> filled, Map<Category, Integer> quotas) {
         var best = Category.SYNERGY;
         var max = Double.NEGATIVE_INFINITY;
         for (var role : candidate.roles()) {
-            if (QUOTAS.containsKey(role)) {
-                var need = roleNeed(role, filled);
+            if (quotas.containsKey(role)) {
+                var need = roleNeed(role, filled, quotas);
                 if (need > max) {
                     max = need;
                     best = role;
@@ -117,8 +128,9 @@ public final class DeckDraftPicker {
         return best;
     }
 
-    private static double roleNeed(Category role, Map<Category, Integer> filled) {
-        var target = QUOTAS.get(role);
+    private static double roleNeed(
+            Category role, Map<Category, Integer> filled, Map<Category, Integer> quotas) {
+        var target = quotas.get(role);
         if (target == null) {
             return 0.0;
         }

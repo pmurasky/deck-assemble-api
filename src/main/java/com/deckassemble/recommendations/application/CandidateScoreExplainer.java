@@ -23,7 +23,7 @@ final class CandidateScoreExplainer {
             DeckBuildRequest request,
             boolean owned) {
         var contributions = new ArrayList<ScoreContribution>();
-        contributions.add(categoryNeed(category));
+        contributions.add(categoryNeed(category, request));
         if (owned) {
             contributions.add(ownedMarker());
         }
@@ -76,10 +76,10 @@ final class CandidateScoreExplainer {
                 Map.of("playStyle", playStyle));
     }
 
-    private static ScoreContribution categoryNeed(Category category) {
+    private static ScoreContribution categoryNeed(Category category, DeckBuildRequest request) {
         Map<String, String> evidence = new ConcurrentHashMap<>();
         evidence.put("category", category.name());
-        var quota = DeckDraftPicker.QUOTAS.get(category);
+        var quota = PlayStyleQuotas.forStyle(request.playStyle()).get(category);
         if (quota != null) {
             evidence.put("quota", quota.toString());
         }

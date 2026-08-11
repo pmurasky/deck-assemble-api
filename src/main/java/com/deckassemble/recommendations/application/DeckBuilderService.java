@@ -36,7 +36,13 @@ public class DeckBuilderService {
         var targetSize = DECK_SIZE - commanders.size();
         var finalCards =
                 basicLandPadder.pad(
-                        DeckDraftPicker.pick(candidates, targetSize), identity, targetSize, gaps);
+                        DeckDraftPicker.pick(
+                                candidates,
+                                targetSize,
+                                PlayStyleQuotas.forStyle(request.playStyle())),
+                        identity,
+                        targetSize,
+                        gaps);
         return deckBuildRecorder.record(request, commanders, finalCards, gaps);
     }
 }

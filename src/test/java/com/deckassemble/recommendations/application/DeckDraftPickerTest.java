@@ -6,6 +6,7 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.recommendations.application.CardCategorizer.Category;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -116,6 +117,20 @@ class DeckDraftPickerTest {
 
         assertThat(picked).contains(fourDrop);
         assertThat(count(picked, Category.SYNERGY)).isEqualTo(16);
+    }
+
+    @Test
+    void shouldHonorAdjustedQuotas() {
+        var sorted = new ArrayList<DeckCandidate>();
+        sorted.addAll(candidates(10, Category.FINISHER));
+        sorted.addAll(candidates(20, Category.SYNERGY));
+        var quotas = new EnumMap<Category, Integer>(DeckDraftPicker.QUOTAS);
+        quotas.put(Category.FINISHER, 6);
+
+        var picked = DeckDraftPicker.pick(sorted, 20, quotas);
+
+        assertThat(count(picked, Category.FINISHER)).isEqualTo(6);
+        assertThat(count(picked, Category.SYNERGY)).isEqualTo(14);
     }
 
     @Test
