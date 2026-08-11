@@ -43,8 +43,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -191,20 +195,79 @@ class TradeMatchServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldRequireVisibilityOnBothLists() {
-        Fixture fixture = fixture("visibility");
-        long privateOffer =
-                list(fixture.leftProfileId(), TradeListType.OFFERED, TradeListVisibility.PRIVATE);
-        long publicWant =
+    void shouldReportLeftToRightValueWhenLeftListIdIsHigherThanRightListId() {
+        Fixture fixture = fixture("direction");
+        addCollectionCard(fixture.leftCollectionId(), fixture.exactId(), 1);
+        price(fixture.exactId(), "5.00", null, null, null);
+        long lowIdWant =
                 list(fixture.rightProfileId(), TradeListType.WANTED, TradeListVisibility.PUBLIC);
-        authenticate(fixture.rightSubject());
+        item(lowIdWant, fixture.exactId(), 1, null, null, null);
+        long highIdOffer =
+                list(fixture.leftProfileId(), TradeListType.OFFERED, TradeListVisibility.PUBLIC);
+        item(highIdOffer, fixture.exactId(), 1, null, null, null);
+        authenticate(fixture.leftSubject());
 
-        assertThatThrownBy(() -> matchService.compare(privateOffer, publicWant))
+        TradeMatchService.TradeMatchView result = matchService.compare(highIdOffer, lowIdWant);
+
+        assertThat(highIdOffer).isGreaterThan(lowIdWant);
+        assertThat(result.valueDeltas())
+                .extracting("currency", "leftToRight", "rightToLeft")
+                .containsExactly(tuple("usd", new BigDecimal("5.00"), BigDecimal.ZERO));
+    }
+
+    @ParameterizedTest
+    @MethodSource("visibilityCases")
+    void shouldApplyTradeListVisibilityMatrix(
+            TradeListVisibility visibility,
+            boolean requesterOwnsRestricted,
+            boolean restrictedOnLeft,
+            boolean allowed) {
+        Fixture fixture =
+                fixture("visibility-" + visibility + requesterOwnsRestricted + restrictedOnLeft);
+        long restrictedOwner = fixture.leftProfileId();
+        long counterpartOwner = fixture.rightProfileId();
+        long restricted = list(restrictedOwner, sideType(restrictedOnLeft), visibility);
+        long counterpart =
+                list(counterpartOwner, sideType(!restrictedOnLeft), TradeListVisibility.PUBLIC);
+        authenticate(requesterOwnsRestricted ? fixture.leftSubject() : fixture.rightSubject());
+
+        if (allowed) {
+            TradeMatchService.TradeMatchView result =
+                    compare(restrictedOnLeft, restricted, counterpart);
+
+            assertThat(result.leftListId()).isEqualTo(restrictedOnLeft ? restricted : counterpart);
+            return;
+        }
+        assertThatThrownBy(() -> compare(restrictedOnLeft, restricted, counterpart))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(
-                        exception ->
-                                assertThat(((ResponseStatusException) exception).getStatusCode())
-                                        .isEqualTo(HttpStatus.NOT_FOUND));
+                .satisfies(exception -> assertStatus(exception, HttpStatus.NOT_FOUND));
+    }
+
+    private static Stream<Arguments> visibilityCases() {
+        return Stream.of(
+                Arguments.of(TradeListVisibility.PUBLIC, false, true, true),
+                Arguments.of(TradeListVisibility.PUBLIC, false, false, true),
+                Arguments.of(TradeListVisibility.UNLISTED, false, true, true),
+                Arguments.of(TradeListVisibility.UNLISTED, false, false, true),
+                Arguments.of(TradeListVisibility.PRIVATE, true, true, true),
+                Arguments.of(TradeListVisibility.PRIVATE, true, false, true),
+                Arguments.of(TradeListVisibility.PRIVATE, false, true, false),
+                Arguments.of(TradeListVisibility.PRIVATE, false, false, false));
+    }
+
+    private TradeListType sideType(boolean leftSide) {
+        return leftSide ? TradeListType.OFFERED : TradeListType.WANTED;
+    }
+
+    private TradeMatchService.TradeMatchView compare(
+            boolean restrictedOnLeft, long restricted, long counterpart) {
+        return restrictedOnLeft
+                ? matchService.compare(restricted, counterpart)
+                : matchService.compare(counterpart, restricted);
+    }
+
+    private void assertStatus(Throwable exception, HttpStatus status) {
+        assertThat(((ResponseStatusException) exception).getStatusCode()).isEqualTo(status);
     }
 
     private void allocateOneCopy(Fixture fixture, long collectionCardId) {
