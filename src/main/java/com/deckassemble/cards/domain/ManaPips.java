@@ -55,4 +55,14 @@ public record ManaPips(int w, int u, int b, int r, int g) {
     public ManaPips plus(ManaPips other) {
         return new ManaPips(w + other.w, u + other.u, b + other.b, r + other.r, g + other.g);
     }
+
+    public int forColor(String color) {
+        return switch (color) {
+            case "W" -> w;
+            case "U" -> u;
+            case "B" -> b;
+            case "R" -> r;
+            default -> g;
+        };
+    }
 }
