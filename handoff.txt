@@ -1,0 +1,81 @@
+DeckAssemble API — Backend Milestone Handoff Summary
+1. What This Project Is
+DeckAssemble API — a Spring Boot (Java, Gradle Kotlin DSL) backend for a Magic: The Gathering deck-building platform, package com.deckassemble. Repo: /media/peter/Linux_AppData/Projects/DeckAssemble/deck-assemble-api.
+Agent scope constraint: This is a backend-only coding session. Frontend work is never implemented — only a frontend handoff summary is produced at milestone boundaries.
+2. What Was Done So Far
+Completed: M1 Adoption Foundations ✅
+Users can migrate decks/collections from external platforms and inspect actionable deck analytics. All 8 M1 tasks done:
+1. Resolve external card references
+2. Import persistence + idempotency
+3. Preview deck imports
+4. Commit deck imports (idempotent)
+5. Export decks
+6. Preview + commit collection CSV imports
+7. Export collections
+8. Deck analysis
+Completed: M2 Tasks 1–5 ✅ (of 9)
+- Task 1 — Explain candidate scores (feat(recommendations): explain candidate scores 65974ca)
+- Task 2 — Explain commander suggestions (feat(recommendations): explain commander rankings fe3fc64)
+- Task 3 — Owned-first card alternatives (feat(decks): suggest owned-first card alternatives 83b4ed1)
+- Task 4 — Compare decks (feat(decks): compare deck composition and metrics b1aeabd)
+- Task 5 — Bounded upgrade plans (feat(decks): generate bounded upgrade plans 2fa0b5e)
+Completed: M3/M4 ❌ Not started (0 of 8 / 0 of 12 tasks)
+Session status: 4/11 OMO milestone tasks complete. The remaining work is on branch backend-enhancements.
+3. Critical Git State — READ FIRST
+Item	State
+Current checkout	main (tracks origin/main)
+Milestone work lives on	backend-enhancements branch (exists local + origin)
+Unmerged diff	git diff main...backend-enhancements = 146 files, +12,302/−53
+Uncommitted local junk	AGENTS.md modified (unstaged), 85 untracked files under .gsd/ (exec artifacts, gsd.db — do not commit)
+New agent should checkout backend-enhancements and continue there.
+4. Milestone Plans (source of truth)
+All plans committed in bce8645 (docs(plans): add product enhancement roadmap and milestone plans), under docs/plans/:
+Plan file	Milestone
+2026-08-04-product-enhancements-roadmap.md	Portfolio roadmap + dependency map
+2026-08-04-m1-interoperability-analytics-plan.md	M1 (8 tasks)
+2026-08-04-m2-intelligence-organization-plan.md	M2 (9 tasks)
+2026-08-04-m3-experimentation-publishing-plan.md	M3 (8 tasks)
+2026-08-04-m4-community-physical-plan.md	M4 (12 tasks)
+Remaining M2 tasks (6–9) — next up
+6. Expand typed card search
+7. Persist categories and card assignments
+8. Add tags, folders, and category templates
+9. Feed organization back into recommendations
+M2 completion gate: ./gradlew test && ./gradlew check both exit 0; release 013 applies cleanly after 012; existing search clients stay source-compatible.
+M2 Manual QA checklist (from plan): verify commander explanation evidence; request alternatives for a combo piece + a generic card (expect warning + owned-first ranking); compare two decks, then each upgrade-plan objective (source unchanged); compound advanced searches + invalid ranges; folder/tags/template/categories bulk assign + template-twice idempotency.
+M3 tasks (8) — experimentation & publishing
+1. Revision persistence → 2. Record meaningful deck changes → 3. List/diff/restore revisions → 4. Seeded sample hands → 5. Monte Carlo deck stats → 6. Visibility + stable share slugs → 7. Markdown primers → 8. Publish immutable revisions + fork decks
+M4 tasks (12) — community & physical
+1. Collaboration foundations → 2. Deck collaborators → 3. Optimistic collaborative editing → 4. Comments + moderation → 5. Follows/favorites/discovery → 6. Deduplicated notifications → 7. Physical card metadata + locations → 8. Allocate physical cards to decks → 9. Trade lists + matching → 10. Ingest reviewed scanner sessions → 11. Tournament deck revisions → 12. Optional read-only collaboration events
+Dependency chain (respect it)
+M1 import → stable card resolution → M2 advanced search · M1 analytics → M2 explanations/comparisons → M3 simulations · M2 categories/tags → M3 history snapshots/published grouping · M3 revisions → M4 optimistic collaboration · M3 visibility/slugs → M4 discovery/follows/comments/notifications · M4 physical → scanner review + trade matching · M4 published revisions → tournament registration.
+Vertical Slice Policy: every slice ships migration + domain model + application service + endpoint + authorization + unit/integration tests + API docs. No empty packages.
+5. Key New Files (on backend-enhancements)
+src/main/java/com/deckassemble/decks/application/analysis/
+  AnalysisEntry.java, DeckAnalysisResponse.java, DeckAnalysisService.java,
+  DeckCompositionCalculator.java, DeckValueCalculator.java,
+  ManaCurveCalculator.java, ManaProductionCalculator.java
+src/main/java/com/deckassemble/decks/application/upgrades/
+  DeckUpgradeService.java, DeckUpgradePlanResponse.java
+src/main/java/com/deckassemble/recommendations/application/
+  CardScore.java, DeckCandidate.java (modified)
+src/test/java/... DeckExporterTest, DeckImportCommitServiceTest(278),
+  DeckImportServiceTest(185), DeckUpgradeServiceTest(633)
+src/test/resources/fixtures/{collection-imports,deck-exports,deck-imports}/
+  archidekt.csv, deckassemble.csv, generic.csv, manabox.csv, moxfield.csv,
+  arena.txt, mtgo.txt
+6. Engineering Standards (mandatory)
+- Workflow: micro-commit TDD — STOP → RED → GREEN → COMMIT → REFACTOR → COMMIT (docs/AI_AGENT_WORKFLOW.md)
+- Commits: Conventional Commits (feat/fix/refactor/test/docs/chore + scope), one logical change per commit
+- Tests: unit tests before every commit (./gradlew test); 80% unit coverage minimum
+- Static analysis: ./gradlew check enforces Spotless, PMD, CPD, Checkstyle, SpotBugs, ArchUnit — must pass
+- Code limits: methods ≤ 15–20 lines, classes ≤ 300 lines, ≤ 2 private methods, ≤ 5 params
+- Per-task review: each milestone task gets review before moving on (per OMO workflow)
+7. Next Actions for the New Agent
+1. git checkout backend-enhancements (do not commit the .gsd/ untracked files or AGENTS.md change)
+2. Read docs/plans/2026-08-04-m2-intelligence-organization-plan.md — execute M2 tasks 6–9 with per-task review
+3. Pause after M2 → deliver backend summary + frontend handoff
+4. Execute M3 (8 tasks) → pause → backend summary + frontend handoff
+5. Execute M4 (12 tasks) → pause → backend summary + frontend handoff
+6. Run whole-branch review → final frontend handoff summary
+7. ./gradlew test && ./gradlew check must pass before every commit
