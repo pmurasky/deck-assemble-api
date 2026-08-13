@@ -26,7 +26,6 @@
   },
   "plugin": [
     "context-mode",
-    "@tarquinen/opencode-dcp@latest",
     "opentmux"
   ]
 }
