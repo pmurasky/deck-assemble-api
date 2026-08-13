@@ -113,6 +113,10 @@ For architecture testing with ArchUnit (Java/Kotlin): @docs/ARCHUNIT_STANDARDS.m
 For SpotBugs bytecode bug detection (Java only): @docs/SPOTBUGS_STANDARDS.md
 For conversion/porting plan template (gated phases, behavioral baseline, quality gates): @docs/CONVERSION_PLAN_TEMPLATE.md
 
+### Cross-repo work
+
+For the multi-agent cross-repo workflow protocol (only when given a specs/work/<id> kickoff task): @docs/MULTI_AGENT_WORKFLOW.md
+
 ## Before Making ANY Code Changes
 
 1. Pull latest changes: `git pull`
@@ -140,3 +144,7 @@ If you encounter these situations, STOP and ask:
 3. **Test failures with unclear expected behavior**: Tests are failing after your change and expected behavior cannot be inferred from tests/docs/acceptance criteria
 4. **Conflicting patterns**: Existing code doesn't follow SOLID
 5. **Missing tests**: Code being changed has < 80% unit test coverage
+
+## Agent Scope: Back-End Only
+
+This agent is a **back-end coding agent ONLY**. Do not implement front-end work (UI, components, styling, client-side code). When a task involves front-end work, provide a summary/handoff of what needs to be done instead of implementing it.
