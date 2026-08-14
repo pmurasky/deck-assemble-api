@@ -1,0 +1,34 @@
+name: Story
+description: A slice of a larger feature, small enough to ship on its own
+title: "[Story] "
+labels: ["type:story", "status:awaiting-approval"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One paragraph — what this builds and why.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to touch
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+  - type: textarea
+    id: test-strategy
+    attributes:
+      label: Test strategy
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope

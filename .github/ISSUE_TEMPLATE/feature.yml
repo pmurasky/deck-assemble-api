@@ -1,0 +1,37 @@
+name: Feature
+description: A new backend capability or endpoint
+title: "[Feature] "
+labels: ["type:feature", "status:awaiting-approval"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One paragraph — what this builds and why.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Technical constraints, existing patterns to follow, things that must not change.
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to touch
+      description: Exact paths, one per line.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: Ordered implementation steps.
+  - type: textarea
+    id: test-strategy
+    attributes:
+      label: Test strategy
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
