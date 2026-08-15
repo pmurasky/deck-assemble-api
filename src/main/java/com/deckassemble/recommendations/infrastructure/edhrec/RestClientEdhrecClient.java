@@ -31,7 +31,9 @@ class RestClientEdhrecClient implements EdhrecClient {
 
     @Override
     public String fetchTopCommanders() {
-        return get("/pages/commanders.json");
+        // EDHREC retired /pages/commanders.json (now 403 AccessDenied);
+        // /pages/commanders/year.json serves the same "Top Commanders" cardlist payload.
+        return get("/pages/commanders/year.json");
     }
 
     private String get(String uri, Object... uriVariables) {
