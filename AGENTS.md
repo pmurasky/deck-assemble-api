@@ -148,3 +148,33 @@ If you encounter these situations, STOP and ask:
 ## Agent Scope: Back-End Only
 
 This agent is a **back-end coding agent ONLY**. Do not implement front-end work (UI, components, styling, client-side code). When a task involves front-end work, provide a summary/handoff of what needs to be done instead of implementing it.
+
+<!-- gortex:communities:start -->
+<!-- gortex:skills:start -->
+## Community Skills
+
+| Area | Description | Skill |
+|------|-------------|-------|
+| Cards Domain 16 Dirs | 537 symbols | `/gortex-cards-domain-16-dirs` |
+| Decks Application 13 Dirs | 395 symbols | `/gortex-decks-application-13-dirs` |
+| Decks Application 18 Dirs | 314 symbols | `/gortex-decks-application-18-dirs` |
+| Cards Application 10 Dirs | 288 symbols | `/gortex-cards-application-10-dirs` |
+| Recommendations Application 7 Dirs | 195 symbols | `/gortex-recommendations-application-7-dirs` |
+| Collections Application 4 Dirs | 192 symbols | `/gortex-collections-application-4-dirs` |
+| Api Importing 8 Dirs | 173 symbols | `/gortex-api-importing-8-dirs` |
+| Domain Organization 6 Dirs | 171 symbols | `/gortex-domain-organization-6-dirs` |
+| Application Importing 6 Dirs | 153 symbols | `/gortex-application-importing-6-dirs` |
+| Api Organization 19 Dirs | 149 symbols | `/gortex-api-organization-19-dirs` |
+| Recommendations Application 5 Dirs | 137 symbols | `/gortex-recommendations-application-5-dirs` |
+| Com Deckassemble Add Card | 107 symbols | `/gortex-com-deckassemble-add-card` |
+| Imports Application 7 Dirs | 102 symbols | `/gortex-imports-application-7-dirs` |
+| Application Analysis 5 Dirs | 94 symbols | `/gortex-application-analysis-5-dirs` |
+| Api History 5 Dirs | 93 symbols | `/gortex-api-history-5-dirs` |
+| Application Upgrades 2 Dirs | 92 symbols | `/gortex-application-upgrades-2-dirs` |
+| Api Organization 4 Dirs | 80 symbols | `/gortex-api-organization-4-dirs` |
+| Decks Domain 6 Dirs | 80 symbols | `/gortex-decks-domain-6-dirs` |
+| Application Simulation 2 Dirs Request | 77 symbols | `/gortex-application-simulation-2-dirs-request` |
+| Domain Organization 4 Dirs | 76 symbols | `/gortex-domain-organization-4-dirs` |
+<!-- gortex:skills:end -->
+
+<!-- gortex:communities:end -->
