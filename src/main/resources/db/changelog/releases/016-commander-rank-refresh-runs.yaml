@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-create-commander-rank-refresh-runs
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: commander_rank_refresh_runs
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: completed_at
+                  type: timestamptz
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cards_updated
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_summary
+                  type: varchar(2000)
+              - column:
+                  name: triggered_by
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_commander_rank_refresh_runs_started_at
+            tableName: commander_rank_refresh_runs
+            columns:
+              - column:
+                  name: started_at
+                  descending: true

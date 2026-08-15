@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/releases/014-experimentation-publishing.yaml
   - include:
       file: db/changelog/releases/015-card-oracle-tags.yaml
+  - include:
+      file: db/changelog/releases/016-commander-rank-refresh-runs.yaml
