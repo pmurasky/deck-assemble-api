@@ -76,6 +76,14 @@ public class EdhrecCommanderService {
                 .map(EdhrecCommanderCache::getFetchedAt);
     }
 
+    /** Read-only freshness check; never triggers a network call. */
+    public boolean hasFreshCache(String commanderOracleId) {
+        return cacheRepository
+                .findByCommanderOracleId(commanderOracleId)
+                .map(this::isFresh)
+                .orElse(false);
+    }
+
     // Justified: method-local map, never shared across threads.
     @SuppressWarnings("PMD.UseConcurrentHashMap")
     public Map<String, CardScore> getCardScores(String commanderOracleId, String commanderName) {

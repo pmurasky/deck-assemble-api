@@ -168,6 +168,34 @@ class EdhrecCommanderServiceTest {
     }
 
     @Test
+    void shouldReportFreshCacheWhenEntryIsWithinTtl() {
+        var fresh = new EdhrecCommanderCache(ORACLE_ID, "cached-json", Instant.now());
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.of(fresh));
+
+        assertThat(service.hasFreshCache(ORACLE_ID)).isTrue();
+        verifyNoInteractions(edhrecClient);
+    }
+
+    @Test
+    void shouldReportNoFreshCacheWhenEntryIsMissing() {
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.empty());
+
+        assertThat(service.hasFreshCache(ORACLE_ID)).isFalse();
+        verifyNoInteractions(edhrecClient);
+    }
+
+    @Test
+    void shouldReportNoFreshCacheWhenEntryIsStale() {
+        var stale =
+                new EdhrecCommanderCache(
+                        ORACLE_ID, "old-json", Instant.now().minus(8, ChronoUnit.DAYS));
+        when(cacheRepository.findByCommanderOracleId(ORACLE_ID)).thenReturn(Optional.of(stale));
+
+        assertThat(service.hasFreshCache(ORACLE_ID)).isFalse();
+        verifyNoInteractions(edhrecClient);
+    }
+
+    @Test
     void shouldConvertCommanderNamesToSlugs() {
         assertThat(EdhrecCommanderService.toSlug("Atraxa, Praetors' Voice"))
                 .isEqualTo("atraxa-praetors-voice");
