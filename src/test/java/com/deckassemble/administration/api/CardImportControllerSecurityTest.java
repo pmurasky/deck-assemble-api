@@ -60,6 +60,28 @@ class CardImportControllerSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldRejectSeriesListWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldForbidSeriesListForNonAdministrators() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series").with(jwt()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturnSeriesListWithoutQueryFragmentsForAdministrators() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series").with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].key").value("MARVEL"))
+                .andExpect(jsonPath("$[0].label").value("Marvel"))
+                .andExpect(jsonPath("$[3].key").value("TMNT"))
+                .andExpect(jsonPath("$[0].setCodes").doesNotExist());
+    }
+
+    @Test
     void shouldReturnHistoryForAdministrators() throws Exception {
         CardImportRun run =
                 new CardImportRun(

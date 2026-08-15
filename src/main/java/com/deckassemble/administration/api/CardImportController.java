@@ -3,9 +3,11 @@ package com.deckassemble.administration.api;
 import com.deckassemble.imports.application.CardImportTrigger;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
+import com.deckassemble.imports.domain.CardSeries;
 import com.deckassemble.shared.security.CurrentUser;
 import jakarta.validation.constraints.NotBlank;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +43,19 @@ public class CardImportController {
     }
 
     public record ImportAcceptedResponse(long runId) {}
+
+    @GetMapping("/series")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<CardSeriesResponse> cardSeries() {
+        return Arrays.stream(CardSeries.values()).map(CardSeriesResponse::from).toList();
+    }
+
+    public record CardSeriesResponse(String key, String label) {
+
+        static CardSeriesResponse from(CardSeries series) {
+            return new CardSeriesResponse(series.name(), series.label());
+        }
+    }
 
     @PostMapping("/oracle-tags")
     @PreAuthorize("hasRole('ADMIN')")
