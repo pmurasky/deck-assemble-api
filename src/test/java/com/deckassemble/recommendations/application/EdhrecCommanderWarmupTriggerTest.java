@@ -25,7 +25,8 @@ class EdhrecCommanderWarmupTriggerTest {
 
         trigger.warmInBackground(ORACLE_ID, COMMANDER_NAME);
 
-        verify(commanderService, timeout(VERIFY_TIMEOUT_MS)).getCommanderData(ORACLE_ID, COMMANDER_NAME);
+        verify(commanderService, timeout(VERIFY_TIMEOUT_MS))
+                .getCommanderData(ORACLE_ID, COMMANDER_NAME);
         trigger.shutdown();
     }
 
@@ -38,7 +39,8 @@ class EdhrecCommanderWarmupTriggerTest {
 
         trigger.warmInBackground(ORACLE_ID, COMMANDER_NAME);
 
-        verify(commanderService, timeout(VERIFY_TIMEOUT_MS)).getCommanderData(ORACLE_ID, COMMANDER_NAME);
+        verify(commanderService, timeout(VERIFY_TIMEOUT_MS))
+                .getCommanderData(ORACLE_ID, COMMANDER_NAME);
         trigger.shutdown();
     }
 }
