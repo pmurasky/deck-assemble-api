@@ -8,11 +8,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 
-// ponytail: single background thread serializes warmups; swap for a job queue if concurrency matters
+// ponytail: single background thread serializes warmups; swap for a job queue if concurrency
+// matters
 @Component
 public class EdhrecCommanderWarmupTrigger {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EdhrecCommanderWarmupTrigger.class);
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(EdhrecCommanderWarmupTrigger.class);
 
     private final EdhrecCommanderService commanderService;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
