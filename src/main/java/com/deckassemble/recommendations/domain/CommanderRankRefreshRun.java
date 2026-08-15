@@ -59,7 +59,7 @@ public class CommanderRankRefreshRun {
         this.status = Status.STARTED;
     }
 
-    public @Nullable Long getId() {
+    public Long getId() {
         return id;
     }
 
