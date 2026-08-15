@@ -67,7 +67,9 @@ class CommanderRankServiceTest {
     @SuppressWarnings("unchecked")
     void shouldReturnCompletedOutcomeFromRefreshNow() {
         when(edhrecClient.fetchTopCommanders())
-                .thenReturn(payload("""
+                .thenReturn(
+                        payload(
+                                """
                 [{"name":"Atraxa, Praetors' Voice"},{"name":"The Ur-Dragon"}]
                 """));
         when(cardCatalogService.updateCommanderRanks(any(Map.class))).thenReturn(2);

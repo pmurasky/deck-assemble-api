@@ -19,17 +19,17 @@ import org.springframework.test.util.ReflectionTestUtils;
 @ExtendWith(MockitoExtension.class)
 class CommanderRankRunRecorderTest {
 
-    @Mock
-    private CommanderRankRefreshRunRepository repository;
+    @Mock private CommanderRankRefreshRunRepository repository;
 
     @Test
     void shouldStartRunAndReturnId() {
         when(repository.save(any(CommanderRankRefreshRun.class)))
-                .thenAnswer(invocation -> {
-                    CommanderRankRefreshRun run = invocation.getArgument(0);
-                    ReflectionTestUtils.setField(run, "id", 42L);
-                    return run;
-                });
+                .thenAnswer(
+                        invocation -> {
+                            CommanderRankRefreshRun run = invocation.getArgument(0);
+                            ReflectionTestUtils.setField(run, "id", 42L);
+                            return run;
+                        });
 
         long id = recorder().start("scheduled");
 
@@ -73,7 +73,8 @@ class CommanderRankRunRecorderTest {
     @Test
     void shouldReturnLatestCompleted() {
         CommanderRankRefreshRun run = newRun();
-        when(repository.findTopByStatusOrderByCompletedAtDesc(CommanderRankRefreshRun.Status.COMPLETED))
+        when(repository.findTopByStatusOrderByCompletedAtDesc(
+                        CommanderRankRefreshRun.Status.COMPLETED))
                 .thenReturn(Optional.of(run));
 
         assertThat(recorder().latestCompleted()).contains(run);

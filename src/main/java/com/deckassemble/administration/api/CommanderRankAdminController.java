@@ -34,7 +34,8 @@ public class CommanderRankAdminController {
     @PostMapping("/refresh")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RefreshOutcome> refresh() {
-        RefreshOutcome outcome = commanderRankService.refreshNow(currentUser.subject().orElse("system"));
+        RefreshOutcome outcome =
+                commanderRankService.refreshNow(currentUser.subject().orElse("system"));
         if (!outcome.success()) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(outcome);
         }
@@ -44,7 +45,8 @@ public class CommanderRankAdminController {
     @GetMapping("/latest")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RefreshRunResponse> latest() {
-        return runRecorder.latestCompleted()
+        return runRecorder
+                .latestCompleted()
                 .map(run -> ResponseEntity.ok(RefreshRunResponse.from(run)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

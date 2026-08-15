@@ -27,14 +27,11 @@ class CommanderRankAdminControllerSecurityTest extends AbstractIntegrationTest {
 
     private static final SimpleGrantedAuthority ADMIN = new SimpleGrantedAuthority("ROLE_ADMIN");
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @MockitoBean
-    private CommanderRankService commanderRankService;
+    @MockitoBean private CommanderRankService commanderRankService;
 
-    @MockitoBean
-    private CommanderRankRunRecorder runRecorder;
+    @MockitoBean private CommanderRankRunRecorder runRecorder;
 
     @Test
     void refreshRequiresAuthentication() throws Exception {
@@ -44,8 +41,7 @@ class CommanderRankAdminControllerSecurityTest extends AbstractIntegrationTest {
 
     @Test
     void latestRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/admin/commander-ranks/latest"))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/admin/commander-ranks/latest")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -65,7 +61,9 @@ class CommanderRankAdminControllerSecurityTest extends AbstractIntegrationTest {
         when(commanderRankService.refreshNow(anyString()))
                 .thenReturn(RefreshOutcome.completed(123));
 
-        mockMvc.perform(post("/admin/commander-ranks/refresh").with(jwt().authorities(List.of(ADMIN))))
+        mockMvc.perform(
+                        post("/admin/commander-ranks/refresh")
+                                .with(jwt().authorities(List.of(ADMIN))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cardsUpdated").value(123));
     }
@@ -75,20 +73,24 @@ class CommanderRankAdminControllerSecurityTest extends AbstractIntegrationTest {
         when(commanderRankService.refreshNow(anyString()))
                 .thenReturn(RefreshOutcome.failed("EDHREC returned no top commanders"));
 
-        mockMvc.perform(post("/admin/commander-ranks/refresh").with(jwt().authorities(List.of(ADMIN))))
+        mockMvc.perform(
+                        post("/admin/commander-ranks/refresh")
+                                .with(jwt().authorities(List.of(ADMIN))))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.errorSummary").value("EDHREC returned no top commanders"));
     }
 
     @Test
     void latestReturnsCompletedRunForAdmin() throws Exception {
-        CommanderRankRefreshRun run = new CommanderRankRefreshRun(
-                OffsetDateTime.parse("2026-02-10T10:15:30Z"), "manual");
+        CommanderRankRefreshRun run =
+                new CommanderRankRefreshRun(OffsetDateTime.parse("2026-02-10T10:15:30Z"), "manual");
         ReflectionTestUtils.setField(run, "id", 7L);
         run.complete(OffsetDateTime.parse("2026-02-10T10:16:00Z"), 42);
         when(runRecorder.latestCompleted()).thenReturn(Optional.of(run));
 
-        mockMvc.perform(get("/admin/commander-ranks/latest").with(jwt().authorities(List.of(ADMIN))))
+        mockMvc.perform(
+                        get("/admin/commander-ranks/latest")
+                                .with(jwt().authorities(List.of(ADMIN))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
@@ -100,7 +102,9 @@ class CommanderRankAdminControllerSecurityTest extends AbstractIntegrationTest {
     void latestReturnsNotFoundWhenNoCompletedRun() throws Exception {
         when(runRecorder.latestCompleted()).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/admin/commander-ranks/latest").with(jwt().authorities(List.of(ADMIN))))
+        mockMvc.perform(
+                        get("/admin/commander-ranks/latest")
+                                .with(jwt().authorities(List.of(ADMIN))))
                 .andExpect(status().isNotFound());
     }
 }

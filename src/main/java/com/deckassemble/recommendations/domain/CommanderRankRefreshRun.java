@@ -12,8 +12,8 @@ import java.time.OffsetDateTime;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistence record of a single commander-rank refresh against EDHREC, scheduled or manual. Retained so
- * operators can audit when ranks last changed and why a refresh failed.
+ * Persistence record of a single commander-rank refresh against EDHREC, scheduled or manual.
+ * Retained so operators can audit when ranks last changed and why a refresh failed.
  */
 @Entity
 @Table(name = "commander_rank_refresh_runs")
