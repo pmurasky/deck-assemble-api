@@ -1,6 +1,7 @@
 package com.deckassemble.recommendations.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,6 +37,7 @@ class CommanderSuggestionServiceTest {
     @Mock private CardPriceService cardPriceService;
     @Mock private CollectionService collectionService;
     @Mock private EdhrecCommanderService edhrecCommanderService;
+    @Mock private EdhrecCommanderWarmupTrigger warmupTrigger;
     @Mock private CurrentUser currentUser;
     @Mock private ProfileService profileService;
 
@@ -49,6 +51,7 @@ class CommanderSuggestionServiceTest {
                         cardPriceService,
                         collectionService,
                         edhrecCommanderService,
+                        warmupTrigger,
                         currentUser,
                         profileService);
     }
@@ -63,6 +66,8 @@ class CommanderSuggestionServiceTest {
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L, 11L, 12L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(10L, 11L, 12L)))
                 .thenReturn(Map.of(10L, highCoverage, 11L, lowCoverage, 12L, ownedStaple));
+        when(edhrecCommanderService.hasFreshCache("high")).thenReturn(true);
+        when(edhrecCommanderService.hasFreshCache("low")).thenReturn(true);
         when(edhrecCommanderService.getCardScores("high", "High Coverage"))
                 .thenReturn(Map.of("Owned Staple", new CardScore(0.5, 10L)));
         when(edhrecCommanderService.getCardScores("low", "Low Coverage"))
@@ -91,6 +96,7 @@ class CommanderSuggestionServiceTest {
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
                 .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.hasFreshCache("commander")).thenReturn(true);
         when(edhrecCommanderService.getCardScores("commander", "Commander"))
                 .thenReturn(Map.of("Unknown Staple", new CardScore(0.5, 10L)));
         when(cardCatalogService.getCardsByNames(Set.of("Unknown Staple"))).thenReturn(List.of());
@@ -116,12 +122,27 @@ class CommanderSuggestionServiceTest {
     }
 
     @Test
+    void shouldExcludeColdCacheCommanderAndWarmInBackground() {
+        var commander = commander(1L, "Cold Commander", "cold", 5);
+        stubUser();
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
+        when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
+                .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.hasFreshCache("cold")).thenReturn(false);
+
+        assertThat(service.suggest()).isEmpty();
+        verify(edhrecCommanderService, never()).getCardScores("cold", "Cold Commander");
+        verify(warmupTrigger).warmInBackground("cold", "Cold Commander");
+    }
+
+    @Test
     void shouldCacheSuggestionsPerProfile() {
         var commander = commander(1L, "Commander", "commander", 1);
         stubUser();
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
                 .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.hasFreshCache("commander")).thenReturn(true);
         when(edhrecCommanderService.getCardScores("commander", "Commander"))
                 .thenReturn(Map.of("Staple", new CardScore(0.5, 10L)));
         when(cardCatalogService.getCardsByNames(Set.of("Staple"))).thenReturn(List.of());
@@ -147,6 +168,8 @@ class CommanderSuggestionServiceTest {
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L, 11L, 12L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(10L, 11L, 12L)))
                 .thenReturn(Map.of(10L, highCoverage, 11L, lowCoverage, 12L, ownedStaple));
+        when(edhrecCommanderService.hasFreshCache("high")).thenReturn(true);
+        when(edhrecCommanderService.hasFreshCache("low")).thenReturn(true);
         when(edhrecCommanderService.getCardScores("high", "High Coverage"))
                 .thenReturn(Map.of("Owned Staple", new CardScore(0.5, 10L)));
         when(edhrecCommanderService.getCardScores("low", "Low Coverage"))
@@ -211,6 +234,7 @@ class CommanderSuggestionServiceTest {
         when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of(10L));
         when(cardCatalogService.getCardsByPrintingIds(Set.of(10L)))
                 .thenReturn(Map.of(10L, commander));
+        when(edhrecCommanderService.hasFreshCache("commander")).thenReturn(true);
         when(edhrecCommanderService.getCardScores("commander", "Commander"))
                 .thenReturn(Map.of("Unknown Staple", new CardScore(0.5, 10L)));
         when(cardCatalogService.getCardsByNames(Set.of("Unknown Staple"))).thenReturn(List.of());

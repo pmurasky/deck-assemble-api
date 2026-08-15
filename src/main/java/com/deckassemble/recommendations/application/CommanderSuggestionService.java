@@ -49,23 +49,26 @@ public class CommanderSuggestionService {
     private final CardPriceService cardPriceService;
     private final CollectionService collectionService;
     private final EdhrecCommanderService edhrecCommanderService;
+    private final EdhrecCommanderWarmupTrigger warmupTrigger;
     private final CurrentUser currentUser;
     private final ProfileService profileService;
     private final Map<Long, CachedSuggestions> cache = new ConcurrentHashMap<>();
 
     // checkstyle:ParameterNumber suppressed: this service coordinates existing module boundaries.
-    @SuppressWarnings("checkstyle:ParameterNumber")
+    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public CommanderSuggestionService(
             CardCatalogService cardCatalogService,
             CardPriceService cardPriceService,
             CollectionService collectionService,
             EdhrecCommanderService edhrecCommanderService,
+            EdhrecCommanderWarmupTrigger warmupTrigger,
             CurrentUser currentUser,
             ProfileService profileService) {
         this.cardCatalogService = cardCatalogService;
         this.cardPriceService = cardPriceService;
         this.collectionService = collectionService;
         this.edhrecCommanderService = edhrecCommanderService;
+        this.warmupTrigger = warmupTrigger;
         this.currentUser = currentUser;
         this.profileService = profileService;
     }
@@ -129,6 +132,10 @@ public class CommanderSuggestionService {
     }
 
     private Optional<Map<String, CardScore>> scoresFor(Card commander) {
+        if (!edhrecCommanderService.hasFreshCache(commander.getScryfallOracleId())) {
+            warmupTrigger.warmInBackground(commander.getScryfallOracleId(), commander.getName());
+            return Optional.empty();
+        }
         try {
             var scores =
                     edhrecCommanderService.getCardScores(
