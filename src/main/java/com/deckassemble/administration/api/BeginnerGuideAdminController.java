@@ -5,9 +5,11 @@ import com.deckassemble.cards.domain.BeginnerGuideDraft;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
 import com.deckassemble.cards.domain.BeginnerGuideStatus;
 import com.deckassemble.cards.domain.CardRepository;
+import com.deckassemble.shared.security.CurrentUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,11 +35,15 @@ public class BeginnerGuideAdminController {
 
     private final BeginnerGuideRepository guideRepository;
     private final CardRepository cardRepository;
+    private final CurrentUser currentUser;
 
     public BeginnerGuideAdminController(
-            BeginnerGuideRepository guideRepository, CardRepository cardRepository) {
+            BeginnerGuideRepository guideRepository,
+            CardRepository cardRepository,
+            CurrentUser currentUser) {
         this.guideRepository = guideRepository;
         this.cardRepository = cardRepository;
+        this.currentUser = currentUser;
     }
 
     @GetMapping
@@ -74,6 +81,24 @@ public class BeginnerGuideAdminController {
                         request.whenToUse(),
                         guide.getSourceRulingsSnapshot(),
                         guide.getSourceOracleHash()));
+        guideRepository.save(guide);
+        String cardName =
+                cardRepository
+                        .findById(cardId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND))
+                        .getName();
+        return response(guide, cardName);
+    }
+
+    @PostMapping("/{cardId}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BeginnerGuideAdminResponse publish(@PathVariable Long cardId) {
+        BeginnerGuide guide =
+                guideRepository
+                        .findById(cardId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        String reviewer = currentUser.subject().orElseThrow();
+        guide.publish(reviewer, OffsetDateTime.now(ZoneOffset.UTC));
         guideRepository.save(guide);
         String cardName =
                 cardRepository

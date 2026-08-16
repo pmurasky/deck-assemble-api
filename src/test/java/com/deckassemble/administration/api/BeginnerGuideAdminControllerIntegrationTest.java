@@ -2,6 +2,7 @@ package com.deckassemble.administration.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -71,6 +72,20 @@ class BeginnerGuideAdminControllerIntegrationTest extends AbstractIntegrationTes
                 .andExpect(jsonPath("$.summary").value("Updated summary"))
                 .andExpect(jsonPath("$.examples").value("Updated examples"))
                 .andExpect(jsonPath("$.whenToUse").value("Updated timing"));
+    }
+
+    @Test
+    void publishRecordsAdminReviewer() throws Exception {
+        BeginnerGuide guide = saveGuide("Publishable Card");
+
+        mockMvc.perform(
+                        post("/admin/beginner-guides/{cardId}/publish", guide.getCardId())
+                                .with(
+                                        jwt().jwt(jwt -> jwt.subject("admin-1"))
+                                                .authorities(List.of(ADMIN))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.reviewedBy").value("admin-1"));
     }
 
     private BeginnerGuide saveGuide(String cardName) {
