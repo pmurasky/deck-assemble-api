@@ -1,5 +1,6 @@
 package com.deckassemble.shared.exception;
 
+import com.deckassemble.cards.application.BeginnerGuideDailyLimitExceededException;
 import com.deckassemble.cards.application.CardNotFoundException;
 import com.deckassemble.cards.application.FinishUnavailableException;
 import com.deckassemble.cards.application.InvalidCardSearchFilterException;
@@ -88,6 +89,16 @@ public class ApiExceptionHandler {
         problem.setType(URI.create("https://deckassemble.app/problems/finish-unavailable"));
         problem.setTitle("Finish unavailable");
         problem.setProperty("code", "FINISH_UNAVAILABLE");
+        return problem;
+    }
+
+    @ExceptionHandler(BeginnerGuideDailyLimitExceededException.class)
+    ProblemDetail handleBeginnerGuideDailyLimitExceeded() {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.TOO_MANY_REQUESTS, "Daily beginner guide limit exceeded.");
+        problem.setTitle("Daily guide limit exceeded");
+        problem.setProperty("code", "BEGINNER_GUIDE_DAILY_LIMIT_EXCEEDED");
         return problem;
     }
 

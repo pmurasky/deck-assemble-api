@@ -1,5 +1,6 @@
 package com.deckassemble.cards.api;
 
+import com.deckassemble.cards.application.BeginnerGuideRequestService;
 import com.deckassemble.cards.domain.BeginnerGuide;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
 import com.deckassemble.cards.domain.BeginnerGuideStatus;
@@ -9,7 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -19,9 +22,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class BeginnerGuideController {
 
     private final BeginnerGuideRepository guideRepository;
+    private final BeginnerGuideRequestService requestService;
 
-    public BeginnerGuideController(BeginnerGuideRepository guideRepository) {
+    public BeginnerGuideController(
+            BeginnerGuideRepository guideRepository, BeginnerGuideRequestService requestService) {
         this.guideRepository = guideRepository;
+        this.requestService = requestService;
     }
 
     @GetMapping
@@ -31,6 +37,12 @@ public class BeginnerGuideController {
             throw notFound();
         }
         return BeginnerGuideResponse.from(guide);
+    }
+
+    @PostMapping("/request")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public BeginnerGuideStatusResponse request(@PathVariable long cardId) {
+        return BeginnerGuideStatusResponse.from(requestService.request(cardId));
     }
 
     private static boolean isVisible(BeginnerGuideStatus status) {
@@ -57,6 +69,13 @@ public class BeginnerGuideController {
                     guide.getExamples(),
                     guide.getWhenToUse(),
                     guide.getPublishedAt());
+        }
+    }
+
+    public record BeginnerGuideStatusResponse(Long cardId, BeginnerGuideStatus status) {
+
+        private static BeginnerGuideStatusResponse from(BeginnerGuide guide) {
+            return new BeginnerGuideStatusResponse(guide.getCardId(), guide.getStatus());
         }
     }
 }
