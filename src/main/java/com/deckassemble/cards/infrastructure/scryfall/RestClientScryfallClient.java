@@ -193,10 +193,20 @@ class RestClientScryfallClient implements ScryfallClient {
         if (cardFaces == null) {
             return List.of();
         }
-        return cardFaces.stream()
-                .filter(face -> face.imageUris() != null && face.imageUris().normal() != null)
-                .map(face -> new CardImportFace(face.name(), face.imageUris().normal()))
-                .toList();
+        return cardFaces.stream().map(this::toImportFace).toList();
+    }
+
+    private CardImportFace toImportFace(ScryfallCardFace face) {
+        return new CardImportFace(
+                face.name(),
+                face.manaCost(),
+                face.typeLine(),
+                face.oracleText(),
+                face.power(),
+                face.toughness(),
+                face.loyalty(),
+                face.colors(),
+                face.imageUris() == null ? null : face.imageUris().normal());
     }
 
     private @Nullable ScryfallImageUris imageUris(ScryfallCard source) {

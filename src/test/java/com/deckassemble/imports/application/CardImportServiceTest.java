@@ -70,8 +70,26 @@ class CardImportServiceTest {
                         "Grimm Fate",
                         new CardImportImages("small", "normal", "large"),
                         List.of(
-                                new CardImportFace("Spider-Man", "front"),
-                                new CardImportFace("Spider-Back", "back")),
+                                new CardImportFace(
+                                        "Spider-Man",
+                                        "{1}{R}",
+                                        "Legendary Creature",
+                                        "Web-slinging",
+                                        "2",
+                                        "3",
+                                        null,
+                                        List.of("R"),
+                                        "front"),
+                                new CardImportFace(
+                                        "Spider-Back",
+                                        null,
+                                        "Legendary Creature",
+                                        "Back-face text",
+                                        "3",
+                                        "2",
+                                        null,
+                                        List.of("R"),
+                                        "back")),
                         null,
                         false,
                         false,
@@ -133,6 +151,15 @@ class CardImportServiceTest {
                                                 }));
         assertThat(cards.getAllValues())
                 .allSatisfy(card -> assertThat(card.getGameChanger()).isTrue());
+        assertThat(cards.getAllValues())
+                .allSatisfy(
+                        card ->
+                                assertThat(card.getFaces())
+                                        .extracting(
+                                                face -> face.getName() + ":" + face.getOracleText())
+                                        .containsExactly(
+                                                "Spider-Man:Web-slinging",
+                                                "Spider-Back:Back-face text"));
         ArgumentCaptor<Iterable<CardPrintingFace>> faces = ArgumentCaptor.forClass(Iterable.class);
         verify(cardPrintingFaceRepository, org.mockito.Mockito.times(2)).saveAll(faces.capture());
         assertThat(faces.getAllValues())
@@ -223,7 +250,17 @@ class CardImportServiceTest {
                 null,
                 null,
                 new CardImportImages("small", "normal", "large"),
-                List.of(new CardImportFace("Spider-Man", "front")),
+                List.of(
+                        new CardImportFace(
+                                "Spider-Man",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                "front")),
                 null,
                 false,
                 false,

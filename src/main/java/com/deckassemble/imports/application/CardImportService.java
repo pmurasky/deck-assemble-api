@@ -129,7 +129,15 @@ public class CardImportService {
         card.setLayout(source.layout());
         card.setReserved(source.reserved());
         card.setGameChanger(Boolean.TRUE.equals(source.gameChanger()));
+        replaceCardFaces(card, source.faces());
         replaceLegalities(card, source);
+    }
+
+    private void replaceCardFaces(Card card, List<CardImportFace> sourceFaces) {
+        card.getFaces().clear();
+        for (int faceOrder = 0; faceOrder < sourceFaces.size(); faceOrder++) {
+            card.getFaces().add(sourceFaces.get(faceOrder).toCardFace(card, faceOrder));
+        }
     }
 
     private void replaceLegalities(Card card, CardImportData source) {
@@ -158,9 +166,11 @@ public class CardImportService {
         var faces = new java.util.ArrayList<CardPrintingFace>();
         for (int faceOrder = 0; faceOrder < source.faces().size(); faceOrder++) {
             CardImportFace sourceFace = source.faces().get(faceOrder);
-            faces.add(
-                    new CardPrintingFace(
-                            printing, faceOrder, sourceFace.name(), sourceFace.imageUri()));
+            if (sourceFace.imageUri() != null) {
+                faces.add(
+                        new CardPrintingFace(
+                                printing, faceOrder, sourceFace.name(), sourceFace.imageUri()));
+            }
         }
         cardPrintingFaceRepository.saveAll(faces);
     }
