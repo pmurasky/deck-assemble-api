@@ -2,6 +2,7 @@ package com.deckassemble.administration.api;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +49,28 @@ class BeginnerGuideAdminControllerIntegrationTest extends AbstractIntegrationTes
                 .andExpect(jsonPath("$.content[0].cardId").value(draft.getCardId()))
                 .andExpect(jsonPath("$.content[0].cardName").value("Draft Card"))
                 .andExpect(jsonPath("$.content[0].status").value("DRAFT"));
+    }
+
+    @Test
+    void editUpdatesDraftContent() throws Exception {
+        BeginnerGuide guide = saveGuide("Editable Card");
+
+        mockMvc.perform(
+                        put("/admin/beginner-guides/{cardId}", guide.getCardId())
+                                .with(jwt().authorities(List.of(ADMIN)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        """
+                                        {
+                                          "summary": "Updated summary",
+                                          "examples": "Updated examples",
+                                          "whenToUse": "Updated timing"
+                                        }
+                                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summary").value("Updated summary"))
+                .andExpect(jsonPath("$.examples").value("Updated examples"))
+                .andExpect(jsonPath("$.whenToUse").value("Updated timing"));
     }
 
     private BeginnerGuide saveGuide(String cardName) {
