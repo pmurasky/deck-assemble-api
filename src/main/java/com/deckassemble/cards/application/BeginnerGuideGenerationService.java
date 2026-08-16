@@ -13,6 +13,7 @@ import com.deckassemble.cards.domain.ScryfallClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 
 public class BeginnerGuideGenerationService {
@@ -37,6 +38,11 @@ public class BeginnerGuideGenerationService {
 
     @Transactional
     public BeginnerGuide generate(Long cardId) {
+        return generate(cardId, null);
+    }
+
+    @Transactional
+    public BeginnerGuide generate(Long cardId, @Nullable String generatedBy) {
         var existing = guideRepository.findById(cardId);
         if (existing.isPresent()) {
             return existing.get();
@@ -48,7 +54,7 @@ public class BeginnerGuideGenerationService {
                         .orElseThrow(CardNotFoundException::new);
         var source = source(card, scryfallClient.getRulings(printing.getScryfallCardId()));
         var content = generator.generate(source);
-        return guideRepository.save(toGuide(cardId, source, content));
+        return guideRepository.save(toGuide(cardId, source, content, generatedBy));
     }
 
     private static BeginnerGuideSource source(Card card, List<String> rulings) {
@@ -60,7 +66,10 @@ public class BeginnerGuideGenerationService {
     }
 
     private static BeginnerGuide toGuide(
-            Long cardId, BeginnerGuideSource source, BeginnerGuideContent content) {
+            Long cardId,
+            BeginnerGuideSource source,
+            BeginnerGuideContent content,
+            @Nullable String generatedBy) {
         var draft =
                 new BeginnerGuideDraft(
                         content.summary(),
@@ -68,6 +77,6 @@ public class BeginnerGuideGenerationService {
                         content.whenToUse(),
                         String.join("\n", source.rulings()),
                         source.oracleHash());
-        return new BeginnerGuide(cardId, draft, OffsetDateTime.now(ZoneOffset.UTC));
+        return new BeginnerGuide(cardId, draft, OffsetDateTime.now(ZoneOffset.UTC), generatedBy);
     }
 }

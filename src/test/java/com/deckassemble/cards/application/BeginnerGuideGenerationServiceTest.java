@@ -71,6 +71,25 @@ class BeginnerGuideGenerationServiceTest {
         verifyNoInteractions(cardRepository, cardPrintingRepository, scryfallClient, generator);
     }
 
+    @Test
+    void shouldRetainGenerationRequester() {
+        var card = multifaceCard();
+        when(cardRepository.findById(42L)).thenReturn(Optional.of(card));
+        when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(42L))
+                .thenReturn(List.of(new CardPrinting(card, null, "printing-id")));
+        when(scryfallClient.getRulings("printing-id")).thenReturn(List.of());
+        when(generator.generate(
+                        new BeginnerGuideSource(
+                                "Spider-Man", List.of("Front text", "Back text"), List.of())))
+                .thenReturn(new BeginnerGuideContent("Summary", "Examples", "When to use"));
+
+        service.generate(42L, "user-1");
+
+        var guide = ArgumentCaptor.forClass(BeginnerGuide.class);
+        verify(guideRepository).save(guide.capture());
+        assertThat(guide.getValue().getGeneratedBy()).isEqualTo("user-1");
+    }
+
     private static Card multifaceCard() {
         var card = new Card("oracle-id", "Spider-Man");
         ReflectionTestUtils.setField(card, "id", 42L);
