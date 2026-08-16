@@ -1,6 +1,8 @@
 package com.deckassemble.administration.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.deckassemble.AbstractIntegrationTest;
+import com.deckassemble.cards.application.BeginnerGuideGenerationService;
 import com.deckassemble.cards.domain.BeginnerGuide;
 import com.deckassemble.cards.domain.BeginnerGuideDraft;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,7 @@ class BeginnerGuideAdminControllerIntegrationTest extends AbstractIntegrationTes
     @Autowired private MockMvc mockMvc;
     @Autowired private CardRepository cardRepository;
     @Autowired private BeginnerGuideRepository guideRepository;
+    @MockitoBean private BeginnerGuideGenerationService generationService;
 
     @Test
     void listRequiresAdminRole() throws Exception {
@@ -99,6 +104,22 @@ class BeginnerGuideAdminControllerIntegrationTest extends AbstractIntegrationTes
                 .andExpect(status().isNoContent());
 
         assertThat(guideRepository.findById(guide.getCardId())).isEmpty();
+    }
+
+    @Test
+    void regenerateReturnsAcceptedDraft() throws Exception {
+        BeginnerGuide guide = saveGuide("Regenerated Card");
+        when(generationService.regenerate(guide.getCardId())).thenReturn(guide);
+
+        mockMvc.perform(
+                        post("/admin/beginner-guides/{cardId}/regenerate", guide.getCardId())
+                                .with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.cardId").value(guide.getCardId()))
+                .andExpect(jsonPath("$.cardName").value("Regenerated Card"))
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        verify(generationService).regenerate(guide.getCardId());
     }
 
     private BeginnerGuide saveGuide(String cardName) {

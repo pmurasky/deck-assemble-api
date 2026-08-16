@@ -1,5 +1,6 @@
 package com.deckassemble.administration.api;
 
+import com.deckassemble.cards.application.BeginnerGuideGenerationService;
 import com.deckassemble.cards.domain.BeginnerGuide;
 import com.deckassemble.cards.domain.BeginnerGuideDraft;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
@@ -37,14 +38,17 @@ public class BeginnerGuideAdminController {
     private final BeginnerGuideRepository guideRepository;
     private final CardRepository cardRepository;
     private final CurrentUser currentUser;
+    private final BeginnerGuideGenerationService generationService;
 
     public BeginnerGuideAdminController(
             BeginnerGuideRepository guideRepository,
             CardRepository cardRepository,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            BeginnerGuideGenerationService generationService) {
         this.guideRepository = guideRepository;
         this.cardRepository = cardRepository;
         this.currentUser = currentUser;
+        this.generationService = generationService;
     }
 
     @GetMapping
@@ -117,6 +121,19 @@ public class BeginnerGuideAdminController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
         guideRepository.deleteById(cardId);
+    }
+
+    @PostMapping("/{cardId}/regenerate")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @PreAuthorize("hasRole('ADMIN')")
+    public BeginnerGuideAdminResponse regenerate(@PathVariable Long cardId) {
+        BeginnerGuide guide = generationService.regenerate(cardId);
+        String cardName =
+                cardRepository
+                        .findById(cardId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND))
+                        .getName();
+        return response(guide, cardName);
     }
 
     private Map<Long, String> cardNames(List<BeginnerGuide> guides) {
