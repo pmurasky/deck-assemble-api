@@ -1,5 +1,6 @@
 package com.deckassemble;
 
+import com.deckassemble.cards.infrastructure.llm.BeginnerGuideLlmProperties;
 import com.deckassemble.cards.infrastructure.scryfall.ScryfallProperties;
 import com.deckassemble.recommendations.infrastructure.edhrec.EdhrecProperties;
 import com.deckassemble.recommendations.infrastructure.spellbook.CommanderSpellbookProperties;
@@ -17,6 +18,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableConfigurationProperties({
     ScryfallProperties.class,
+    BeginnerGuideLlmProperties.class,
     EdhrecProperties.class,
     CommanderSpellbookProperties.class
 })

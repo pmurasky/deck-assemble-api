@@ -50,3 +50,10 @@ deckassemble:
     user-agent: ${COMMANDER_SPELLBOOK_USER_AGENT:DeckAssemble/0.0.1}
     connect-timeout: 5s
     read-timeout: 30s
+  beginner-guide:
+    daily-limit: ${BEGINNER_GUIDE_DAILY_LIMIT:5}
+  beginner-guide-llm:
+    base-url: ${BEGINNER_GUIDE_LLM_BASE_URL:http://localhost:11434}
+    user-agent: ${BEGINNER_GUIDE_LLM_USER_AGENT:DeckAssemble/0.0.1}
+    connect-timeout: 5s
+    read-timeout: 30s
