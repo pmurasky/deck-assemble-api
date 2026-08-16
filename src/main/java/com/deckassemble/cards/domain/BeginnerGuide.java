@@ -37,6 +37,9 @@ public class BeginnerGuide {
     @Column(nullable = false)
     private OffsetDateTime generatedAt;
 
+    @Column(name = "generated_by")
+    private @Nullable String generatedBy;
+
     private @Nullable OffsetDateTime publishedAt;
     private @Nullable String reviewedBy;
 
@@ -45,9 +48,18 @@ public class BeginnerGuide {
     }
 
     public BeginnerGuide(Long cardId, BeginnerGuideDraft draft, OffsetDateTime generatedAt) {
+        this(cardId, draft, generatedAt, null);
+    }
+
+    public BeginnerGuide(
+            Long cardId,
+            BeginnerGuideDraft draft,
+            OffsetDateTime generatedAt,
+            @Nullable String generatedBy) {
         this.cardId = cardId;
         this.status = BeginnerGuideStatus.DRAFT;
         this.generatedAt = generatedAt;
+        this.generatedBy = generatedBy;
         applyContent(draft);
     }
 
@@ -107,6 +119,10 @@ public class BeginnerGuide {
 
     public OffsetDateTime getGeneratedAt() {
         return generatedAt;
+    }
+
+    public @Nullable String getGeneratedBy() {
+        return generatedBy;
     }
 
     public @Nullable OffsetDateTime getPublishedAt() {

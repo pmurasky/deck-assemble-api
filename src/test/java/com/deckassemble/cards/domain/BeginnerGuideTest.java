@@ -24,6 +24,13 @@ class BeginnerGuideTest {
         assertThat(guide.getStatus()).isEqualTo(BeginnerGuideStatus.REPORTED);
     }
 
+    @Test
+    void shouldRetainGenerationRequester() {
+        var guide = new BeginnerGuide(42L, draft(), GENERATED_AT, "user-1");
+
+        assertThat(guide.getGeneratedBy()).isEqualTo("user-1");
+    }
+
     private BeginnerGuideDraft draft() {
         return new BeginnerGuideDraft(
                 "Summary", "Examples", "When to use", "Ruling text", "a".repeat(64));
