@@ -32,4 +32,23 @@ class BeginnerGuideRepositoryIntegrationTest extends AbstractIntegrationTest {
         assertThat(reloaded.getSourceOracleHash()).hasSize(64);
         assertThat(reloaded.getGeneratedAt()).isEqualTo(generatedAt);
     }
+
+    @Test
+    void shouldCountUserGenerationsWithinDay() {
+        var firstCard = cardRepository.saveAndFlush(new Card("oracle-one", "First Card"));
+        var secondCard = cardRepository.saveAndFlush(new Card("oracle-two", "Second Card"));
+        var dayStart = OffsetDateTime.parse("2026-08-16T00:00:00Z");
+        var draft =
+                new BeginnerGuideDraft(
+                        "Summary", "Examples", "When to use", "Ruling", "a".repeat(64));
+        guideRepository.saveAndFlush(
+                new BeginnerGuide(firstCard.getId(), draft, dayStart.plusHours(1), "user-1"));
+        guideRepository.saveAndFlush(
+                new BeginnerGuide(secondCard.getId(), draft, dayStart.plusDays(1), "user-1"));
+
+        var count =
+                guideRepository.countGeneratedByBetween("user-1", dayStart, dayStart.plusDays(1));
+
+        assertThat(count).isEqualTo(1);
+    }
 }
