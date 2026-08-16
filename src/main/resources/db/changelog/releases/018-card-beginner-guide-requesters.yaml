@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-card-beginner-guide-requesters
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: card_beginner_guides
+            columns:
+              - column:
+                  name: generated_by
+                  type: varchar(255)
+        - createIndex:
+            indexName: idx_card_beginner_guides_requester_time
+            tableName: card_beginner_guides
+            columns:
+              - column:
+                  name: generated_by
+              - column:
+                  name: generated_at
