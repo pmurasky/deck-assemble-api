@@ -13,6 +13,15 @@ public record BeginnerGuideSource(String cardName, List<String> oracleTexts, Lis
         rulings = List.copyOf(rulings);
     }
 
+    /** Creates the canonical guide source for a card and its current rulings. */
+    public static BeginnerGuideSource fromCard(Card card, List<String> rulings) {
+        var oracleTexts =
+                card.getFaces().isEmpty()
+                        ? List.of(card.getOracleText())
+                        : card.getFaces().stream().map(CardFace::getOracleText).toList();
+        return new BeginnerGuideSource(card.getName(), oracleTexts, rulings);
+    }
+
     public String oracleHash() {
         try {
             var digest = MessageDigest.getInstance("SHA-256");

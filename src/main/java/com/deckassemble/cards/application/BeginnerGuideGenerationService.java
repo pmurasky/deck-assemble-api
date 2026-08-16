@@ -6,13 +6,11 @@ import com.deckassemble.cards.domain.BeginnerGuideDraft;
 import com.deckassemble.cards.domain.BeginnerGuideGenerator;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
 import com.deckassemble.cards.domain.BeginnerGuideSource;
-import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.ScryfallClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +50,9 @@ public class BeginnerGuideGenerationService {
                 printingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
                         .findFirst()
                         .orElseThrow(CardNotFoundException::new);
-        var source = source(card, scryfallClient.getRulings(printing.getScryfallCardId()));
+        var source =
+                BeginnerGuideSource.fromCard(
+                        card, scryfallClient.getRulings(printing.getScryfallCardId()));
         var content = generator.generate(source);
         return guideRepository.save(toGuide(cardId, source, content, generatedBy));
     }
@@ -62,14 +62,6 @@ public class BeginnerGuideGenerationService {
         guideRepository.deleteById(cardId);
         guideRepository.flush();
         return generate(cardId);
-    }
-
-    private static BeginnerGuideSource source(Card card, List<String> rulings) {
-        var oracleTexts =
-                card.getFaces().isEmpty()
-                        ? List.of(card.getOracleText())
-                        : card.getFaces().stream().map(face -> face.getOracleText()).toList();
-        return new BeginnerGuideSource(card.getName(), oracleTexts, rulings);
     }
 
     private static BeginnerGuide toGuide(
