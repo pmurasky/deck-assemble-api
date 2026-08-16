@@ -14,7 +14,13 @@ public enum CardSeries {
     SPIDER_MAN("Spider-Man", List.of("spm", "spe")),
     HOBBIT("The Hobbit", List.of("hob", "hoc")),
     TMNT("Teenage Mutant Ninja Turtles", List.of("tmt", "tmc")),
-    ASSASSINS_CREED("Assassin's Creed", List.of("acr"));
+    ASSASSINS_CREED("Assassin's Creed", List.of("acr")),
+    LORWYN_ECLIPSED("Lorwyn Eclipsed", List.of("ecl", "ecc", "spg")),
+    AETHERDRIFT("Aetherdrift", List.of("dft", "drc")),
+    ZENDIKAR_RISING("Zendikar Rising", List.of("znr")),
+    TALES_OF_MIDDLE_EARTH_COMMANDER("Tales of Middle-earth Commander", List.of("ltc")),
+    FOUNDATIONS("Foundations", List.of("fdn")),
+    BLOOMBURROW("Bloomburrow", List.of("blb"));
 
     private final String label;
     private final List<String> setCodes;
