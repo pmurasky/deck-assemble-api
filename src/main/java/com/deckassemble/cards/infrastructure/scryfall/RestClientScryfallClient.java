@@ -33,6 +33,8 @@ class RestClientScryfallClient implements ScryfallClient {
 
     private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
             new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ScryfallList<JsonNode>> RULING_LIST =
+            new ParameterizedTypeReference<>() {};
     private static final int MAX_ATTEMPTS = 3;
     private static final long BASE_BACKOFF_MILLIS = 500L;
 
@@ -118,6 +120,19 @@ class RestClientScryfallClient implements ScryfallClient {
                                         .retrieve()
                                         .body(ScryfallCard.class));
         return toPrice(card == null ? null : card.prices());
+    }
+
+    @Override
+    public List<String> getRulings(String scryfallCardId) {
+        var rulings =
+                execute(
+                        () ->
+                                restClient
+                                        .get()
+                                        .uri("/cards/{id}/rulings", scryfallCardId)
+                                        .retrieve()
+                                        .body(RULING_LIST));
+        return rulings.data().stream().map(ruling -> ruling.path("comment").asString()).toList();
     }
 
     private CardPrice toPrice(@Nullable ScryfallPrices prices) {
