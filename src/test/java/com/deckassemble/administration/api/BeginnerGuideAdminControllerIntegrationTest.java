@@ -1,5 +1,6 @@
 package com.deckassemble.administration.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -86,6 +87,18 @@ class BeginnerGuideAdminControllerIntegrationTest extends AbstractIntegrationTes
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.reviewedBy").value("admin-1"));
+    }
+
+    @Test
+    void rejectDeletesQueuedGuide() throws Exception {
+        BeginnerGuide guide = saveGuide("Rejected Card");
+
+        mockMvc.perform(
+                        post("/admin/beginner-guides/{cardId}/reject", guide.getCardId())
+                                .with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isNoContent());
+
+        assertThat(guideRepository.findById(guide.getCardId())).isEmpty();
     }
 
     private BeginnerGuide saveGuide(String cardName) {

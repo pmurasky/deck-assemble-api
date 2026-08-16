@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -106,6 +107,16 @@ public class BeginnerGuideAdminController {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND))
                         .getName();
         return response(guide, cardName);
+    }
+
+    @PostMapping("/{cardId}/reject")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void reject(@PathVariable Long cardId) {
+        if (!guideRepository.existsById(cardId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        guideRepository.deleteById(cardId);
     }
 
     private Map<Long, String> cardNames(List<BeginnerGuide> guides) {
