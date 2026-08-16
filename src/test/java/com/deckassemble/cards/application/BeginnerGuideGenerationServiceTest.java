@@ -2,6 +2,7 @@ package com.deckassemble.cards.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.deckassemble.cards.domain.BeginnerGuide;
@@ -57,6 +58,17 @@ class BeginnerGuideGenerationServiceTest {
         assertThat(guide.getValue().getSummary()).isEqualTo("Summary");
         assertThat(guide.getValue().getSourceRulingsSnapshot()).isEqualTo("Ruling one");
         assertThat(guide.getValue().getSourceOracleHash()).hasSize(64);
+    }
+
+    @Test
+    void shouldReturnExistingGuideWithoutRegeneration() {
+        var existing = org.mockito.Mockito.mock(BeginnerGuide.class);
+        when(guideRepository.findById(42L)).thenReturn(Optional.of(existing));
+
+        var result = service.generate(42L);
+
+        assertThat(result).isSameAs(existing);
+        verifyNoInteractions(cardRepository, cardPrintingRepository, scryfallClient, generator);
     }
 
     private static Card multifaceCard() {

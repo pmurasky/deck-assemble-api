@@ -37,6 +37,10 @@ public class BeginnerGuideGenerationService {
 
     @Transactional
     public BeginnerGuide generate(Long cardId) {
+        var existing = guideRepository.findById(cardId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         var card = cardRepository.findById(cardId).orElseThrow(CardNotFoundException::new);
         var printing =
                 printingRepository.findByCardIdOrderByReleasedAtDesc(cardId).stream()
