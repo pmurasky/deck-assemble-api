@@ -1,0 +1,257 @@
+openapi: 3.0.3
+info:
+  title: Beginner Card Guides
+  version: "1.0"
+  description: >
+    Contract for the beginner card guide feature: per-card plain-English
+    rules explanations, generated on demand and reviewed by an admin before
+    becoming visible to end users. Frozen once merged to main.
+paths:
+  /cards/{cardId}/beginner-guide:
+    get:
+      summary: Get the published beginner guide for a card
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: A published or stale (still valid) guide exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginnerGuideResponse"
+        "404":
+          description: No published guide exists yet for this card (may still be DRAFT or absent).
+  /cards/{cardId}/beginner-guide/request:
+    post:
+      summary: Request generation of a beginner guide for a card
+      description: >
+        Idempotent. If a DRAFT, PUBLISHED, or STALE guide already exists for
+        this card, no new generation is triggered and the current status is
+        returned. Subject to a per-user daily generation cap.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "202":
+          description: A DRAFT now exists (newly created or already present).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginnerGuideStatusResponse"
+        "429":
+          description: Caller has exceeded their daily generation request cap.
+  /cards/{cardId}/beginner-guide/report:
+    post:
+      summary: Flag the published guide for this card as possibly incorrect
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "202":
+          description: Report accepted; guide added to the admin review queue.
+        "404":
+          description: No published guide exists for this card to report.
+  /admin/beginner-guides:
+    get:
+      summary: List guides awaiting admin review
+      description: Requires ADMIN role.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Comma-separated statuses to include. Defaults to DRAFT,STALE,REPORTED.
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Page of guides needing attention.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BeginnerGuideAdminResponse"
+                  totalElements:
+                    type: integer
+        "403":
+          description: Caller is not an admin.
+  /admin/beginner-guides/{cardId}:
+    put:
+      summary: Edit a guide's content
+      description: Requires ADMIN role.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BeginnerGuideEditRequest"
+      responses:
+        "200":
+          description: Updated guide.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginnerGuideAdminResponse"
+        "403":
+          description: Caller is not an admin.
+        "404":
+          description: No guide exists for this card.
+  /admin/beginner-guides/{cardId}/publish:
+    post:
+      summary: Publish a DRAFT or re-approve a STALE/REPORTED guide
+      description: Requires ADMIN role.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Guide is now PUBLISHED.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginnerGuideAdminResponse"
+        "403":
+          description: Caller is not an admin.
+        "404":
+          description: No guide exists for this card.
+  /admin/beginner-guides/{cardId}/regenerate:
+    post:
+      summary: Discard current content and generate a fresh DRAFT
+      description: Requires ADMIN role. Not subject to the end-user daily cap.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "202":
+          description: New DRAFT generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BeginnerGuideAdminResponse"
+        "403":
+          description: Caller is not an admin.
+        "404":
+          description: No card exists with this id.
+  /admin/beginner-guides/{cardId}/reject:
+    post:
+      summary: Delete a DRAFT (or unpublish and delete a REPORTED guide)
+      description: Requires ADMIN role.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: Guide deleted.
+        "403":
+          description: Caller is not an admin.
+        "404":
+          description: No guide exists for this card.
+components:
+  schemas:
+    BeginnerGuideResponse:
+      type: object
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [PUBLISHED, STALE]
+        summary:
+          type: string
+        examples:
+          type: string
+        whenToUse:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+    BeginnerGuideStatusResponse:
+      type: object
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, STALE]
+    BeginnerGuideAdminResponse:
+      type: object
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        cardName:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, STALE, REPORTED]
+        summary:
+          type: string
+        examples:
+          type: string
+        whenToUse:
+          type: string
+        sourceRulingsSnapshot:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          nullable: true
+    BeginnerGuideEditRequest:
+      type: object
+      required: [summary, examples, whenToUse]
+      properties:
+        summary:
+          type: string
+        examples:
+          type: string
+        whenToUse:
+          type: string
