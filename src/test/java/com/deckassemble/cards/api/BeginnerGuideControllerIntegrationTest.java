@@ -1,5 +1,6 @@
 package com.deckassemble.cards.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,6 +14,7 @@ import com.deckassemble.cards.application.BeginnerGuideRequestService;
 import com.deckassemble.cards.domain.BeginnerGuide;
 import com.deckassemble.cards.domain.BeginnerGuideDraft;
 import com.deckassemble.cards.domain.BeginnerGuideRepository;
+import com.deckassemble.cards.domain.BeginnerGuideStatus;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardRepository;
 import java.time.OffsetDateTime;
@@ -74,6 +76,44 @@ class BeginnerGuideControllerIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(post("/cards/42/beginner-guide/request").with(jwt()))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void reportMarksPublishedGuideAsReported() throws Exception {
+        BeginnerGuide guide = saveGuide();
+        guide.publish("reviewer", OffsetDateTime.parse("2026-08-16T13:00:00Z"));
+        guideRepository.saveAndFlush(guide);
+
+        mockMvc.perform(
+                        post("/cards/{cardId}/beginner-guide/report", guide.getCardId())
+                                .with(jwt()))
+                .andExpect(status().isAccepted());
+
+        assertThat(guideRepository.findById(guide.getCardId()).orElseThrow().getStatus())
+                .isEqualTo(BeginnerGuideStatus.REPORTED);
+    }
+
+    @Test
+    void reportAcceptsAlreadyReportedGuide() throws Exception {
+        BeginnerGuide guide = saveGuide();
+        guide.report();
+        guideRepository.saveAndFlush(guide);
+
+        mockMvc.perform(
+                        post("/cards/{cardId}/beginner-guide/report", guide.getCardId())
+                                .with(jwt()))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("REPORTED"));
+    }
+
+    @Test
+    void reportHidesDraftGuide() throws Exception {
+        BeginnerGuide guide = saveGuide();
+
+        mockMvc.perform(
+                        post("/cards/{cardId}/beginner-guide/report", guide.getCardId())
+                                .with(jwt()))
+                .andExpect(status().isNotFound());
     }
 
     private BeginnerGuide saveGuide() {

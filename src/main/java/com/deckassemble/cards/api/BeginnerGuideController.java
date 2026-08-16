@@ -45,6 +45,19 @@ public class BeginnerGuideController {
         return BeginnerGuideStatusResponse.from(requestService.request(cardId));
     }
 
+    @PostMapping("/report")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public BeginnerGuideStatusResponse report(@PathVariable long cardId) {
+        BeginnerGuide guide =
+                guideRepository.findById(cardId).orElseThrow(BeginnerGuideController::notFound);
+        if (guide.getStatus() != BeginnerGuideStatus.PUBLISHED
+                && guide.getStatus() != BeginnerGuideStatus.REPORTED) {
+            throw notFound();
+        }
+        guide.report();
+        return BeginnerGuideStatusResponse.from(guideRepository.save(guide));
+    }
+
     private static boolean isVisible(BeginnerGuideStatus status) {
         return status == BeginnerGuideStatus.PUBLISHED || status == BeginnerGuideStatus.STALE;
     }
