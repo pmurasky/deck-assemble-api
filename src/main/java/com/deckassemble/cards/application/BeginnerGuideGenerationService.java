@@ -57,6 +57,13 @@ public class BeginnerGuideGenerationService {
         return guideRepository.save(toGuide(cardId, source, content, generatedBy));
     }
 
+    @Transactional
+    public BeginnerGuide regenerate(Long cardId) {
+        guideRepository.deleteById(cardId);
+        guideRepository.flush();
+        return generate(cardId);
+    }
+
     private static BeginnerGuideSource source(Card card, List<String> rulings) {
         var oracleTexts =
                 card.getFaces().isEmpty()

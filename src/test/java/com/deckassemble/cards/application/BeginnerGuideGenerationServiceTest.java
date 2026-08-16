@@ -1,6 +1,7 @@
 package com.deckassemble.cards.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -88,6 +89,29 @@ class BeginnerGuideGenerationServiceTest {
         var guide = ArgumentCaptor.forClass(BeginnerGuide.class);
         verify(guideRepository).save(guide.capture());
         assertThat(guide.getValue().getGeneratedBy()).isEqualTo("user-1");
+    }
+
+    @Test
+    void shouldReplaceExistingGuideDuringRegeneration() {
+        var card = multifaceCard();
+        when(guideRepository.findById(42L)).thenReturn(Optional.empty());
+        when(cardRepository.findById(42L)).thenReturn(Optional.of(card));
+        when(cardPrintingRepository.findByCardIdOrderByReleasedAtDesc(42L))
+                .thenReturn(List.of(new CardPrinting(card, null, "printing-id")));
+        when(scryfallClient.getRulings("printing-id")).thenReturn(List.of());
+        when(generator.generate(
+                        new BeginnerGuideSource(
+                                "Spider-Man", List.of("Front text", "Back text"), List.of())))
+                .thenReturn(new BeginnerGuideContent("Fresh", "Examples", "When to use"));
+        when(guideRepository.save(any(BeginnerGuide.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        BeginnerGuide result = service.regenerate(42L);
+
+        verify(guideRepository).deleteById(42L);
+        verify(guideRepository).flush();
+        assertThat(result.getSummary()).isEqualTo("Fresh");
+        assertThat(result.getGeneratedBy()).isNull();
     }
 
     private static Card multifaceCard() {
