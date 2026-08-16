@@ -60,6 +60,68 @@ class CardImportControllerSecurityTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void shouldCombineSeriesKeysIntoSingleQueryForAdministrators() throws Exception {
+        when(cardImportTrigger.trigger(
+                        org.mockito.ArgumentMatchers.eq("e:tmt,tmc,hob,hoc"),
+                        org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(9L);
+
+        mockMvc.perform(
+                        post("/admin/card-imports")
+                                .queryParam("series", "TMNT", "hobbit")
+                                .with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.runId").value(9));
+    }
+
+    @Test
+    void shouldRejectImportWithUnknownSeriesKey() throws Exception {
+        mockMvc.perform(
+                        post("/admin/card-imports")
+                                .queryParam("series", "POKEMON")
+                                .with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectImportWithBothQueryAndSeries() throws Exception {
+        mockMvc.perform(
+                        post("/admin/card-imports")
+                                .queryParam("query", "set:mar")
+                                .queryParam("series", "TMNT")
+                                .with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectImportWithNeitherQueryNorSeries() throws Exception {
+        mockMvc.perform(post("/admin/card-imports").with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectSeriesListWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldForbidSeriesListForNonAdministrators() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series").with(jwt()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturnSeriesListWithoutQueryFragmentsForAdministrators() throws Exception {
+        mockMvc.perform(get("/admin/card-imports/series").with(jwt().authorities(List.of(ADMIN))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].key").value("MARVEL"))
+                .andExpect(jsonPath("$[0].label").value("Marvel"))
+                .andExpect(jsonPath("$[3].key").value("TMNT"))
+                .andExpect(jsonPath("$[0].setCodes").doesNotExist());
+    }
+
+    @Test
     void shouldReturnHistoryForAdministrators() throws Exception {
         CardImportRun run =
                 new CardImportRun(

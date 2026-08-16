@@ -3,10 +3,12 @@ package com.deckassemble.administration.api;
 import com.deckassemble.imports.application.CardImportTrigger;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
+import com.deckassemble.imports.domain.CardSeries;
 import com.deckassemble.shared.security.CurrentUser;
-import jakarta.validation.constraints.NotBlank;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/admin/card-imports")
@@ -35,12 +38,49 @@ public class CardImportController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ImportAcceptedResponse> importCards(
-            @RequestParam @NotBlank String query) {
-        long runId = cardImportTrigger.trigger(query, currentUser.subject().orElse("system"));
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) List<String> series) {
+        String effectiveQuery = resolveQuery(query, series);
+        long runId =
+                cardImportTrigger.trigger(effectiveQuery, currentUser.subject().orElse("system"));
         return ResponseEntity.accepted().body(new ImportAcceptedResponse(runId));
     }
 
+    private String resolveQuery(String query, List<String> seriesKeys) {
+        boolean hasQuery = query != null && !query.isBlank();
+        boolean hasSeries = seriesKeys != null && !seriesKeys.isEmpty();
+        if (hasQuery == hasSeries) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Provide exactly one of 'query' or 'series'");
+        }
+        if (hasQuery) {
+            return query;
+        }
+        return CardSeries.toQueryFragment(seriesKeys.stream().map(this::parseSeries).toList());
+    }
+
+    private CardSeries parseSeries(String key) {
+        return CardSeries.fromKey(key)
+                .orElseThrow(
+                        () ->
+                                new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "Unknown card series: " + key));
+    }
+
     public record ImportAcceptedResponse(long runId) {}
+
+    @GetMapping("/series")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<CardSeriesResponse> cardSeries() {
+        return Arrays.stream(CardSeries.values()).map(CardSeriesResponse::from).toList();
+    }
+
+    public record CardSeriesResponse(String key, String label) {
+
+        static CardSeriesResponse from(CardSeries series) {
+            return new CardSeriesResponse(series.name(), series.label());
+        }
+    }
 
     @PostMapping("/oracle-tags")
     @PreAuthorize("hasRole('ADMIN')")
