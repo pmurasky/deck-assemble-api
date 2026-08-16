@@ -4,7 +4,6 @@ import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportFace;
 import com.deckassemble.cards.domain.CardLegality;
-import com.deckassemble.cards.domain.CardRepository;
 import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
@@ -18,19 +17,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class CardImportService {
 
     private final ScryfallClient scryfallClient;
-    private final CardRepository cardRepository;
+    private final CardImportCardStore cardStore;
     private final CardPrintingImporter cardPrintingImporter;
     private final ImportRunRecorder runRecorder;
     private final CurrentUser currentUser;
 
     public CardImportService(
             ScryfallClient scryfallClient,
-            CardRepository cardRepository,
+            CardImportCardStore cardStore,
             CardPrintingImporter cardPrintingImporter,
             ImportRunRecorder runRecorder,
             CurrentUser currentUser) {
         this.scryfallClient = scryfallClient;
-        this.cardRepository = cardRepository;
+        this.cardStore = cardStore;
         this.cardPrintingImporter = cardPrintingImporter;
         this.runRecorder = runRecorder;
         this.currentUser = currentUser;
@@ -81,11 +80,11 @@ public class CardImportService {
             return Outcome.SKIPPED;
         }
         Card card =
-                cardRepository
+                cardStore
                         .findByScryfallOracleId(source.oracleId())
                         .orElseGet(() -> new Card(source.oracleId(), source.name()));
         applyCardDetails(card, source);
-        card = cardRepository.save(card);
+        card = cardStore.save(card);
         return cardPrintingImporter.importPrinting(card, source)
                 ? Outcome.UPDATED
                 : Outcome.CREATED;
