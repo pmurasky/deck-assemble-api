@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-card-beginner-guides
+      author: sisyphus
+      changes:
+        - createTable:
+            tableName: card_beginner_guides
+            columns:
+              - column:
+                  name: card_id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: summary
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: examples
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: when_to_use
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_rulings_snapshot
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_oracle_hash
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_at
+                  type: timestamptz
+              - column:
+                  name: reviewed_by
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: card_beginner_guides
+            baseColumnNames: card_id
+            constraintName: fk_card_beginner_guides_card
+            referencedTableName: cards
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_card_beginner_guides_status
+            tableName: card_beginner_guides
+            columns:
+              - column:
+                  name: status

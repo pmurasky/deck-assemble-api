@@ -33,6 +33,8 @@ class RestClientScryfallClient implements ScryfallClient {
 
     private static final ParameterizedTypeReference<ScryfallList<ScryfallCard>> CARD_LIST =
             new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ScryfallList<JsonNode>> RULING_LIST =
+            new ParameterizedTypeReference<>() {};
     private static final int MAX_ATTEMPTS = 3;
     private static final long BASE_BACKOFF_MILLIS = 500L;
 
@@ -120,6 +122,19 @@ class RestClientScryfallClient implements ScryfallClient {
         return toPrice(card == null ? null : card.prices());
     }
 
+    @Override
+    public List<String> getRulings(String scryfallCardId) {
+        var rulings =
+                execute(
+                        () ->
+                                restClient
+                                        .get()
+                                        .uri("/cards/{id}/rulings", scryfallCardId)
+                                        .retrieve()
+                                        .body(RULING_LIST));
+        return rulings.data().stream().map(ruling -> ruling.path("comment").asString()).toList();
+    }
+
     private CardPrice toPrice(@Nullable ScryfallPrices prices) {
         if (prices == null) {
             return new CardPrice(null, null, null, null);
@@ -193,10 +208,20 @@ class RestClientScryfallClient implements ScryfallClient {
         if (cardFaces == null) {
             return List.of();
         }
-        return cardFaces.stream()
-                .filter(face -> face.imageUris() != null && face.imageUris().normal() != null)
-                .map(face -> new CardImportFace(face.name(), face.imageUris().normal()))
-                .toList();
+        return cardFaces.stream().map(this::toImportFace).toList();
+    }
+
+    private CardImportFace toImportFace(ScryfallCardFace face) {
+        return new CardImportFace(
+                face.name(),
+                face.manaCost(),
+                face.typeLine(),
+                face.oracleText(),
+                face.power(),
+                face.toughness(),
+                face.loyalty(),
+                face.colors(),
+                face.imageUris() == null ? null : face.imageUris().normal());
     }
 
     private @Nullable ScryfallImageUris imageUris(ScryfallCard source) {

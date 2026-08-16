@@ -2,9 +2,11 @@ package com.deckassemble.imports.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.deckassemble.cards.application.BeginnerGuideStalenessService;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportFace;
@@ -38,6 +40,7 @@ class CardImportServiceTest {
     @Mock private MagicSetRepository magicSetRepository;
     @Mock private CardPrintingRepository cardPrintingRepository;
     @Mock private CardPrintingFaceRepository cardPrintingFaceRepository;
+    @Mock private BeginnerGuideStalenessService beginnerGuideStalenessService;
     @Mock private ImportRunRecorder runRecorder;
     @Mock private CurrentUser currentUser;
 
@@ -70,8 +73,26 @@ class CardImportServiceTest {
                         "Grimm Fate",
                         new CardImportImages("small", "normal", "large"),
                         List.of(
-                                new CardImportFace("Spider-Man", "front"),
-                                new CardImportFace("Spider-Back", "back")),
+                                new CardImportFace(
+                                        "Spider-Man",
+                                        "{1}{R}",
+                                        "Legendary Creature",
+                                        "Web-slinging",
+                                        "2",
+                                        "3",
+                                        null,
+                                        List.of("R"),
+                                        "front"),
+                                new CardImportFace(
+                                        "Spider-Back",
+                                        null,
+                                        "Legendary Creature",
+                                        "Back-face text",
+                                        "3",
+                                        "2",
+                                        null,
+                                        List.of("R"),
+                                        "back")),
                         null,
                         false,
                         false,
@@ -101,10 +122,8 @@ class CardImportServiceTest {
         ImportResult result =
                 new CardImportService(
                                 scryfallClient,
-                                cardRepository,
-                                magicSetRepository,
-                                cardPrintingRepository,
-                                cardPrintingFaceRepository,
+                                cardStore(),
+                                cardPrintingImporter(),
                                 runRecorder,
                                 currentUser)
                         .importQuery("set:mar");
@@ -133,6 +152,20 @@ class CardImportServiceTest {
                                                 }));
         assertThat(cards.getAllValues())
                 .allSatisfy(card -> assertThat(card.getGameChanger()).isTrue());
+        assertThat(cards.getAllValues())
+                .allSatisfy(
+                        card ->
+                                assertThat(card.getFaces())
+                                        .extracting(
+                                                face -> face.getName() + ":" + face.getOracleText())
+                                        .containsExactly(
+                                                "Spider-Man:Web-slinging",
+                                                "Spider-Back:Back-face text"));
+        var cardPersistence = inOrder(cardRepository, beginnerGuideStalenessService);
+        cardPersistence.verify(cardRepository).save(any(Card.class));
+        cardPersistence
+                .verify(beginnerGuideStalenessService)
+                .markStaleIfOracleChanged(any(Card.class));
         ArgumentCaptor<Iterable<CardPrintingFace>> faces = ArgumentCaptor.forClass(Iterable.class);
         verify(cardPrintingFaceRepository, org.mockito.Mockito.times(2)).saveAll(faces.capture());
         assertThat(faces.getAllValues())
@@ -172,10 +205,8 @@ class CardImportServiceTest {
         CardImportService service =
                 new CardImportService(
                         scryfallClient,
-                        cardRepository,
-                        magicSetRepository,
-                        cardPrintingRepository,
-                        cardPrintingFaceRepository,
+                        cardStore(),
+                        cardPrintingImporter(),
                         runRecorder,
                         currentUser);
 
@@ -195,6 +226,15 @@ class CardImportServiceTest {
         assertThat(savedCard.get().getLegalities())
                 .as("re-import must update the existing legality row, not insert a duplicate")
                 .contains(commanderLegality);
+    }
+
+    private CardPrintingImporter cardPrintingImporter() {
+        return new CardPrintingImporter(
+                magicSetRepository, cardPrintingRepository, cardPrintingFaceRepository);
+    }
+
+    private CardImportCardStore cardStore() {
+        return new CardImportCardStore(cardRepository, beginnerGuideStalenessService);
     }
 
     private CardImportData importData(Map<String, String> legalities) {
@@ -223,7 +263,17 @@ class CardImportServiceTest {
                 null,
                 null,
                 new CardImportImages("small", "normal", "large"),
-                List.of(new CardImportFace("Spider-Man", "front")),
+                List.of(
+                        new CardImportFace(
+                                "Spider-Man",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                "front")),
                 null,
                 false,
                 false,
