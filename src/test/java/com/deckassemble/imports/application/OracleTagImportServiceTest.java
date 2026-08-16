@@ -56,18 +56,23 @@ class OracleTagImportServiceTest {
     }
 
     @Test
-    void shouldSkipIndexEntriesForCardsNotInCatalog() {
-        // Given the tag index references a card we have not imported
+    void shouldScopeMetricsToCardsInCatalog() {
+        // Given one local card and one remote-only tag entry
+        Card card = new Card("oracle-1", "Cultivate");
         when(scryfallClient.fetchOracleTagAssignments())
-                .thenReturn(Map.of("oracle-unknown", Set.of("ramp")));
-        when(cardRepository.findAll()).thenReturn(List.of());
+                .thenReturn(
+                        Map.of(
+                                "oracle-1", Set.of("ramp"),
+                                "oracle-unknown", Set.of("landfall")));
+        when(cardRepository.findAll()).thenReturn(List.of(card));
 
         // When importing tags
         ImportResult result = service.importTags(7L);
 
-        // Then the entry is counted as skipped, not created
-        assertThat(result.recordsFailed()).isEqualTo(1);
-        assertThat(result.recordsUpdated()).isZero();
+        // Then only the local catalog contributes to successful-run metrics
+        assertThat(result.recordsRead()).isEqualTo(1);
+        assertThat(result.recordsUpdated()).isEqualTo(1);
+        assertThat(result.recordsFailed()).isZero();
     }
 
     @Test

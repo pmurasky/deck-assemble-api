@@ -65,8 +65,7 @@ public class OracleTagImportService {
                         .collect(Collectors.toMap(Card::getScryfallOracleId, Function.identity()));
         List<Card> changed = applyTagsToCards(cardsByOracleId, index);
         cardRepository.saveAll(changed);
-        return new ImportResult(
-                runId, index.size(), 0, changed.size(), skipped(index, cardsByOracleId));
+        return new ImportResult(runId, cardsByOracleId.size(), 0, changed.size(), 0);
     }
 
     private List<Card> applyTagsToCards(
@@ -81,15 +80,5 @@ public class OracleTagImportService {
             }
         }
         return changed;
-    }
-
-    private int skipped(Map<String, Set<String>> index, Map<String, Card> cardsByOracleId) {
-        int skipped = 0;
-        for (String oracleId : index.keySet()) {
-            if (!cardsByOracleId.containsKey(oracleId)) {
-                skipped++;
-            }
-        }
-        return skipped;
     }
 }
