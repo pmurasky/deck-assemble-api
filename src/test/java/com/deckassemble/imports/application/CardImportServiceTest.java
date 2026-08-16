@@ -120,9 +120,7 @@ class CardImportServiceTest {
                 new CardImportService(
                                 scryfallClient,
                                 cardRepository,
-                                magicSetRepository,
-                                cardPrintingRepository,
-                                cardPrintingFaceRepository,
+                                cardPrintingImporter(),
                                 runRecorder,
                                 currentUser)
                         .importQuery("set:mar");
@@ -200,9 +198,7 @@ class CardImportServiceTest {
                 new CardImportService(
                         scryfallClient,
                         cardRepository,
-                        magicSetRepository,
-                        cardPrintingRepository,
-                        cardPrintingFaceRepository,
+                        cardPrintingImporter(),
                         runRecorder,
                         currentUser);
 
@@ -222,6 +218,11 @@ class CardImportServiceTest {
         assertThat(savedCard.get().getLegalities())
                 .as("re-import must update the existing legality row, not insert a duplicate")
                 .contains(commanderLegality);
+    }
+
+    private CardPrintingImporter cardPrintingImporter() {
+        return new CardPrintingImporter(
+                magicSetRepository, cardPrintingRepository, cardPrintingFaceRepository);
     }
 
     private CardImportData importData(Map<String, String> legalities) {

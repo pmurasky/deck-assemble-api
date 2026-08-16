@@ -3,15 +3,8 @@ package com.deckassemble.imports.application;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.cards.domain.CardImportData;
 import com.deckassemble.cards.domain.CardImportFace;
-import com.deckassemble.cards.domain.CardImportImages;
 import com.deckassemble.cards.domain.CardLegality;
-import com.deckassemble.cards.domain.CardPrinting;
-import com.deckassemble.cards.domain.CardPrintingFace;
-import com.deckassemble.cards.domain.CardPrintingFaceRepository;
-import com.deckassemble.cards.domain.CardPrintingRepository;
 import com.deckassemble.cards.domain.CardRepository;
-import com.deckassemble.cards.domain.MagicSet;
-import com.deckassemble.cards.domain.MagicSetRepository;
 import com.deckassemble.cards.domain.ScryfallClient;
 import com.deckassemble.shared.security.CurrentUser;
 import java.math.BigDecimal;
@@ -26,28 +19,19 @@ public class CardImportService {
 
     private final ScryfallClient scryfallClient;
     private final CardRepository cardRepository;
-    private final MagicSetRepository magicSetRepository;
-    private final CardPrintingRepository cardPrintingRepository;
-    private final CardPrintingFaceRepository cardPrintingFaceRepository;
+    private final CardPrintingImporter cardPrintingImporter;
     private final ImportRunRecorder runRecorder;
     private final CurrentUser currentUser;
 
-    // Suppressed: seven collaborators is what this orchestration service needs; Spring injects
-    // them.
-    @SuppressWarnings({"checkstyle:ParameterNumber", "PMD.ExcessiveParameterList"})
     public CardImportService(
             ScryfallClient scryfallClient,
             CardRepository cardRepository,
-            MagicSetRepository magicSetRepository,
-            CardPrintingRepository cardPrintingRepository,
-            CardPrintingFaceRepository cardPrintingFaceRepository,
+            CardPrintingImporter cardPrintingImporter,
             ImportRunRecorder runRecorder,
             CurrentUser currentUser) {
         this.scryfallClient = scryfallClient;
         this.cardRepository = cardRepository;
-        this.magicSetRepository = magicSetRepository;
-        this.cardPrintingRepository = cardPrintingRepository;
-        this.cardPrintingFaceRepository = cardPrintingFaceRepository;
+        this.cardPrintingImporter = cardPrintingImporter;
         this.runRecorder = runRecorder;
         this.currentUser = currentUser;
     }
@@ -102,17 +86,9 @@ public class CardImportService {
                         .orElseGet(() -> new Card(source.oracleId(), source.name()));
         applyCardDetails(card, source);
         card = cardRepository.save(card);
-        return savePrinting(card, resolveSet(source), source);
-    }
-
-    private MagicSet resolveSet(CardImportData source) {
-        return magicSetRepository
-                .findBySetCode(source.set())
-                .orElseGet(
-                        () ->
-                                magicSetRepository.save(
-                                        new MagicSet(
-                                                source.setId(), source.set(), source.setName())));
+        return cardPrintingImporter.importPrinting(card, source)
+                ? Outcome.UPDATED
+                : Outcome.CREATED;
     }
 
     private void applyCardDetails(Card card, CardImportData source) {
@@ -161,52 +137,8 @@ public class CardImportService {
                                                                         card, format, status))));
     }
 
-    private void replaceFaces(CardPrinting printing, CardImportData source) {
-        cardPrintingFaceRepository.deleteByCardPrintingId(printing.getId());
-        var faces = new java.util.ArrayList<CardPrintingFace>();
-        for (int faceOrder = 0; faceOrder < source.faces().size(); faceOrder++) {
-            CardImportFace sourceFace = source.faces().get(faceOrder);
-            if (sourceFace.imageUri() != null) {
-                faces.add(
-                        new CardPrintingFace(
-                                printing, faceOrder, sourceFace.name(), sourceFace.imageUri()));
-            }
-        }
-        cardPrintingFaceRepository.saveAll(faces);
-    }
-
     private @Nullable String join(@Nullable List<String> values) {
         return values == null ? null : String.join(",", values);
-    }
-
-    private Outcome savePrinting(Card card, MagicSet set, CardImportData source) {
-        var existing = cardPrintingRepository.findByScryfallCardId(source.id());
-        CardPrinting printing = existing.orElseGet(() -> new CardPrinting(card, set, source.id()));
-        printing.setCollectorNumber(source.collectorNumber());
-        printing.setRarity(source.rarity());
-        printing.setArtist(source.artist());
-        printing.setFlavorText(source.flavorText());
-        printing.setFlavorName(source.flavorName());
-        printing.setReleasedAt(source.releasedAt());
-        printing.setFoilAvailable(source.foil());
-        printing.setNonfoilAvailable(source.nonfoil());
-        printing.setPromo(source.promo());
-        printing.setDigital(source.digital());
-        printing.setLanguage(source.lang());
-        applyImageUris(printing, source);
-        printing = cardPrintingRepository.save(printing);
-        replaceFaces(printing, source);
-        return existing.isPresent() ? Outcome.UPDATED : Outcome.CREATED;
-    }
-
-    private void applyImageUris(CardPrinting printing, CardImportData source) {
-        CardImportImages images = source.images();
-        if (images == null) {
-            return;
-        }
-        printing.setImageUriSmall(images.small());
-        printing.setImageUriNormal(images.normal());
-        printing.setImageUriLarge(images.large());
     }
 
     private enum Outcome {
