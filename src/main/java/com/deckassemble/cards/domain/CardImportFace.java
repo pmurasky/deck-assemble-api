@@ -11,7 +11,7 @@ public record CardImportFace(
         @Nullable String power,
         @Nullable String toughness,
         @Nullable String loyalty,
-        List<String> colors,
+        @Nullable List<String> colors,
         @Nullable String imageUri) {
 
     public CardImportFace(String name, String imageUri) {
@@ -21,7 +21,9 @@ public record CardImportFace(
     public CardFace toCardFace(Card card, int faceOrder) {
         var face = new CardFace(card, faceOrder, name);
         applyAttributes(face);
-        face.setColors(String.join(",", colors));
+        if (colors != null) {
+            face.setColors(String.join(",", colors));
+        }
         if (imageUri != null) {
             face.setImageUri(imageUri);
         }
