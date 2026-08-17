@@ -57,3 +57,11 @@ docker-compose.override.yml
 
 # Node compile cache
 node-compile-cache/
+
+# Local agent tooling (accidentally committed in 42027b9)
+.claude/
+.cursor/
+.gsd/
+.omo/
+gh-cli-cache/
+CLAUDE.md
