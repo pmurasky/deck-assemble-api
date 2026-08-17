@@ -10,11 +10,15 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CardImportService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CardImportService.class);
 
     private final ScryfallClient scryfallClient;
     private final CardImportCardStore cardStore;
@@ -55,6 +59,7 @@ public class CardImportService {
                     runId, counters.read, counters.created, counters.updated, counters.skipped);
             return counters.result(runId);
         } catch (RuntimeException exception) {
+            LOGGER.error("Card import failed for query '{}'", query, exception);
             runRecorder.fail(runId, String.valueOf(exception.getMessage()));
             throw exception;
         }

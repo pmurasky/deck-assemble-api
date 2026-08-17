@@ -8,6 +8,7 @@ import com.deckassemble.shared.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -105,6 +106,7 @@ public class CardImportController {
             int recordsCreated,
             int recordsUpdated,
             int recordsFailed,
+            @Nullable String errorSummary,
             OffsetDateTime startedAt,
             OffsetDateTime completedAt) {
 
@@ -118,6 +120,7 @@ public class CardImportController {
                     run.getRecordsCreated(),
                     run.getRecordsUpdated(),
                     run.getRecordsFailed(),
+                    run.getErrorSummary(),
                     run.getStartedAt(),
                     run.getCompletedAt());
         }
