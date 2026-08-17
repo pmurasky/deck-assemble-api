@@ -544,7 +544,8 @@ class DeckUpgradeServiceTest {
                 null,
                 null,
                 Map.of(),
-                List.of());
+                List.of(),
+                null);
     }
 
     private static DeckAnalysisResponse analysis(

@@ -331,12 +331,12 @@ class DeckComparisonServiceTest {
         return new DeckCardResponse(1L, printingId, quantity, "MAIN_DECK", "OWNED", null);
     }
 
-    // Suppressed: an 18-field summary fixture is one placeholder per line; splitting harms clarity.
+    // Suppressed: a 19-field summary fixture is one placeholder per line; splitting harms clarity.
     @SuppressWarnings("checkstyle:MethodLength")
     private static CardSummaryResponse summary(String oracleId, String name) {
         return new CardSummaryResponse(
                 1L, oracleId, name, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, Map.of(), List.of());
+                null, null, null, null, Map.of(), List.of(), null);
     }
 
     private static BigDecimal usd(String amount) {

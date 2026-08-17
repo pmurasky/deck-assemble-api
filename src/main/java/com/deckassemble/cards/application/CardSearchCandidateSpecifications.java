@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
@@ -52,6 +53,14 @@ class CardSearchCandidateSpecifications {
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet());
         return candidateIdSpec(matchingIds, min <= 0, quantityByCard.keySet());
+    }
+
+    /**
+     * Owned total quantity (regular + foil) per card id for the current user, or {@code null} when
+     * there is no authenticated profile, so search responses can omit ownership without erroring.
+     */
+    @Nullable Map<Long, Integer> ownedQuantitiesByCardOrNull() {
+        return currentUser.subject().isPresent() ? ownedQuantitiesByCard() : null;
     }
 
     // Justified: method-local map, never shared across threads.

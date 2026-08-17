@@ -26,11 +26,18 @@ public record CardSummaryResponse(
         @Nullable Boolean foilAvailable,
         @Nullable Boolean nonfoilAvailable,
         Map<String, String> legalities,
-        List<CardFaceResponse> faces) {
+        List<CardFaceResponse> faces,
+        // Total copies owned (regular + foil) across all printings; null when unauthenticated.
+        @Nullable Integer ownedQuantity) {
 
-    // Suppressed: a 18-field record factory is one mapping per line; splitting harms readability.
-    @SuppressWarnings("checkstyle:MethodLength")
     public static CardSummaryResponse from(Card card, @Nullable CardPrinting latestPrinting) {
+        return from(card, latestPrinting, null);
+    }
+
+    // Suppressed: a 20-field record factory is one mapping per line; splitting harms readability.
+    @SuppressWarnings("checkstyle:MethodLength")
+    public static CardSummaryResponse from(
+            Card card, @Nullable CardPrinting latestPrinting, @Nullable Integer ownedQuantity) {
         return new CardSummaryResponse(
                 card.getId(),
                 card.getScryfallOracleId(),
@@ -54,6 +61,7 @@ public record CardSummaryResponse(
                         latestPrinting,
                         printing ->
                                 printing.getFaces().stream().map(CardFaceResponse::from).toList(),
-                        List.of()));
+                        List.of()),
+                ownedQuantity);
     }
 }

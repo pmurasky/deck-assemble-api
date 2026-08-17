@@ -83,6 +83,32 @@ class CardCatalogServiceTest {
     }
 
     @Test
+    void shouldPopulateOwnedQuantityForOwnedAndUnownedCardsWhenAuthenticated() {
+        Card owned = card("Lightning Bolt");
+        Card unowned = card("Sol Ring");
+        org.springframework.test.util.ReflectionTestUtils.setField(unowned, "id", 2L);
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of(owned, unowned)));
+        when(candidateSpecifications.ownedQuantitiesByCardOrNull()).thenReturn(Map.of(1L, 3));
+
+        Page<CardSummaryResponse> result = service().search(basicFilter(""), null, null, PAGEABLE);
+
+        assertThat(result.getContent().get(0).ownedQuantity()).isEqualTo(3);
+        assertThat(result.getContent().get(1).ownedQuantity()).isZero();
+    }
+
+    @Test
+    void shouldReturnNullOwnedQuantityWhenNoAuthenticatedProfile() {
+        when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
+                .thenReturn(new PageImpl<>(List.of(card("Lightning Bolt"))));
+        when(candidateSpecifications.ownedQuantitiesByCardOrNull()).thenReturn(null);
+
+        Page<CardSummaryResponse> result = service().search(basicFilter(""), null, null, PAGEABLE);
+
+        assertThat(result.getContent().get(0).ownedQuantity()).isNull();
+    }
+
+    @Test
     void shouldSkipOwnedQuantitySpecWhenFilterNotRequested() {
         when(cardRepository.findAll(any(Specification.class), eq(PAGEABLE)))
                 .thenReturn(new PageImpl<>(List.of()));

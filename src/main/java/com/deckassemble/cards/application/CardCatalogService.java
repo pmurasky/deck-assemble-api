@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 // Justified: query facade over card repositories; methods are thin delegations (tracked in #3).
-@SuppressWarnings("PMD.CyclomaticComplexity")
+@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.TooManyMethods"})
 public class CardCatalogService {
 
     private final CardRepository cardRepository;
@@ -52,18 +52,25 @@ public class CardCatalogService {
         if (filter.priceRange() != null) {
             spec = spec.and(candidateSpecifications.priceRangeSpec(filter.priceRange()));
         }
+        Map<Long, Integer> ownedByCard = candidateSpecifications.ownedQuantitiesByCardOrNull();
         if (partnerForCardId == null) {
-            return cardRepository
-                    .findAll(spec, pageable)
-                    .map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+            return cardRepository.findAll(spec, pageable).map(card -> toSummary(card, ownedByCard));
         }
-        return searchPartners(spec, getCard(partnerForCardId), pageable);
+        return searchPartners(spec, getCard(partnerForCardId), pageable, ownedByCard);
+    }
+
+    private CardSummaryResponse toSummary(Card card, @Nullable Map<Long, Integer> ownedByCard) {
+        Integer owned = ownedByCard == null ? null : ownedByCard.getOrDefault(card.getId(), 0);
+        return CardSummaryResponse.from(card, latestPrinting(card.getId()), owned);
     }
 
     // ponytail: in-memory filter + manual pagination; valid partner candidate sets are small
     // (backgrounds ~30, named partners exactly 1). Push to SQL if generic partner sets grow.
     private Page<CardSummaryResponse> searchPartners(
-            Specification<Card> spec, Card primary, Pageable pageable) {
+            Specification<Card> spec,
+            Card primary,
+            Pageable pageable,
+            @Nullable Map<Long, Integer> ownedByCard) {
         List<Card> candidates =
                 cardRepository.findAll(spec, pageable.getSort()).stream()
                         .filter(card -> pairingRules.canPair(primary, card))
@@ -72,7 +79,7 @@ public class CardCatalogService {
         int end = Math.min(start + pageable.getPageSize(), candidates.size());
         Page<Card> page =
                 new PageImpl<>(candidates.subList(start, end), pageable, candidates.size());
-        return page.map(card -> CardSummaryResponse.from(card, latestPrinting(card.getId())));
+        return page.map(card -> toSummary(card, ownedByCard));
     }
 
     @Transactional

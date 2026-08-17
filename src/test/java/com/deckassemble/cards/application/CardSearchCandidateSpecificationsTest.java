@@ -60,6 +60,24 @@ class CardSearchCandidateSpecificationsTest {
         verify(cardPriceService).trackedPrintingIds();
     }
 
+    @Test
+    void shouldReturnNullOwnedQuantitiesWhenAnonymous() {
+        when(currentUser.subject()).thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThat(service().ownedQuantitiesByCardOrNull())
+                .isNull();
+        verify(cardOwnershipLookup, never()).ownedQuantitiesBySubject(any());
+    }
+
+    @Test
+    void shouldReturnEmptyOwnedQuantitiesWhenAuthenticatedWithNoCollection() {
+        when(currentUser.subject()).thenReturn(Optional.of("auth0|owner"));
+        when(cardOwnershipLookup.ownedQuantitiesBySubject("auth0|owner")).thenReturn(Map.of());
+
+        org.assertj.core.api.Assertions.assertThat(service().ownedQuantitiesByCardOrNull())
+                .isEmpty();
+    }
+
     private CardSearchCandidateSpecifications service() {
         return new CardSearchCandidateSpecifications(
                 cardPrintingRepository, currentUser, cardOwnershipLookup, cardPriceService);
