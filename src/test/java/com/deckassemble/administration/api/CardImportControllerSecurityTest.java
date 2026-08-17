@@ -11,6 +11,7 @@ import com.deckassemble.AbstractIntegrationTest;
 import com.deckassemble.imports.application.CardImportTrigger;
 import com.deckassemble.imports.application.ImportRunRecorder;
 import com.deckassemble.imports.domain.CardImportRun;
+import com.deckassemble.imports.domain.CardSeries;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -114,7 +115,7 @@ class CardImportControllerSecurityTest extends AbstractIntegrationTest {
     void shouldReturnSeriesListWithoutQueryFragmentsForAdministrators() throws Exception {
         mockMvc.perform(get("/admin/card-imports/series").with(jwt().authorities(List.of(ADMIN))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$.length()").value(CardSeries.values().length))
                 .andExpect(jsonPath("$[0].key").value("MARVEL"))
                 .andExpect(jsonPath("$[0].label").value("Marvel"))
                 .andExpect(jsonPath("$[3].key").value("TMNT"))
