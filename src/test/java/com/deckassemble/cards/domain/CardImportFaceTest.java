@@ -12,7 +12,14 @@ class CardImportFaceTest {
         var card = new Card("oracle-id", "Brazen Borrower // Petty Theft");
         var source =
                 new CardImportFace(
-                        "Brazen Borrower", "{1}{U}", "Creature", null, "2", "2", null, null,
+                        "Brazen Borrower",
+                        "{1}{U}",
+                        "Creature",
+                        null,
+                        "2",
+                        "2",
+                        null,
+                        null,
                         "front");
 
         // When
