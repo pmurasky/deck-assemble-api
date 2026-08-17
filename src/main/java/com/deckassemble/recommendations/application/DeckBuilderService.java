@@ -34,15 +34,15 @@ public class DeckBuilderService {
         var candidates = deckCandidateSelector.select(request, commanders, identity, profileId);
         var gaps = new ArrayList<String>();
         var targetSize = DECK_SIZE - commanders.size();
-        var finalCards =
-                basicLandPadder.pad(
-                        DeckDraftPicker.pick(
-                                candidates,
-                                targetSize,
-                                PlayStyleQuotas.forStyle(request.playStyle())),
-                        identity,
-                        targetSize,
-                        gaps);
+        var picked =
+                DeckDraftPicker.pick(
+                        candidates, targetSize, PlayStyleQuotas.forStyle(request.playStyle()));
+        if (picked.isEmpty()) {
+            gaps.add(
+                    "No eligible cards found in your collection for this commander's color"
+                            + " identity — 0 spells drafted; deck padded with basic lands");
+        }
+        var finalCards = basicLandPadder.pad(picked, identity, targetSize, gaps);
         return deckBuildRecorder.record(request, commanders, finalCards, gaps);
     }
 }

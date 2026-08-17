@@ -173,6 +173,31 @@ class DeckBuilderServiceTest {
     }
 
     @Test
+    void shouldReportGapWhenZeroCandidatesDrafted() {
+        var commander = commander();
+        stubUser();
+        when(cardCatalogService.getCardWithFaces(COMMANDER_ID)).thenReturn(commander);
+        when(collectionService.getOwnedPrintingIds(PROFILE_ID)).thenReturn(Set.of());
+        when(cardCatalogService.getCardsByPrintingIds(Set.of())).thenReturn(Map.of());
+        when(edhrecCommanderService.getCardScores(any(), any())).thenReturn(Map.of());
+        var island = basicLand("Island");
+        when(cardCatalogService.getCardsByNames(any())).thenReturn(List.of(island));
+        when(cardCatalogService.getLatestPrintingIdByCardIds(any()))
+                .thenReturn(Map.of(COMMANDER_ID, 90L, island.getId(), 99L));
+        when(deckService.create(any())).thenReturn(deckResponse());
+        when(deckCardService.addCard(anyLong(), any()))
+                .thenAnswer(invocation -> cardResponse("OWNED"));
+        when(deckService.legality(DECK_ID)).thenReturn(new DeckLegalityResponse(true, List.of()));
+
+        var result =
+                builderService.build(
+                        new DeckBuildRequest(COMMANDER_ID, null, null, null, null, null));
+
+        assertThat(result.cardCount()).isEqualTo(100);
+        assertThat(result.gaps()).anySatisfy(gap -> assertThat(gap).contains("0 spells drafted"));
+    }
+
+    @Test
     void shouldReportGapWhenNoBasicsAvailable() {
         var commander = commander();
         stubUser();
