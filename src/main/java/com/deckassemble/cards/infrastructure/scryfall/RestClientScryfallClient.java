@@ -254,18 +254,20 @@ class RestClientScryfallClient implements ScryfallClient {
                 if (attempt == MAX_ATTEMPTS) {
                     throw exception;
                 }
-                pauseBeforeRetry(attempt);
+                pauseBeforeRetry(exception, attempt);
             }
         }
     }
 
-    private void pauseBeforeRetry(int attempt) {
+    private void pauseBeforeRetry(RestClientException exception, int attempt) {
+        var delayMillis =
+                rateLimiter.retryDelayMillis(exception, BASE_BACKOFF_MILLIS << (attempt - 1));
         try {
-            Thread.sleep(BASE_BACKOFF_MILLIS << (attempt - 1));
-        } catch (InterruptedException exception) {
+            Thread.sleep(delayMillis);
+        } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(
-                    "Interrupted while retrying Scryfall request", exception);
+                    "Interrupted while retrying Scryfall request", interrupted);
         }
     }
 }
