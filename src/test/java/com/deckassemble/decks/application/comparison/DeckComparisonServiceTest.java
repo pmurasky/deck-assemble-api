@@ -14,6 +14,7 @@ import com.deckassemble.decks.application.DeckCardResponse;
 import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.DeckNotFoundException;
+import com.deckassemble.decks.application.analysis.CommanderBracket;
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import com.deckassemble.decks.application.comparison.DeckComparisonService.CardChange;
@@ -294,6 +295,7 @@ class DeckComparisonServiceTest {
                 Map.of(),
                 List.of(),
                 gameChangers,
+                new CommanderBracket(1, List.of()),
                 legality,
                 combos);
     }
@@ -319,6 +321,7 @@ class DeckComparisonServiceTest {
                 categories,
                 List.of(),
                 List.of(),
+                new CommanderBracket(1, List.of()),
                 new DeckLegalityResponse(true, List.of()),
                 new DeckAnalysisResponse.ComboSummary(true, 0, List.of()));
     }

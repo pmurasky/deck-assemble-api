@@ -21,6 +21,7 @@ import com.deckassemble.decks.application.DeckCardService;
 import com.deckassemble.decks.application.DeckLegalityResponse;
 import com.deckassemble.decks.application.alternatives.DeckCardAlternative;
 import com.deckassemble.decks.application.alternatives.DeckCardAlternativeService;
+import com.deckassemble.decks.application.analysis.CommanderBracket;
 import com.deckassemble.decks.application.analysis.DeckAnalysisResponse;
 import com.deckassemble.decks.application.analysis.DeckAnalysisService;
 import com.deckassemble.decks.application.upgrades.DeckUpgradeService.Objective;
@@ -569,6 +570,7 @@ class DeckUpgradeServiceTest {
                 categories,
                 List.of(),
                 List.of(),
+                new CommanderBracket(1, List.of()),
                 new DeckLegalityResponse(legal, List.of()),
                 new DeckAnalysisResponse.ComboSummary(true, 0, List.of()));
     }

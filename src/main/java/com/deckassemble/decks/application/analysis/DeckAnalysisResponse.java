@@ -27,6 +27,7 @@ public record DeckAnalysisResponse(
         Map<String, Integer> functionalCategories,
         List<String> tokenProducers,
         List<String> gameChangers,
+        CommanderBracket bracket,
         DeckLegalityResponse legality,
         ComboSummary combos) {
 
@@ -54,6 +55,8 @@ public record DeckAnalysisResponse(
                 DeckCompositionCalculator.functionalCategories(entries, explicitCategoryNames),
                 DeckCompositionCalculator.tokenProducers(entries),
                 DeckCompositionCalculator.gameChangers(entries),
+                CommanderBracketCalculator.bracket(
+                        entries, combos.available() ? combos.combos().size() : 0),
                 legality,
                 new ComboSummary(combos.available(), combos.combos().size(), combos.combos()));
     }
