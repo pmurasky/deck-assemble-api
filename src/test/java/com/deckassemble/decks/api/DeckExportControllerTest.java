@@ -96,12 +96,47 @@ class DeckExportControllerTest {
                 .hasMessage("Deck references a missing card printing");
     }
 
+    @Test
+    void shouldReturnOnlyUnownedCardsInProxySheet() {
+        // Given
+        DeckCardResponse owned = mock(DeckCardResponse.class);
+        when(owned.deckSection()).thenReturn(DeckCard.Section.MAIN_DECK.name());
+        when(owned.ownershipStatus()).thenReturn(DeckCard.OwnershipStatus.OWNED.name());
+        DeckCardResponse proxy = mock(DeckCardResponse.class);
+        when(proxy.cardPrintingId()).thenReturn(10L);
+        when(proxy.quantity()).thenReturn(2);
+        when(proxy.deckSection()).thenReturn(DeckCard.Section.MAIN_DECK.name());
+        when(proxy.ownershipStatus()).thenReturn(DeckCard.OwnershipStatus.PROXY.name());
+        when(deckCardService.listCards(7L)).thenReturn(List.of(owned, proxy));
+        when(cardCatalogService.getExportViewsByPrintingIds(List.of(10L)))
+                .thenReturn(
+                        Map.of(
+                                10L,
+                                new CardExportView(
+                                        10L,
+                                        "Unowned Card",
+                                        null,
+                                        new CardExportView.PrintingReference(
+                                                "TST", "8", "scryfall-8"),
+                                        "https://img.example/8.png")));
+
+        // When
+        ProxySheetResponse response = controller.proxySheet(7L);
+
+        // Then
+        assertThat(response.cards())
+                .containsExactly(
+                        new ProxySheetResponse.ProxySheetCard(
+                                "Unowned Card", "https://img.example/8.png", 2));
+    }
+
     private static CardExportView exportView() {
         return new CardExportView(
                 9L,
                 "Canonical Name",
                 "Flavor Name",
-                new CardExportView.PrintingReference("TST", "7", "scryfall-id"));
+                new CardExportView.PrintingReference("TST", "7", "scryfall-id"),
+                null);
     }
 
     private static DeckExporter.ExportCard exportCard() {

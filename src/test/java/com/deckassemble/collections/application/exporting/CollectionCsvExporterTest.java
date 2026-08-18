@@ -100,6 +100,7 @@ class CollectionCsvExporterTest {
                 printingId,
                 name,
                 flavorName,
-                new CardExportView.PrintingReference(setCode, collectorNumber, scryfallId));
+                new CardExportView.PrintingReference(setCode, collectorNumber, scryfallId),
+                null);
     }
 }

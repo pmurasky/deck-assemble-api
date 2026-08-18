@@ -7,7 +7,8 @@ public record CardExportView(
         Long printingId,
         String canonicalName,
         @Nullable String flavorName,
-        PrintingReference printing) {
+        PrintingReference printing,
+        @Nullable String imageUri) {
 
     public String displayName() {
         return flavorName == null || flavorName.isBlank() ? canonicalName : flavorName;

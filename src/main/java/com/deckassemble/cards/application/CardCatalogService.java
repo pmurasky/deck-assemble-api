@@ -144,7 +144,8 @@ public class CardCatalogService {
                                                 new CardExportView.PrintingReference(
                                                         printing.getMagicSet().getSetCode(),
                                                         printing.getCollectorNumber(),
-                                                        printing.getScryfallCardId()))));
+                                                        printing.getScryfallCardId()),
+                                                printing.getImageUriNormal())));
     }
 
     @Transactional(readOnly = true)

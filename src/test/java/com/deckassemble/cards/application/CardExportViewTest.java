@@ -9,7 +9,7 @@ class CardExportViewTest {
     @Test
     void shouldUseCanonicalNameWhenFlavorNameIsBlank() {
         var printing = new CardExportView.PrintingReference("TST", "1", "scryfall-id");
-        var view = new CardExportView(1L, "Canonical Name", " ", printing);
+        var view = new CardExportView(1L, "Canonical Name", " ", printing, null);
 
         assertThat(view.displayName()).isEqualTo("Canonical Name");
     }

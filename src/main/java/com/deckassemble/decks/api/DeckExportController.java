@@ -65,6 +65,42 @@ class DeckExportController {
                 .body(content.getBytes(StandardCharsets.UTF_8));
     }
 
+    @GetMapping("/{deckId}/exports/proxy-sheet")
+    ProxySheetResponse proxySheet(@PathVariable long deckId) {
+        List<DeckCardResponse> cards = deckCardService.listCards(deckId);
+        // ponytail: proxy sheet covers the playable deck only (commander + main), matching analysis
+        List<DeckCardResponse> unowned =
+                cards.stream()
+                        .filter(DeckExportController::playableSection)
+                        .filter(
+                                card ->
+                                        !DeckCard.OwnershipStatus.OWNED
+                                                .name()
+                                                .equals(card.ownershipStatus()))
+                        .toList();
+        Map<Long, CardExportView> views =
+                cardCatalogService.getExportViewsByPrintingIds(
+                        unowned.stream().map(DeckCardResponse::cardPrintingId).toList());
+        return new ProxySheetResponse(
+                unowned.stream()
+                        .map(
+                                card -> {
+                                    CardExportView view = views.get(card.cardPrintingId());
+                                    if (view == null) {
+                                        throw new IllegalStateException(
+                                                "Deck references a missing card printing");
+                                    }
+                                    return new ProxySheetResponse.ProxySheetCard(
+                                            view.displayName(), view.imageUri(), card.quantity());
+                                })
+                        .toList());
+    }
+
+    private static boolean playableSection(DeckCardResponse card) {
+        DeckCard.Section section = DeckCard.Section.valueOf(card.deckSection());
+        return section == DeckCard.Section.COMMANDER || section == DeckCard.Section.MAIN_DECK;
+    }
+
     private static DeckExporter.ExportCard exportCard(
             DeckCardResponse card, Map<Long, CardExportView> views) {
         CardExportView view = views.get(card.cardPrintingId());
