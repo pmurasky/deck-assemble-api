@@ -104,6 +104,7 @@ class DeckServiceTest {
         List<DeckCard> cards = List.of(new DeckCard(1L, 10L, 1, DeckCard.Section.MAIN_DECK));
         when(deckCardRepository.findByDeckId(1L)).thenReturn(cards);
         DeckLegalityResponse expected = new DeckLegalityResponse(true, List.of());
+        when(commanderLegalityEvaluator.formatCode()).thenReturn(deck.getFormatCode());
         when(commanderLegalityEvaluator.evaluate(deck, cards)).thenReturn(expected);
 
         assertThat(service().legality(1L)).isEqualTo(expected);
@@ -284,7 +285,7 @@ class DeckServiceTest {
                 deckCardRepository,
                 new DeckAccessGuard(currentUser, profileService, deckRepository),
                 cardCatalogService,
-                commanderLegalityEvaluator,
+                List.of(commanderLegalityEvaluator),
                 deckRevisionService);
     }
 

@@ -24,7 +24,7 @@ public class DeckService {
     private final DeckCardRepository deckCardRepository;
     private final DeckAccessGuard deckAccessGuard;
     private final CardCatalogService cardCatalogService;
-    private final CommanderLegalityEvaluator commanderLegalityEvaluator;
+    private final List<FormatLegalityEvaluator> legalityEvaluators;
     private final DeckRevisionService deckRevisionService;
 
     // Suppressed: cohesive deck-mutation collaborators (persistence, card lookups, ownership,
@@ -36,13 +36,13 @@ public class DeckService {
             DeckCardRepository deckCardRepository,
             DeckAccessGuard deckAccessGuard,
             CardCatalogService cardCatalogService,
-            CommanderLegalityEvaluator commanderLegalityEvaluator,
+            List<FormatLegalityEvaluator> legalityEvaluators,
             DeckRevisionService deckRevisionService) {
         this.deckRepository = deckRepository;
         this.deckCardRepository = deckCardRepository;
         this.deckAccessGuard = deckAccessGuard;
         this.cardCatalogService = cardCatalogService;
-        this.commanderLegalityEvaluator = commanderLegalityEvaluator;
+        this.legalityEvaluators = legalityEvaluators;
         this.deckRevisionService = deckRevisionService;
     }
 
@@ -72,7 +72,20 @@ public class DeckService {
 
     public DeckLegalityResponse legality(long deckId) {
         Deck deck = owned(deckId);
-        return commanderLegalityEvaluator.evaluate(deck, deckCardRepository.findByDeckId(deckId));
+        List<DeckCard> deckCards = deckCardRepository.findByDeckId(deckId);
+        return legalityEvaluators.stream()
+                .filter(evaluator -> evaluator.formatCode().equalsIgnoreCase(deck.getFormatCode()))
+                .findFirst()
+                .map(evaluator -> evaluator.evaluate(deck, deckCards))
+                .orElseGet(
+                        () ->
+                                new DeckLegalityResponse(
+                                        false,
+                                        List.of(
+                                                new DeckLegalityResponse.Violation(
+                                                        "UNSUPPORTED_FORMAT",
+                                                        "No legality evaluator for format "
+                                                                + deck.getFormatCode()))));
     }
 
     public DeckResponse update(long deckId, DeckUpdateRequest request) {
