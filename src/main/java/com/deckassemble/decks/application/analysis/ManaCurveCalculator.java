@@ -18,6 +18,13 @@ public final class ManaCurveCalculator {
     private static final String COLOR_SYMBOLS = "WUBRGC";
     private static final int HIGH_CURVE_THRESHOLD = 7;
 
+    // ponytail: simplified Karsten-style heuristic — 35% lands at average MV <= 2, +3% per MV
+    // above, capped at 45%. Upgrade path: color-pip and ramp/draw adjustments if users ask.
+    private static final double BASE_LAND_RATIO = 0.35;
+    private static final double RATIO_PER_MANA_VALUE = 0.03;
+    private static final double MAX_LAND_RATIO = 0.45;
+    private static final double BASELINE_AVERAGE_MV = 2.0;
+
     private ManaCurveCalculator() {}
 
     public static Map<String, Integer> curve(List<AnalysisEntry> entries) {
@@ -53,6 +60,16 @@ public final class ManaCurveCalculator {
             }
         }
         return count == 0 ? 0.0 : total.doubleValue() / count;
+    }
+
+    public static int recommendedLandCount(List<AnalysisEntry> entries) {
+        int deckSize = entries.stream().mapToInt(AnalysisEntry::quantity).sum();
+        if (deckSize == 0) {
+            return 0;
+        }
+        double excessMv = Math.max(0.0, averageManaValue(entries) - BASELINE_AVERAGE_MV);
+        double ratio = Math.min(BASE_LAND_RATIO + excessMv * RATIO_PER_MANA_VALUE, MAX_LAND_RATIO);
+        return (int) Math.round(deckSize * ratio);
     }
 
     private static String bucket(@Nullable BigDecimal manaValue) {

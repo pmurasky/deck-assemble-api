@@ -52,6 +52,7 @@ class DeckAnalysisServiceTest {
         assertThat(analysis.colorDemand()).isEmpty();
         assertThat(analysis.colorProduction()).isEmpty();
         assertThat(analysis.landCount()).isZero();
+        assertThat(analysis.recommendedLandCount()).isZero();
         assertThat(analysis.averageManaValue()).isEqualTo(0.0);
         assertThat(analysis.ownershipBreakdown()).isEmpty();
         assertThat(analysis.valueByCurrency()).isEmpty();
@@ -124,6 +125,7 @@ class DeckAnalysisServiceTest {
         assertThat(analysis.colorProduction())
                 .containsExactlyInAnyOrderEntriesOf(Map.of("G", 4, "C", 1));
         assertThat(analysis.landCount()).isEqualTo(4);
+        assertThat(analysis.recommendedLandCount()).isEqualTo(2);
         assertThat(analysis.averageManaValue()).isEqualTo(1.0);
         assertThat(analysis.ownershipBreakdown())
                 .containsExactlyInAnyOrderEntriesOf(Map.of("OWNED", 2, "WISHLIST", 4, "PROXY", 1));

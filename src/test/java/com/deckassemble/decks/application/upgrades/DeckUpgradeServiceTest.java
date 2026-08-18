@@ -560,6 +560,7 @@ class DeckUpgradeServiceTest {
                 Map.of(),
                 Map.of(),
                 0,
+                0,
                 0.0,
                 ownership,
                 value,

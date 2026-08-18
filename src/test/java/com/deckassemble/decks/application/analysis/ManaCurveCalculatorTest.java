@@ -124,6 +124,49 @@ class ManaCurveCalculatorTest {
         assertThat(ManaCurveCalculator.averageManaValue(entries)).isEqualTo(0.0);
     }
 
+    @Test
+    void shouldRecommendZeroLandsForEmptyDeck() {
+        // Given an empty deck
+        // When / Then
+        assertThat(ManaCurveCalculator.recommendedLandCount(List.of())).isZero();
+    }
+
+    @Test
+    void shouldRecommendBaselineRatioForLowCurve() {
+        // Given a 100-card deck with a low curve (average mana value 2.0)
+        List<AnalysisEntry> entries =
+                List.of(
+                        entry(64, card("Bear", "{1}{G}", "2", "Creature — Bear", "")),
+                        entry(36, card("Forest", null, "0", "Basic Land — Forest", "")));
+
+        // When / Then the baseline 35% ratio applies
+        assertThat(ManaCurveCalculator.recommendedLandCount(entries)).isEqualTo(35);
+    }
+
+    @Test
+    void shouldRecommendMoreLandsForHighCurve() {
+        // Given a 100-card deck with a steep curve (average mana value 4.0)
+        List<AnalysisEntry> entries =
+                List.of(
+                        entry(60, card("Dragon", "{2}{R}{R}", "4", "Creature — Dragon", "")),
+                        entry(40, card("Mountain", null, "0", "Basic Land — Mountain", "")));
+
+        // When / Then the ratio rises above the baseline
+        assertThat(ManaCurveCalculator.recommendedLandCount(entries)).isEqualTo(41);
+    }
+
+    @Test
+    void shouldCapRecommendationForExtremeCurve() {
+        // Given a 100-card deck of only haymakers (average mana value far above baseline)
+        List<AnalysisEntry> entries =
+                List.of(
+                        entry(63, card("Big One", "{10}", "10", "Sorcery", "")),
+                        entry(37, card("Forest", null, "0", "Basic Land — Forest", "")));
+
+        // When / Then the recommendation is capped at 45% of deck size
+        assertThat(ManaCurveCalculator.recommendedLandCount(entries)).isEqualTo(45);
+    }
+
     private static AnalysisEntry entry(int quantity, CardAnalysisView card) {
         return new AnalysisEntry(1L, 1L, quantity, "OWNED", card);
     }
