@@ -51,6 +51,9 @@ public class ProfileService {
         if (request.experienceLevel() != null) {
             profile.setExperienceLevel(request.experienceLevel());
         }
+        if (request.onboardingCompletedAt() != null) {
+            profile.setOnboardingCompletedAt(request.onboardingCompletedAt());
+        }
 
         return profileRepository.save(profile);
     }

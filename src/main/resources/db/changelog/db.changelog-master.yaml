@@ -35,3 +35,5 @@ databaseChangeLog:
       file: db/changelog/releases/017-card-beginner-guides.yaml
   - include:
       file: db/changelog/releases/018-card-beginner-guide-requesters.yaml
+  - include:
+      file: db/changelog/releases/019-profile-onboarding-completed-at.yaml

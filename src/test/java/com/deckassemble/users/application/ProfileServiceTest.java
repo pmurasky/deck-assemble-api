@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.deckassemble.users.domain.Profile;
 import com.deckassemble.users.domain.ProfileRepository;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,12 +68,33 @@ class ProfileServiceTest {
                 service()
                         .update(
                                 "sub",
-                                new ProfileUpdateRequest("Renamed", null, "commander", null));
+                                new ProfileUpdateRequest("Renamed", null, "commander", null, null));
 
         assertThat(result.getDisplayName()).isEqualTo("Renamed");
         assertThat(result.getEmail()).isNull();
         assertThat(result.getPreferredFormat()).isEqualTo("commander");
         assertThat(result.getExperienceLevel()).isNull();
+        assertThat(result.getOnboardingCompletedAt()).isNull();
+    }
+
+    @Test
+    void shouldApplyOnboardingCompletedAtOnUpdate() {
+        // Given
+        Profile profile = new Profile("sub", "User");
+        Instant completedAt = Instant.parse("2026-08-18T12:00:00Z");
+        when(profileRepository.findByAuthProviderSubject("sub")).thenReturn(Optional.of(profile));
+        when(profileRepository.save(any(Profile.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // When
+        Profile result =
+                service()
+                        .update(
+                                "sub",
+                                new ProfileUpdateRequest(null, null, null, null, completedAt));
+
+        // Then
+        assertThat(result.getOnboardingCompletedAt()).isEqualTo(completedAt);
+        assertThat(result.getDisplayName()).isEqualTo("User");
     }
 
     @Test
@@ -81,7 +103,7 @@ class ProfileServiceTest {
         when(profileRepository.save(any(Profile.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Profile result =
-                service().update("sub", new ProfileUpdateRequest(null, "a@b.c", null, null));
+                service().update("sub", new ProfileUpdateRequest(null, "a@b.c", null, null, null));
 
         assertThat(result.getAuthProviderSubject()).isEqualTo("sub");
         assertThat(result.getEmail()).isEqualTo("a@b.c");

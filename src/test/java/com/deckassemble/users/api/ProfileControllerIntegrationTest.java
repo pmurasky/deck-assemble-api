@@ -34,12 +34,14 @@ class ProfileControllerIntegrationTest extends AbstractIntegrationTest {
                                         """
                     {
                       "displayName": "Player One",
-                      "preferredFormat": "COMMANDER"
+                      "preferredFormat": "COMMANDER",
+                      "onboardingCompletedAt": "2026-08-18T12:00:00Z"
                     }
                     """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.displayName").value("Player One"))
-                .andExpect(jsonPath("$.preferredFormat").value("COMMANDER"));
+                .andExpect(jsonPath("$.preferredFormat").value("COMMANDER"))
+                .andExpect(jsonPath("$.onboardingCompletedAt").value("2026-08-18T12:00:00Z"));
     }
 
     @Test

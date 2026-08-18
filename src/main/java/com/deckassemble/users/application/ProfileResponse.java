@@ -8,5 +8,6 @@ public record ProfileResponse(
         String email,
         String preferredFormat,
         String experienceLevel,
+        Instant onboardingCompletedAt,
         Instant createdAt,
         Instant updatedAt) {}

@@ -38,6 +38,9 @@ public class Profile {
     @Column(name = "experience_level", length = 50)
     private String experienceLevel;
 
+    @Column(name = "onboarding_completed_at")
+    private Instant onboardingCompletedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -99,6 +102,14 @@ public class Profile {
 
     public void setExperienceLevel(String experienceLevel) {
         this.experienceLevel = experienceLevel;
+    }
+
+    public Instant getOnboardingCompletedAt() {
+        return onboardingCompletedAt;
+    }
+
+    public void setOnboardingCompletedAt(Instant onboardingCompletedAt) {
+        this.onboardingCompletedAt = onboardingCompletedAt;
     }
 
     public Instant getCreatedAt() {

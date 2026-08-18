@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-profile-onboarding-completed-at
+      author: sisyphus
+      changes:
+        - addColumn:
+            tableName: profiles
+            columns:
+              - column:
+                  name: onboarding_completed_at
+                  type: timestamptz
+        - rollback:
+            - dropColumn:
+                tableName: profiles
+                columnName: onboarding_completed_at

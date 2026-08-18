@@ -13,6 +13,7 @@ public final class ProfileMapper {
                 profile.getEmail(),
                 profile.getPreferredFormat(),
                 profile.getExperienceLevel(),
+                profile.getOnboardingCompletedAt(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt());
     }
