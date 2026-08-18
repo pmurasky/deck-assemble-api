@@ -10,4 +10,8 @@ public record ScoreContribution(
     public ScoreContribution {
         evidence = Map.copyOf(evidence);
     }
+
+    public String reason() {
+        return RecommendationReasonNarrator.render(code, evidence);
+    }
 }
