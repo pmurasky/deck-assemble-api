@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
-class CommanderLegalityEvaluator {
+class CommanderLegalityEvaluator implements FormatLegalityEvaluator {
 
     private static final int COMMANDER_DECK_SIZE = 100;
 
@@ -32,7 +32,13 @@ class CommanderLegalityEvaluator {
         this.pairingRules = pairingRules;
     }
 
-    DeckLegalityResponse evaluate(Deck deck, List<DeckCard> deckCards) {
+    @Override
+    public String formatCode() {
+        return "COMMANDER";
+    }
+
+    @Override
+    public DeckLegalityResponse evaluate(Deck deck, List<DeckCard> deckCards) {
         var violations = new ArrayList<DeckLegalityResponse.Violation>();
         if (!"COMMANDER".equalsIgnoreCase(deck.getFormatCode())) {
             add(violations, "COMMANDER_FORMAT_REQUIRED", "Deck format must be COMMANDER.");
