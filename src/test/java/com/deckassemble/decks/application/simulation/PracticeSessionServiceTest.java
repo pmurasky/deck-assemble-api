@@ -39,15 +39,10 @@ class PracticeSessionServiceTest {
         PracticeSessionResponse second = service().start(DECK_ID, request(true, 42L));
 
         // Then
-        assertThat(second)
-                .usingRecursiveComparison()
-                .ignoringFields("sessionId")
-                .isEqualTo(first);
+        assertThat(second).usingRecursiveComparison().ignoringFields("sessionId").isEqualTo(first);
         for (int i = 0; i < 5; i++) {
-            PracticeSessionResponse firstStep =
-                    service().step(DECK_ID, first.sessionId());
-            PracticeSessionResponse secondStep =
-                    service().step(DECK_ID, second.sessionId());
+            PracticeSessionResponse firstStep = service().step(DECK_ID, first.sessionId());
+            PracticeSessionResponse secondStep = service().step(DECK_ID, second.sessionId());
             assertThat(secondStep)
                     .usingRecursiveComparison()
                     .ignoringFields("sessionId")
@@ -135,10 +130,7 @@ class PracticeSessionServiceTest {
         // Then
         assertThat(reset.turn()).isZero();
         assertThat(reset.sessionId()).isEqualTo(started.sessionId());
-        assertThat(reset)
-                .usingRecursiveComparison()
-                .ignoringFields("sessionId")
-                .isEqualTo(started);
+        assertThat(reset).usingRecursiveComparison().ignoringFields("sessionId").isEqualTo(started);
     }
 
     @Test
@@ -164,7 +156,8 @@ class PracticeSessionServiceTest {
     }
 
     private void stubMixedLibrary(int landCount, int spellCount) {
-        stubSnapshot(List.of(entry(1L, landCount, "MAIN_DECK"), entry(2L, spellCount, "MAIN_DECK")));
+        stubSnapshot(
+                List.of(entry(1L, landCount, "MAIN_DECK"), entry(2L, spellCount, "MAIN_DECK")));
         stubCatalog(Map.of(1L, landCard(1L, "Forest", "G"), 2L, spellCard(2L, "Bear", 2)));
     }
 
@@ -221,8 +214,7 @@ class PracticeSessionServiceTest {
     }
 
     private static PracticeSessionRequest request(boolean onThePlay, @Nullable Long seed) {
-        return new PracticeSessionRequest(
-                1, onThePlay, MulliganStrategy.NONE, null, null, seed);
+        return new PracticeSessionRequest(1, onThePlay, MulliganStrategy.NONE, null, null, seed);
     }
 
     private @Nullable PracticeSessionService service;

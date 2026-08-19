@@ -82,18 +82,17 @@ class DeckExportController {
                 cardCatalogService.getExportViewsByPrintingIds(
                         unowned.stream().map(DeckCardResponse::cardPrintingId).toList());
         return new ProxySheetResponse(
-                unowned.stream()
-                        .map(
-                                card -> {
-                                    CardExportView view = views.get(card.cardPrintingId());
-                                    if (view == null) {
-                                        throw new IllegalStateException(
-                                                "Deck references a missing card printing");
-                                    }
-                                    return new ProxySheetResponse.ProxySheetCard(
-                                            view.displayName(), view.imageUri(), card.quantity());
-                                })
-                        .toList());
+                unowned.stream().map(card -> toProxyCard(card, views)).toList());
+    }
+
+    private static ProxySheetResponse.ProxySheetCard toProxyCard(
+            DeckCardResponse card, Map<Long, CardExportView> views) {
+        CardExportView view = views.get(card.cardPrintingId());
+        if (view == null) {
+            throw new IllegalStateException("Deck references a missing card printing");
+        }
+        return new ProxySheetResponse.ProxySheetCard(
+                view.displayName(), view.imageUri(), card.quantity());
     }
 
     private static boolean playableSection(DeckCardResponse card) {

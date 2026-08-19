@@ -28,7 +28,8 @@ class PauperLegalityEvaluatorTest {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
         for (int i = 1; i <= 15; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "legal"), "common"), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "legal"), "common"), 4));
         }
 
         // When
@@ -43,9 +44,10 @@ class PauperLegalityEvaluatorTest {
     void shouldFlagNonCommonPrinting() {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
-        deckCards.add(deckCard(1, printing(1, card("oracle-1", "Fancy Card", "legal"), "rare"), 4));
+        deckCards.add(deckCard(1, printing(card("oracle-1", "Fancy Card", "legal"), "rare"), 4));
         for (int i = 2; i <= 15; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "legal"), "common"), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "legal"), "common"), 4));
         }
 
         // When
@@ -60,7 +62,7 @@ class PauperLegalityEvaluatorTest {
     void shouldApplyConstructedRulesForPauper() {
         // Given
         List<DeckCard> deckCards =
-                List.of(deckCard(1, printing(1, card("oracle-1", "Card 1", "legal"), "common"), 5));
+                List.of(deckCard(1, printing(card("oracle-1", "Card 1", "legal"), "common"), 5));
 
         // When
         DeckLegalityResponse result = evaluator().evaluate(deck(), deckCards);
@@ -83,7 +85,7 @@ class PauperLegalityEvaluatorTest {
         return new DeckCard(1L, printingId, quantity, DeckCard.Section.MAIN_DECK);
     }
 
-    private CardPrinting printing(long id, Card card, String rarity) {
+    private CardPrinting printing(Card card, String rarity) {
         CardPrinting printing = mock(CardPrinting.class);
         when(printing.getCard()).thenReturn(card);
         when(printing.getRarity()).thenReturn(rarity);

@@ -38,7 +38,11 @@ public class ProfileService {
                 profileRepository
                         .findByAuthProviderSubject(subject)
                         .orElseGet(() -> new Profile(subject, subject));
+        applyUpdates(profile, request);
+        return profileRepository.save(profile);
+    }
 
+    private void applyUpdates(Profile profile, ProfileUpdateRequest request) {
         if (request.displayName() != null) {
             profile.setDisplayName(request.displayName());
         }
@@ -54,7 +58,5 @@ public class ProfileService {
         if (request.onboardingCompletedAt() != null) {
             profile.setOnboardingCompletedAt(request.onboardingCompletedAt());
         }
-
-        return profileRepository.save(profile);
     }
 }

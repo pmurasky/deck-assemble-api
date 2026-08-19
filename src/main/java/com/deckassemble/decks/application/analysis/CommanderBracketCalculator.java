@@ -11,6 +11,9 @@ final class CommanderBracketCalculator {
     private static final int BRACKET_3_MAX_GAME_CHANGERS = 3;
     private static final int BRACKET_4_MAX_GAME_CHANGERS = 6;
     private static final int COMBO_HEAVY_COUNT = 3;
+    private static final int BRACKET_UPGRADED = 3;
+    private static final int BRACKET_OPTIMIZED = 4;
+    private static final int BRACKET_CEDH = 5;
 
     private CommanderBracketCalculator() {}
 
@@ -21,13 +24,13 @@ final class CommanderBracketCalculator {
 
     private static int bracketLevel(int gameChangers, int comboCount) {
         if (gameChangers > BRACKET_4_MAX_GAME_CHANGERS) {
-            return 5;
+            return BRACKET_CEDH;
         }
         if (gameChangers > BRACKET_3_MAX_GAME_CHANGERS || comboCount >= COMBO_HEAVY_COUNT) {
-            return 4;
+            return BRACKET_OPTIMIZED;
         }
         if (gameChangers > 0) {
-            return 3;
+            return BRACKET_UPGRADED;
         }
         return comboCount > 0 ? 2 : 1;
     }

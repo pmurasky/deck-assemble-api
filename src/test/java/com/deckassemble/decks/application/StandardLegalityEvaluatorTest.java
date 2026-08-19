@@ -28,7 +28,8 @@ class StandardLegalityEvaluatorTest {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
         for (int i = 1; i <= 15; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "Instant", "common", "legal")), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "Instant", "legal")), 4));
         }
 
         // When
@@ -43,7 +44,7 @@ class StandardLegalityEvaluatorTest {
     void shouldFlagDeckBelowMinimumSize() {
         // Given
         List<DeckCard> deckCards =
-                List.of(deckCard(1, printing(1, card("oracle-1", "Card 1", "Instant", "common", "legal")), 10));
+                List.of(deckCard(1, printing(card("oracle-1", "Card 1", "Instant", "legal")), 10));
 
         // When
         DeckLegalityResponse result = evaluator().evaluate(deck(), deckCards);
@@ -57,11 +58,12 @@ class StandardLegalityEvaluatorTest {
     void shouldFlagMoreThanFourCopiesOfNonBasicCard() {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
-        deckCards.add(deckCard(1, printing(1, card("oracle-1", "Sol Ring", "Artifact", "uncommon", "legal")), 5));
+        deckCards.add(deckCard(1, printing(card("oracle-1", "Sol Ring", "Artifact", "legal")), 5));
         for (int i = 2; i <= 13; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "Instant", "common", "legal")), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "Instant", "legal")), 4));
         }
-        deckCards.add(deckCard(14, printing(14, card("oracle-14", "Card 14", "Instant", "common", "legal")), 3));
+        deckCards.add(deckCard(14, printing(card("oracle-14", "Card 14", "Instant", "legal")), 3));
 
         // When
         DeckLegalityResponse result = evaluator().evaluate(deck(), deckCards);
@@ -75,9 +77,10 @@ class StandardLegalityEvaluatorTest {
     void shouldIgnoreBasicLandsForCopyLimit() {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
-        deckCards.add(deckCard(1, printing(1, basicLand("oracle-1", "Forest", "legal")), 24));
+        deckCards.add(deckCard(1, printing(basicLand("oracle-1", "Forest", "legal")), 24));
         for (int i = 2; i <= 11; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "Instant", "common", "legal")), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "Instant", "legal")), 4));
         }
 
         // When
@@ -92,9 +95,11 @@ class StandardLegalityEvaluatorTest {
     void shouldFlagCardNotLegalInStandard() {
         // Given
         List<DeckCard> deckCards = new ArrayList<>();
-        deckCards.add(deckCard(1, printing(1, card("oracle-1", "Banned Card", "Instant", "rare", "banned")), 4));
+        deckCards.add(
+                deckCard(1, printing(card("oracle-1", "Banned Card", "Instant", "banned")), 4));
         for (int i = 2; i <= 15; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "Instant", "common", "legal")), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "Instant", "legal")), 4));
         }
 
         // When
@@ -114,9 +119,10 @@ class StandardLegalityEvaluatorTest {
         when(unknown.getTypeLine()).thenReturn("Instant");
         when(unknown.getLegalities()).thenReturn(List.of());
         List<DeckCard> deckCards = new ArrayList<>();
-        deckCards.add(deckCard(1, printing(1, unknown), 4));
+        deckCards.add(deckCard(1, printing(unknown), 4));
         for (int i = 2; i <= 15; i++) {
-            deckCards.add(deckCard(i, printing(i, card("oracle-" + i, "Card " + i, "Instant", "common", "legal")), 4));
+            deckCards.add(
+                    deckCard(i, printing(card("oracle-" + i, "Card " + i, "Instant", "legal")), 4));
         }
 
         // When
@@ -154,13 +160,13 @@ class StandardLegalityEvaluatorTest {
         return new DeckCard(1L, printingId, quantity, DeckCard.Section.MAIN_DECK);
     }
 
-    private CardPrinting printing(long id, Card card) {
+    private CardPrinting printing(Card card) {
         CardPrinting printing = mock(CardPrinting.class);
         when(printing.getCard()).thenReturn(card);
         return printing;
     }
 
-    private Card card(String oracleId, String name, String typeLine, String rarity, String status) {
+    private Card card(String oracleId, String name, String typeLine, String status) {
         CardLegality legality = mock(CardLegality.class);
         when(legality.getFormatCode()).thenReturn("standard");
         when(legality.getLegalityStatus()).thenReturn(status);

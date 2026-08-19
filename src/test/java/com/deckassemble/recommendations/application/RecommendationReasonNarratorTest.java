@@ -24,7 +24,8 @@ class RecommendationReasonNarratorTest {
         var evidence = Map.of("playStyle", "tokens");
 
         // When
-        var reason = RecommendationReasonNarrator.render(RecommendationReasonCode.PLAY_STYLE, evidence);
+        var reason =
+                RecommendationReasonNarrator.render(RecommendationReasonCode.PLAY_STYLE, evidence);
 
         // Then
         assertThat(reason).contains("tokens").doesNotContain("{playStyle}");

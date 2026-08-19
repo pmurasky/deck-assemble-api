@@ -26,8 +26,7 @@ final class PracticeSession {
     private int topOfLibrary;
     private int turn;
 
-    PracticeSession(
-            MulliganDraw.Result draw, Map<Long, Card> cardsByPrinting, boolean onThePlay) {
+    PracticeSession(MulliganDraw.Result draw, Map<Long, Card> cardsByPrinting, boolean onThePlay) {
         this.shuffledLibrary = draw.shuffledLibrary();
         this.cardsByPrinting = cardsByPrinting;
         this.onThePlay = onThePlay;

@@ -18,9 +18,9 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * Runs solitaire turn-stepped practice sessions: {@link #start} draws a seeded opening hand (same
  * library resolution and mulligan mechanics as {@link DeckSimulationService}), {@link #step}
- * advances one turn of draw / land-drop / cast at a time, and {@link #reset} returns the session
- * to its opening hand using the original seed. Sessions are kept in memory, keyed by a random id —
- * a practice session is ephemeral goldfishing state, not deck data.
+ * advances one turn of draw / land-drop / cast at a time, and {@link #reset} returns the session to
+ * its opening hand using the original seed. Sessions are kept in memory, keyed by a random id — a
+ * practice session is ephemeral goldfishing state, not deck data.
  */
 @Service
 public class PracticeSessionService {
@@ -40,7 +40,8 @@ public class PracticeSessionService {
     }
 
     public PracticeSessionResponse start(long deckId, PracticeSessionRequest request) {
-        long seed = request.seed() != null ? request.seed() : ThreadLocalRandom.current().nextLong();
+        long seed =
+                request.seed() != null ? request.seed() : ThreadLocalRandom.current().nextLong();
         PracticeSession session = newSession(deckId, request, seed);
         UUID sessionId = UUID.randomUUID();
         sessions.put(sessionId, new SessionEntry(deckId, request, seed, session));
@@ -75,8 +76,16 @@ public class PracticeSessionService {
         DeckSnapshot snapshot = deckRevisionService.snapshotAt(deckId, request.revision());
         List<DeckSnapshot.CardEntry> entries = DeckLibraryResolver.mainDeckEntries(snapshot);
         Map<Long, Card> cardsByPrinting =
-                cardCatalogService.getCardsByPrintingIds(DeckLibraryResolver.printingIdsOf(entries));
+                cardCatalogService.getCardsByPrintingIds(
+                        DeckLibraryResolver.printingIdsOf(entries));
         List<Long> library = DeckLibraryResolver.expandLibrary(entries, cardsByPrinting, snapshot);
+        validateLibrarySize(library);
+        RandomGenerator random = RandomGeneratorFactory.getDefault().create(seed);
+        MulliganDraw.Result draw = MulliganDraw.draw(library, cardsByPrinting, random, request);
+        return new PracticeSession(draw, cardsByPrinting, request.onThePlay());
+    }
+
+    private void validateLibrarySize(List<Long> library) {
         if (library.size() < MulliganDraw.HAND_SIZE) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -86,9 +95,6 @@ public class PracticeSessionService {
                             + MulliganDraw.HAND_SIZE
                             + " are required for an opening hand.");
         }
-        RandomGenerator random = RandomGeneratorFactory.getDefault().create(seed);
-        MulliganDraw.Result draw = MulliganDraw.draw(library, cardsByPrinting, random, request);
-        return new PracticeSession(draw, cardsByPrinting, request.onThePlay());
     }
 
     private SessionEntry entry(long deckId, UUID sessionId) {

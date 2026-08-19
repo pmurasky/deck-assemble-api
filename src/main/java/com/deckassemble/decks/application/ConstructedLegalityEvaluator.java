@@ -11,10 +11,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Base evaluator for 60-card constructed formats: minimum deck size, four-copy limit for
- * non-basic cards, and per-card legality status for the format.
+ * Base evaluator for 60-card constructed formats: minimum deck size, four-copy limit for non-basic
+ * cards, and per-card legality status for the format.
  *
  * @since 1.0
  */
@@ -51,16 +52,14 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
 
     private List<CardPrinting> expandMainDeck(
             List<DeckCard> deckCards, List<DeckLegalityResponse.Violation> violations) {
-        // ponytail: main deck only; sideboard section rules can be added when the domain models them.
+        // ponytail: main deck only; sideboard rules can be added when the domain models them.
         List<CardPrinting> printings = new ArrayList<>();
         for (DeckCard deckCard : deckCards) {
             if (deckCard.getDeckSection() != Section.MAIN_DECK) {
                 continue;
             }
-            CardPrinting printing =
-                    cardPrintingRepository.findById(deckCard.getCardPrintingId()).orElse(null);
+            CardPrinting printing = resolvePrinting(deckCard, violations);
             if (printing == null) {
-                add(violations, "CARD_NOT_FOUND", "Card printing not found: " + deckCard.getCardPrintingId());
                 continue;
             }
             for (int i = 0; i < deckCard.getQuantity(); i++) {
@@ -68,6 +67,19 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
             }
         }
         return printings;
+    }
+
+    private @Nullable CardPrinting resolvePrinting(
+            DeckCard deckCard, List<DeckLegalityResponse.Violation> violations) {
+        CardPrinting printing =
+                cardPrintingRepository.findById(deckCard.getCardPrintingId()).orElse(null);
+        if (printing == null) {
+            add(
+                    violations,
+                    "CARD_NOT_FOUND",
+                    "Card printing not found: " + deckCard.getCardPrintingId());
+        }
+        return printing;
     }
 
     private void validateDeckSize(
@@ -83,6 +95,7 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
         }
     }
 
+    @SuppressWarnings("PMD.UseConcurrentHashMap") // local maps, single-threaded
     private void validateCopyLimit(
             List<CardPrinting> printings, List<DeckLegalityResponse.Violation> violations) {
         Map<String, Integer> copiesByOracleId = new HashMap<>();
@@ -96,6 +109,13 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
             copiesByOracleId.merge(oracleId, 1, Integer::sum);
             nameByOracleId.putIfAbsent(oracleId, card.getName());
         }
+        addCopyLimitViolations(copiesByOracleId, nameByOracleId, violations);
+    }
+
+    private void addCopyLimitViolations(
+            Map<String, Integer> copiesByOracleId,
+            Map<String, String> nameByOracleId,
+            List<DeckLegalityResponse.Violation> violations) {
         copiesByOracleId.forEach(
                 (oracleId, copies) -> {
                     if (copies > MAX_COPIES) {
@@ -113,6 +133,7 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
                 });
     }
 
+    @SuppressWarnings("PMD.UseConcurrentHashMap") // local map, single-threaded
     private void validateCardLegality(
             List<CardPrinting> printings, List<DeckLegalityResponse.Violation> violations) {
         String format = formatCode().toLowerCase(Locale.ROOT);
@@ -120,7 +141,8 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
         for (CardPrinting printing : printings) {
             Card card = printing.getCard();
             if (!checked.computeIfAbsent(
-                    card.getScryfallOracleId(), id -> checkCardLegality(card, format, violations))) {
+                    card.getScryfallOracleId(),
+                    id -> checkCardLegality(card, format, violations))) {
                 continue;
             }
             validatePrinting(printing, violations);
@@ -130,11 +152,7 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
     private boolean checkCardLegality(
             Card card, String format, List<DeckLegalityResponse.Violation> violations) {
         String prefix = formatCode();
-        List<String> statuses =
-                card.getLegalities().stream()
-                        .filter(legality -> format.equalsIgnoreCase(legality.getFormatCode()))
-                        .map(legality -> legality.getLegalityStatus().toLowerCase(Locale.ROOT))
-                        .toList();
+        List<String> statuses = legalStatuses(card, format);
         if (statuses.isEmpty()) {
             add(
                     violations,
@@ -152,13 +170,19 @@ abstract class ConstructedLegalityEvaluator implements FormatLegalityEvaluator {
         return true;
     }
 
+    private List<String> legalStatuses(Card card, String format) {
+        return card.getLegalities().stream()
+                .filter(legality -> format.equalsIgnoreCase(legality.getFormatCode()))
+                .map(legality -> legality.getLegalityStatus().toLowerCase(Locale.ROOT))
+                .toList();
+    }
+
     private boolean isBasicLand(Card card) {
         return card.getTypeLine() != null
                 && card.getTypeLine().toLowerCase(Locale.ROOT).contains("basic land");
     }
 
-    private void add(
-            List<DeckLegalityResponse.Violation> violations, String code, String message) {
+    private void add(List<DeckLegalityResponse.Violation> violations, String code, String message) {
         violations.add(new DeckLegalityResponse.Violation(code, message));
     }
 }
