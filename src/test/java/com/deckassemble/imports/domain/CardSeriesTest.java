@@ -54,6 +54,7 @@ class CardSeriesTest {
                     FOUNDATIONS|Foundations|fdn
                     BLOOMBURROW|Bloomburrow|blb
                     SECRET_LAIR_DROP|Secret Lair Drop|sld
+                    THEROS_BEYOND_DEATH|Theros Beyond Death|thb
                     """)
     void shouldExposeClarifiedSeriesMappings(String key, String label, String codes) {
         CardSeries series = CardSeries.valueOf(key);
@@ -73,7 +74,8 @@ class CardSeriesTest {
                         "TALES_OF_MIDDLE_EARTH_COMMANDER",
                         "FOUNDATIONS",
                         "BLOOMBURROW",
-                        "SECRET_LAIR_DROP")
+                        "SECRET_LAIR_DROP",
+                        "THEROS_BEYOND_DEATH")
                 .stream()
                 .map(CardSeries::valueOf)
                 .flatMap(series -> series.setCodes().stream())
