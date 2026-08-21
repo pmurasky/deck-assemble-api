@@ -6,18 +6,22 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.application.history.DeckSnapshot;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -30,129 +34,202 @@ class PracticeSessionServiceTest {
     @Mock private CardCatalogService cardCatalogService;
 
     @Test
-    void shouldProduceIdenticalTurnSequenceForTheSameSeed() {
-        // Given
-        stubMixedLibrary(20, 20);
+    void shouldPlayNonLandFromHandWithoutManaEnforcement() {
+        stubHomogeneousLibrary(8, spellCard(1L, "Bear", 7));
+        PracticeSessionResponse started = service().start(DECK_ID, request(true, 41L));
 
-        // When
-        PracticeSessionResponse first = service().start(DECK_ID, request(true, 42L));
-        PracticeSessionResponse second = service().start(DECK_ID, request(true, 42L));
+        PracticeSessionResponse response = service().playCard(DECK_ID, started.sessionId(), 1L);
 
-        // Then
-        assertThat(second).usingRecursiveComparison().ignoringFields("sessionId").isEqualTo(first);
-        for (int i = 0; i < 5; i++) {
-            PracticeSessionResponse firstStep = service().step(DECK_ID, first.sessionId());
-            PracticeSessionResponse secondStep = service().step(DECK_ID, second.sessionId());
-            assertThat(secondStep)
-                    .usingRecursiveComparison()
-                    .ignoringFields("sessionId")
-                    .isEqualTo(firstStep);
-        }
+        assertThat(response.hand()).hasSize(6);
+        assertThat(response.battlefield())
+                .singleElement()
+                .satisfies(
+                        permanent -> {
+                            assertThat(permanent.printingId()).isEqualTo(1L);
+                            assertThat(permanent.card().name()).isEqualTo("Bear");
+                            assertThat(permanent.tapped()).isFalse();
+                        });
     }
 
     @Test
-    void shouldPlayOneLandPerTurnFromAnAllLandLibrary() {
-        // Given
-        stubHomogeneousLibrary(20, landCard(1L, "Forest", "G"));
-        PracticeSessionResponse started = service().start(DECK_ID, request(true, 7L));
+    void shouldRejectSecondLandPlayedInTheSameTurn() {
+        stubSnapshot(List.of(entry(1L, 1, "MAIN_DECK"), entry(2L, 6, "MAIN_DECK")));
+        stubCatalog(
+                Map.of(
+                        1L, landCard(1L, "Forest", "G"),
+                        2L, landCard(2L, "Island", "U")));
+        PracticeSessionResponse started = service().start(DECK_ID, request(true, 41L));
+        service().playCard(DECK_ID, started.sessionId(), 1L);
 
-        // When
-        PracticeSessionResponse turnOne = service().step(DECK_ID, started.sessionId());
-        PracticeSessionResponse turnTwo = service().step(DECK_ID, started.sessionId());
-
-        // Then
-        assertThat(turnOne.turn()).isEqualTo(1);
-        assertThat(turnOne.drawnCard()).isNull();
-        assertThat(turnOne.landPlayed()).isEqualTo("Forest");
-        assertThat(turnOne.landsInPlay()).isEqualTo(1);
-        assertThat(turnTwo.drawnCard()).isEqualTo("Forest");
-        assertThat(turnTwo.landPlayed()).isEqualTo("Forest");
-        assertThat(turnTwo.landsInPlay()).isEqualTo(2);
+        assertThatThrownBy(() -> service().playCard(DECK_ID, started.sessionId(), 2L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
-    void shouldNeverPlayALandFromAnAllSpellLibrary() {
-        // Given
-        stubHomogeneousLibrary(20, spellCard(1L, "Bear", 2));
-        PracticeSessionResponse started = service().start(DECK_ID, request(false, 9L));
+    void shouldToggleBattlefieldPermanentTwice() {
+        stubHomogeneousLibrary(8, spellCard(1L, "Bear", 2));
+        PracticeSessionResponse started = service().start(DECK_ID, request(true, 41L));
+        service().playCard(DECK_ID, started.sessionId(), 1L);
 
-        // When
-        PracticeSessionResponse turnOne = service().step(DECK_ID, started.sessionId());
+        PracticeSessionResponse tapped = service().toggleTap(DECK_ID, started.sessionId(), 1L);
+        PracticeSessionResponse untapped = service().toggleTap(DECK_ID, started.sessionId(), 1L);
 
-        // Then
-        assertThat(turnOne.drawnCard()).isEqualTo("Bear");
-        assertThat(turnOne.landPlayed()).isNull();
-        assertThat(turnOne.landsInPlay()).isZero();
-        assertThat(turnOne.castableSpells()).isEmpty();
+        assertThat(tapped.battlefield())
+                .singleElement()
+                .extracting(permanent -> permanent.tapped())
+                .isEqualTo(true);
+        assertThat(untapped.battlefield())
+                .singleElement()
+                .extracting(permanent -> permanent.tapped())
+                .isEqualTo(false);
     }
 
     @Test
-    void shouldReportCastableSpellsOnceALandIsInPlay() {
-        // Given: 4 Forests + 3 one-mana Bears fill the opening hand exactly.
+    void shouldAdvanceTurnUntapBattlefieldAndResetLandPlay() {
+        stubSnapshot(List.of(entry(1L, 1, "MAIN_DECK"), entry(2L, 6, "MAIN_DECK")));
+        stubCatalog(
+                Map.of(
+                        1L, landCard(1L, "Forest", "G"),
+                        2L, landCard(2L, "Island", "U")));
+        PracticeSessionResponse started = service().start(DECK_ID, request(true, 41L));
+        service().playCard(DECK_ID, started.sessionId(), 1L);
+        service().toggleTap(DECK_ID, started.sessionId(), 1L);
+
+        PracticeSessionResponse advanced = service().nextTurn(DECK_ID, started.sessionId());
+        PracticeSessionResponse secondLand = service().playCard(DECK_ID, started.sessionId(), 2L);
+
+        assertThat(advanced.turn()).isEqualTo(1);
+        assertThat(advanced.drawnCard()).isNull();
+        assertThat(advanced.battlefield())
+                .singleElement()
+                .extracting(permanent -> permanent.tapped())
+                .isEqualTo(false);
+        assertThat(secondLand.battlefield()).hasSize(2);
+    }
+
+    @Test
+    void shouldDrawFinalCardAndFinishOnNextTurn() {
+        stubHomogeneousLibrary(8, spellCard(1L, "Bear", 2));
+        PracticeSessionResponse started = service().start(DECK_ID, request(false, 5L));
+
+        PracticeSessionResponse advanced = service().nextTurn(DECK_ID, started.sessionId());
+
+        assertThat(advanced.turn()).isEqualTo(1);
+        assertThat(advanced.drawnCard())
+                .extracting(PracticeSessionResponse.CardView::name)
+                .isEqualTo("Bear");
+        assertThat(advanced.hand()).hasSize(8);
+        assertThat(advanced.finished()).isTrue();
+    }
+
+    @Test
+    void shouldKeepFinishedAfterPlayerActionWhenLibraryIsExhausted() {
+        stubHomogeneousLibrary(8, spellCard(1L, "Bear", 2));
+        PracticeSessionResponse started = service().start(DECK_ID, request(false, 5L));
+        service().nextTurn(DECK_ID, started.sessionId());
+
+        PracticeSessionResponse played = service().playCard(DECK_ID, started.sessionId(), 1L);
+
+        assertThat(played.finished()).isTrue();
+    }
+
+    @Test
+    void shouldEnrichCardsInHandBattlefieldAndDrawnCard() {
+        Card bear = spellCard(1L, "Bear", 7);
+        bear.setManaCost("{5}{G}{G}");
+        bear.setOracleText("Vigilance");
+        stubSnapshot(List.of(entry(1L, 8, "MAIN_DECK")));
+        stubPracticeCatalog(
+                Map.of(1L, new PracticeCard(1L, bear, "https://images.example/bear.jpg")));
+        PracticeSessionResponse started = service().start(DECK_ID, request(false, 5L));
+
+        PracticeSessionResponse.CardView handCard = started.hand().getFirst();
+        PracticeSessionResponse played = service().playCard(DECK_ID, started.sessionId(), 1L);
+        PracticeSessionResponse.CardView battlefieldCard = played.battlefield().getFirst().card();
+        PracticeSessionResponse.CardView drawnCard =
+                Objects.requireNonNull(
+                        service().nextTurn(DECK_ID, started.sessionId()).drawnCard());
+
+        assertEnrichedBear(handCard);
+        assertEnrichedBear(battlefieldCard);
+        assertEnrichedBear(drawnCard);
+    }
+
+    @Test
+    void shouldReportCastableSpellsOnlyWhileLandsAreUntapped() {
         stubSnapshot(List.of(entry(1L, 4, "MAIN_DECK"), entry(2L, 3, "MAIN_DECK")));
         stubCatalog(Map.of(1L, landCard(1L, "Forest", "G"), 2L, spellCard(2L, "Bear", 1)));
         PracticeSessionResponse started = service().start(DECK_ID, request(true, 3L));
 
-        // When
-        PracticeSessionResponse turnOne = service().step(DECK_ID, started.sessionId());
+        PracticeSessionResponse played = service().playCard(DECK_ID, started.sessionId(), 1L);
+        PracticeSessionResponse tapped = service().toggleTap(DECK_ID, started.sessionId(), 1L);
 
-        // Then
-        assertThat(started.hand()).hasSize(7);
-        assertThat(turnOne.landPlayed()).isEqualTo("Forest");
-        assertThat(turnOne.castableSpells()).containsExactly("Bear", "Bear", "Bear");
+        assertThat(played.castableSpells())
+                .extracting(PracticeSessionResponse.CardView::name)
+                .containsExactly("Bear", "Bear", "Bear");
+        assertThat(tapped.castableSpells()).isEmpty();
     }
 
     @Test
-    void shouldMarkSessionFinishedWhenLibraryIsExhausted() {
-        // Given: only one card left to draw after the opening hand.
-        stubHomogeneousLibrary(8, spellCard(1L, "Bear", 2));
-        PracticeSessionResponse started = service().start(DECK_ID, request(false, 5L));
+    void shouldProduceIdenticalTurnSequenceForTheSameSeed() {
+        stubMixedLibrary(20, 20);
+        PracticeSessionResponse first = service().start(DECK_ID, request(true, 42L));
+        PracticeSessionResponse second = service().start(DECK_ID, request(true, 42L));
 
-        // When
-        PracticeSessionResponse turnOne = service().step(DECK_ID, started.sessionId());
-
-        // Then
-        assertThat(turnOne.drawnCard()).isEqualTo("Bear");
-        assertThat(turnOne.finished()).isTrue();
+        assertThat(second).usingRecursiveComparison().ignoringFields("sessionId").isEqualTo(first);
+        for (int i = 0; i < 5; i++) {
+            PracticeSessionResponse firstTurn = service().nextTurn(DECK_ID, first.sessionId());
+            PracticeSessionResponse secondTurn = service().nextTurn(DECK_ID, second.sessionId());
+            assertThat(secondTurn)
+                    .usingRecursiveComparison()
+                    .ignoringFields("sessionId")
+                    .isEqualTo(firstTurn);
+        }
     }
 
     @Test
     void shouldResetSessionToTheSameOpeningHand() {
-        // Given
         stubMixedLibrary(20, 20);
         PracticeSessionResponse started = service().start(DECK_ID, request(true, 42L));
-        service().step(DECK_ID, started.sessionId());
-        service().step(DECK_ID, started.sessionId());
+        service().nextTurn(DECK_ID, started.sessionId());
+        service().nextTurn(DECK_ID, started.sessionId());
 
-        // When
         PracticeSessionResponse reset = service().reset(DECK_ID, started.sessionId());
 
-        // Then
         assertThat(reset.turn()).isZero();
         assertThat(reset.sessionId()).isEqualTo(started.sessionId());
         assertThat(reset).usingRecursiveComparison().ignoringFields("sessionId").isEqualTo(started);
     }
 
     @Test
-    void shouldRejectStepForUnknownSession() {
-        // Given
+    void shouldRejectNextTurnForUnknownSession() {
         UUID unknown = UUID.randomUUID();
 
-        // When / Then
-        assertThatThrownBy(() -> service().step(DECK_ID, unknown))
+        assertThatThrownBy(() -> service().nextTurn(DECK_ID, unknown))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("practice session");
     }
 
     @Test
     void shouldRejectLibrarySmallerThanTheOpeningHand() {
-        // Given
         stubHomogeneousLibrary(5, spellCard(1L, "Bear", 2));
 
-        // When / Then
         assertThatThrownBy(() -> service().start(DECK_ID, request(true, 1L)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("library");
+    }
+
+    private static void assertEnrichedBear(PracticeSessionResponse.CardView card) {
+        assertThat(card.printingId()).isEqualTo(1L);
+        assertThat(card.name()).isEqualTo("Bear");
+        assertThat(card.imageUrl()).isEqualTo("https://images.example/bear.jpg");
+        assertThat(card.manaCost()).isEqualTo("{5}{G}{G}");
+        assertThat(card.typeLine()).isEqualTo("Creature — Bear");
+        assertThat(card.oracleText()).isEqualTo("Vigilance");
     }
 
     private void stubMixedLibrary(int landCount, int spellCount) {
@@ -171,7 +248,18 @@ class PracticeSessionServiceTest {
     }
 
     private void stubCatalog(Map<Long, Card> catalog) {
-        lenient().when(cardCatalogService.getCardsByPrintingIds(any())).thenReturn(catalog);
+        stubPracticeCatalog(
+                catalog.entrySet().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        entry ->
+                                                new PracticeCard(
+                                                        entry.getKey(), entry.getValue(), null))));
+    }
+
+    private void stubPracticeCatalog(Map<Long, PracticeCard> catalog) {
+        lenient().when(cardCatalogService.getPracticeCardsByPrintingIds(any())).thenReturn(catalog);
     }
 
     private static DeckSnapshot.CardEntry entry(long printingId, int quantity, String section) {

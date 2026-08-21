@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
 class DeckSimulationControllerIntegrationTest extends AbstractIntegrationTest {
 
@@ -27,6 +28,7 @@ class DeckSimulationControllerIntegrationTest extends AbstractIntegrationTest {
     @Autowired private MagicSetRepository magicSetRepository;
     @Autowired private CardPrintingRepository printingRepository;
     @Autowired private DeckRevisionRepository deckRevisionRepository;
+    @Autowired private ObjectMapper objectMapper;
 
     @Test
     void shouldGenerateRequestedNumberOfSevenCardHandsAndEchoTheSeed() throws Exception {
@@ -319,6 +321,60 @@ class DeckSimulationControllerIntegrationTest extends AbstractIntegrationTest {
                                         {"revision":999,"iterations":100,"turns":3,"onThePlay":true,"mulliganStrategy":"NONE"}
                                         """))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldPlayTapAndAdvancePracticeSession() throws Exception {
+        String subject = "auth0|practice-board";
+        long deckId = createDeck(subject, "Practice Deck");
+        addCards(subject, deckId, "practice", 8);
+        int revision = currentRevision(deckId);
+        MvcResult started =
+                mockMvc.perform(
+                                post("/decks/{deckId}/practice-sessions", deckId)
+                                        .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                """
+                                                {"revision":%d,"onThePlay":true,"mulliganStrategy":"NONE","seed":41}
+                                                """
+                                                        .formatted(revision)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.hand.length()").value(7))
+                        .andReturn();
+        var startedJson = objectMapper.readTree(started.getResponse().getContentAsString());
+        String sessionId = startedJson.get("sessionId").asText();
+        long printingId = startedJson.get("hand").get(0).get("printingId").asLong();
+
+        mockMvc.perform(
+                        post(
+                                        "/decks/{deckId}/practice-sessions/{sessionId}/play",
+                                        deckId,
+                                        sessionId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"printingId\":%d}".formatted(printingId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hand.length()").value(6))
+                .andExpect(jsonPath("$.battlefield[0].printingId").value(printingId))
+                .andExpect(jsonPath("$.battlefield[0].tapped").value(false));
+        mockMvc.perform(
+                        post("/decks/{deckId}/practice-sessions/{sessionId}/tap", deckId, sessionId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject)))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"printingId\":%d}".formatted(printingId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.battlefield[0].tapped").value(true));
+        mockMvc.perform(
+                        post(
+                                        "/decks/{deckId}/practice-sessions/{sessionId}/steps",
+                                        deckId,
+                                        sessionId)
+                                .with(jwt().jwt(jwt -> jwt.subject(subject))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turn").value(1))
+                .andExpect(jsonPath("$.drawnCard").doesNotExist())
+                .andExpect(jsonPath("$.battlefield[0].tapped").value(false));
     }
 
     private int currentRevision(long deckId) {

@@ -6,6 +6,7 @@ import com.deckassemble.decks.application.simulation.DeckSampleHandService;
 import com.deckassemble.decks.application.simulation.DeckSimulationRequest;
 import com.deckassemble.decks.application.simulation.DeckSimulationResponse;
 import com.deckassemble.decks.application.simulation.DeckSimulationService;
+import com.deckassemble.decks.application.simulation.PracticeSessionActionRequest;
 import com.deckassemble.decks.application.simulation.PracticeSessionRequest;
 import com.deckassemble.decks.application.simulation.PracticeSessionResponse;
 import com.deckassemble.decks.application.simulation.PracticeSessionService;
@@ -56,10 +57,26 @@ public class DeckSimulationController {
         return practiceSessionService.start(deckId, request);
     }
 
+    @PostMapping("/practice-sessions/{sessionId}/play")
+    public PracticeSessionResponse playPracticeCard(
+            @PathVariable long deckId,
+            @PathVariable UUID sessionId,
+            @Valid @RequestBody PracticeSessionActionRequest request) {
+        return practiceSessionService.playCard(deckId, sessionId, request.printingId());
+    }
+
+    @PostMapping("/practice-sessions/{sessionId}/tap")
+    public PracticeSessionResponse tapPracticeCard(
+            @PathVariable long deckId,
+            @PathVariable UUID sessionId,
+            @Valid @RequestBody PracticeSessionActionRequest request) {
+        return practiceSessionService.toggleTap(deckId, sessionId, request.printingId());
+    }
+
     @PostMapping("/practice-sessions/{sessionId}/steps")
     public PracticeSessionResponse stepPractice(
             @PathVariable long deckId, @PathVariable UUID sessionId) {
-        return practiceSessionService.step(deckId, sessionId);
+        return practiceSessionService.nextTurn(deckId, sessionId);
     }
 
     @PostMapping("/practice-sessions/{sessionId}/reset")

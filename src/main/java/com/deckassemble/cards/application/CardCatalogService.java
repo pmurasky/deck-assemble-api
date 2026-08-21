@@ -205,6 +205,25 @@ public class CardCatalogService {
         return cards;
     }
 
+    @Transactional(readOnly = true)
+    public Map<Long, PracticeCard> getPracticeCardsByPrintingIds(Collection<Long> cardPrintingIds) {
+        if (cardPrintingIds.isEmpty()) {
+            return Map.of();
+        }
+        var practiceCards =
+                cardPrintingRepository.findAllById(cardPrintingIds).stream()
+                        .collect(
+                                Collectors.toUnmodifiableMap(
+                                        CardPrinting::getId,
+                                        printing ->
+                                                new PracticeCard(
+                                                        printing.getId(),
+                                                        printing.getCard(),
+                                                        printing.getImageUriNormal())));
+        practiceCards.values().forEach(card -> initializeAssociations(card.card()));
+        return practiceCards;
+    }
+
     private static void initializeAssociations(Card card) {
         Hibernate.initialize(card.getFaces());
         Hibernate.initialize(card.getLegalities());

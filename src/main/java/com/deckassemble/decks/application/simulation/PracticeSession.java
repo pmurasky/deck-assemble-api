@@ -1,5 +1,6 @@
 package com.deckassemble.decks.application.simulation;
 
+import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.cards.domain.Card;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,26 +8,21 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Mutable state of one solitaire practice session — the turn-stepped state machine: each {@link
- * #step()} performs draw (skipped on turn 1 when on the play, and once the library is exhausted),
- * land drop (the first land in hand, one per turn), then reports the in-hand spells castable by
- * mana value. Deterministic: the library was shuffled once at session start by {@link MulliganDraw}
- * from the session seed, and steps only consume it in order. Solitaire goldfishing only — no
- * opponent, no stack, no combat.
- */
+/** Mutable player-directed state of one solitaire practice session. */
 final class PracticeSession {
 
     private final List<Long> shuffledLibrary;
-    private final Map<Long, Card> cardsByPrinting;
+    private final Map<Long, PracticeCard> cardsByPrinting;
     private final List<Long> hand;
-    private final List<Card> landsInPlay = new ArrayList<>();
+    private final List<Permanent> battlefield = new ArrayList<>();
     private final boolean onThePlay;
     private final int mulliganCount;
+    private boolean landPlayedThisTurn;
     private int topOfLibrary;
     private int turn;
 
-    PracticeSession(MulliganDraw.Result draw, Map<Long, Card> cardsByPrinting, boolean onThePlay) {
+    PracticeSession(
+            MulliganDraw.Result draw, Map<Long, PracticeCard> cardsByPrinting, boolean onThePlay) {
         this.shuffledLibrary = draw.shuffledLibrary();
         this.cardsByPrinting = cardsByPrinting;
         this.onThePlay = onThePlay;
@@ -37,60 +33,73 @@ final class PracticeSession {
         this.topOfLibrary = MulliganDraw.HAND_SIZE;
     }
 
-    /** The outcome of advancing one turn. */
-    record Step(
-            int turn,
-            @Nullable String drawnCard,
-            @Nullable String landPlayed,
-            int landsInPlay,
-            List<String> castableSpells,
-            boolean finished) {}
-
-    Step step() {
-        turn++;
-        String drawnCard = draw();
-        String landPlayed = playLand();
-        return new Step(
-                turn,
-                drawnCard,
-                landPlayed,
-                landsInPlay.size(),
-                castableSpells(),
-                topOfLibrary >= shuffledLibrary.size());
+    void playCard(long printingId) {
+        Card card = card(printingId);
+        if (DeckLibraryResolver.isLand(card) && landPlayedThisTurn) {
+            throw new IllegalArgumentException("Only one land may be played per turn.");
+        }
+        if (!hand.remove(printingId)) {
+            throw new IllegalArgumentException("Card is not in this practice session's hand.");
+        }
+        battlefield.add(new Permanent(printingId, false));
+        landPlayedThisTurn = landPlayedThisTurn || DeckLibraryResolver.isLand(card);
     }
 
-    private @Nullable String draw() {
+    void toggleTap(long printingId) {
+        for (int index = 0; index < battlefield.size(); index++) {
+            Permanent permanent = battlefield.get(index);
+            if (permanent.printingId() == printingId) {
+                battlefield.set(index, new Permanent(printingId, !permanent.tapped()));
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Card is not on this practice session's battlefield.");
+    }
+
+    Turn nextTurn() {
+        turn++;
+        battlefield.replaceAll(permanent -> new Permanent(permanent.printingId(), false));
+        landPlayedThisTurn = false;
+        PracticeCard drawnCard = draw();
+        return new Turn(turn, drawnCard, finished());
+    }
+
+    private @Nullable PracticeCard draw() {
         if ((turn == 1 && onThePlay) || topOfLibrary >= shuffledLibrary.size()) {
             return null;
         }
         Long printingId = shuffledLibrary.get(topOfLibrary);
         topOfLibrary++;
         hand.add(printingId);
-        return nameOf(printingId);
+        return practiceCard(printingId);
     }
 
-    private @Nullable String playLand() {
-        for (int i = 0; i < hand.size(); i++) {
-            Card card = Objects.requireNonNull(cardsByPrinting.get(hand.get(i)));
-            if (DeckLibraryResolver.isLand(card)) {
-                hand.remove(i);
-                landsInPlay.add(card);
-                return card.getName();
-            }
-        }
-        return null;
+    List<PracticeCard> castableSpells() {
+        int untappedLands = untappedLands();
+        return hand.stream()
+                .map(this::practiceCard)
+                .filter(card -> isCastable(card, untappedLands))
+                .toList();
     }
 
-    private List<String> castableSpells() {
-        List<String> names = new ArrayList<>();
-        for (Long printingId : hand) {
-            Card card = Objects.requireNonNull(cardsByPrinting.get(printingId));
-            if (!DeckLibraryResolver.isLand(card)
-                    && CastabilityCalculator.manaValueOf(card) <= landsInPlay.size()) {
-                names.add(card.getName());
+    private int untappedLands() {
+        int count = 0;
+        for (Permanent permanent : battlefield) {
+            if (!permanent.tapped() && DeckLibraryResolver.isLand(card(permanent.printingId()))) {
+                count++;
             }
         }
-        return names;
+        return count;
+    }
+
+    private boolean isCastable(PracticeCard practiceCard, int untappedLands) {
+        Card card = practiceCard.card();
+        return !DeckLibraryResolver.isLand(card)
+                && CastabilityCalculator.manaValueOf(card) <= untappedLands;
+    }
+
+    boolean finished() {
+        return topOfLibrary >= shuffledLibrary.size();
     }
 
     int turn() {
@@ -101,11 +110,23 @@ final class PracticeSession {
         return mulliganCount;
     }
 
-    List<String> handNames() {
-        return hand.stream().map(this::nameOf).toList();
+    List<PracticeCard> hand() {
+        return hand.stream().map(this::practiceCard).toList();
     }
 
-    private String nameOf(Long printingId) {
-        return Objects.requireNonNull(cardsByPrinting.get(printingId)).getName();
+    List<Permanent> battlefield() {
+        return List.copyOf(battlefield);
     }
+
+    Card card(long printingId) {
+        return practiceCard(printingId).card();
+    }
+
+    PracticeCard practiceCard(long printingId) {
+        return Objects.requireNonNull(cardsByPrinting.get(printingId));
+    }
+
+    record Permanent(long printingId, boolean tapped) {}
+
+    record Turn(int turn, @Nullable PracticeCard drawnCard, boolean finished) {}
 }
