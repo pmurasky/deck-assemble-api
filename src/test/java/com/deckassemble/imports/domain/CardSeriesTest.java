@@ -53,6 +53,7 @@ class CardSeriesTest {
                     TALES_OF_MIDDLE_EARTH_COMMANDER|Tales of Middle-earth Commander|ltc
                     FOUNDATIONS|Foundations|fdn
                     BLOOMBURROW|Bloomburrow|blb
+                    SECRET_LAIR_DROP|Secret Lair Drop|sld
                     """)
     void shouldExposeClarifiedSeriesMappings(String key, String label, String codes) {
         CardSeries series = CardSeries.valueOf(key);
@@ -71,7 +72,8 @@ class CardSeriesTest {
                         "ZENDIKAR_RISING",
                         "TALES_OF_MIDDLE_EARTH_COMMANDER",
                         "FOUNDATIONS",
-                        "BLOOMBURROW")
+                        "BLOOMBURROW",
+                        "SECRET_LAIR_DROP")
                 .stream()
                 .map(CardSeries::valueOf)
                 .flatMap(series -> series.setCodes().stream())

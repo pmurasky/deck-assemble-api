@@ -20,7 +20,8 @@ public enum CardSeries {
     ZENDIKAR_RISING("Zendikar Rising", List.of("znr")),
     TALES_OF_MIDDLE_EARTH_COMMANDER("Tales of Middle-earth Commander", List.of("ltc")),
     FOUNDATIONS("Foundations", List.of("fdn")),
-    BLOOMBURROW("Bloomburrow", List.of("blb"));
+    BLOOMBURROW("Bloomburrow", List.of("blb")),
+    SECRET_LAIR_DROP("Secret Lair Drop", List.of("sld"));
 
     private final String label;
     private final List<String> setCodes;
