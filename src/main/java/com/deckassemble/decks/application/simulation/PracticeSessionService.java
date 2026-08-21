@@ -143,7 +143,9 @@ public class PracticeSessionService {
                 drawnCard == null ? null : cardView(drawnCard),
                 cardViews(session.castableSpells()),
                 finished,
-                permanentViews(session));
+                permanentViews(session),
+                session.landsInPlay(),
+                session.landPlayedThisTurn());
     }
 
     private static List<PracticeSessionResponse.CardView> cardViews(List<PracticeCard> cards) {
@@ -186,7 +188,9 @@ public class PracticeSessionService {
                 null,
                 List.of(),
                 false,
-                List.of());
+                List.of(),
+                session.landsInPlay(),
+                session.landPlayedThisTurn());
     }
 
     private record SessionEntry(

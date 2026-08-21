@@ -110,6 +110,14 @@ final class PracticeSession {
         return mulliganCount;
     }
 
+    boolean landPlayedThisTurn() {
+        return landPlayedThisTurn;
+    }
+
+    int landsInPlay() {
+        return untappedLands();
+    }
+
     List<PracticeCard> hand() {
         return hand.stream().map(this::practiceCard).toList();
     }

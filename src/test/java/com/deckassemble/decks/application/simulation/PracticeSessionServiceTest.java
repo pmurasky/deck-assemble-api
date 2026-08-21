@@ -96,19 +96,29 @@ class PracticeSessionServiceTest {
                         1L, landCard(1L, "Forest", "G"),
                         2L, landCard(2L, "Island", "U")));
         PracticeSessionResponse started = service().start(DECK_ID, request(true, 41L));
-        service().playCard(DECK_ID, started.sessionId(), 1L);
-        service().toggleTap(DECK_ID, started.sessionId(), 1L);
+        PracticeSessionResponse played = service().playCard(DECK_ID, started.sessionId(), 1L);
+        PracticeSessionResponse tapped = service().toggleTap(DECK_ID, started.sessionId(), 1L);
 
         PracticeSessionResponse advanced = service().nextTurn(DECK_ID, started.sessionId());
         PracticeSessionResponse secondLand = service().playCard(DECK_ID, started.sessionId(), 2L);
 
+        assertThat(started.landsInPlay()).isZero();
+        assertThat(started.landPlayedThisTurn()).isFalse();
+        assertThat(played.landsInPlay()).isEqualTo(1);
+        assertThat(played.landPlayedThisTurn()).isTrue();
+        assertThat(tapped.landsInPlay()).isZero();
+        assertThat(tapped.landPlayedThisTurn()).isTrue();
         assertThat(advanced.turn()).isEqualTo(1);
         assertThat(advanced.drawnCard()).isNull();
         assertThat(advanced.battlefield())
                 .singleElement()
                 .extracting(permanent -> permanent.tapped())
                 .isEqualTo(false);
+        assertThat(advanced.landsInPlay()).isEqualTo(1);
+        assertThat(advanced.landPlayedThisTurn()).isFalse();
         assertThat(secondLand.battlefield()).hasSize(2);
+        assertThat(secondLand.landsInPlay()).isEqualTo(2);
+        assertThat(secondLand.landPlayedThisTurn()).isTrue();
     }
 
     @Test

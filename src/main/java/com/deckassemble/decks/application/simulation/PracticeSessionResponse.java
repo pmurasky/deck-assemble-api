@@ -14,7 +14,9 @@ public record PracticeSessionResponse(
         @Nullable CardView drawnCard,
         List<CardView> castableSpells,
         boolean finished,
-        List<PermanentView> battlefield) {
+        List<PermanentView> battlefield,
+        int landsInPlay,
+        boolean landPlayedThisTurn) {
 
     public record CardView(
             long printingId,
