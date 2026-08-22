@@ -67,6 +67,12 @@ public class MatchService {
         return entry;
     }
 
+    /** Returns the caller's hidden-info view of the match; 404 unknown, 403 non-participant. */
+    public MatchResponse view(UUID matchId, long callerProfileId) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return MatchView.forPlayer(entry.match(), entry.callerSeat());
+    }
+
     /** Plays a land for the active seat; the caller must be the match's participant. */
     public Match playLand(UUID matchId, long callerProfileId, long printingId) {
         MatchEntry entry = authorizedEntry(matchId, callerProfileId);
