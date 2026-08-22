@@ -357,6 +357,151 @@ class MatchServiceTest {
         assertThat(opponent.library()).hasSize(1);
     }
 
+    @Test
+    void shouldDealUnblockedDamageToDefendingPlayer() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        advanceSteps(match, 2); // BeginCombat, DeclareAttackers
+
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
+
+        assertThat(you.battlefield().getFirst().tapped()).isTrue();
+
+        advanceSteps(match, 1); // DeclareBlockers
+        service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of());
+
+        assertThat(opponent.life()).isEqualTo(38);
+        assertThat(opponent.commanderDamageReceived()).isEmpty();
+        assertThat(match.loser()).isNull();
+    }
+
+    @Test
+    void shouldLoseByCommanderDamageAt21() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(10L, creatureCard(100L, "Your Commander", "21", "5"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 10L);
+        advanceSteps(match, 2);
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(10L));
+        advanceSteps(match, 1);
+
+        service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of());
+
+        assertThat(opponent.life()).isEqualTo(19);
+        assertThat(opponent.commanderDamageReceived()).containsEntry(you.playerId(), 21);
+        assertThat(match.loser()).isEqualTo(opponent.playerId());
+        assertThat(match.winner()).isEqualTo(you.playerId());
+    }
+
+    @Test
+    void shouldLoseByCombatDamageAtZeroLife() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, creatureCard(1L, "Bear", "41", "2"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        advanceSteps(match, 2);
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
+        advanceSteps(match, 1);
+
+        service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of());
+
+        assertThat(match.loser()).isEqualTo(opponent.playerId());
+    }
+
+    @Test
+    void shouldTradeCreaturesWhenBlocked() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L); // Bear 2/2
+        advanceSteps(match, 12); // opponent's FirstMain (turn 2)
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 2L); // Elite 3/3
+        advanceSteps(match, 14); // your DeclareAttackers (turn 3)
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
+        advanceSteps(match, 1);
+
+        service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of(2L, 1L));
+
+        assertThat(you.battlefield()).isEmpty();
+        assertThat(you.graveyard()).hasSize(1);
+        assertThat(opponent.battlefield()).hasSize(1);
+        assertThat(opponent.graveyard()).isEmpty();
+    }
+
+    @Test
+    void shouldKillBlockerAndSurvive() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, creatureCard(1L, "Bear", "4", "4"));
+        catalog.put(2L, creatureCard(2L, "Elite", "2", "2"));
+        stubMatchDecks(9, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        advanceSteps(match, 12);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 2L);
+        advanceSteps(match, 14);
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
+        advanceSteps(match, 1);
+
+        service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of(2L, 1L));
+
+        assertThat(you.battlefield()).hasSize(1);
+        assertThat(opponent.battlefield()).isEmpty();
+        assertThat(opponent.graveyard()).hasSize(1);
+    }
+
+    @Test
+    void shouldRejectDeclareAttackersOutsideDeclareAttackersStep() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3); // FirstMain
+
+        assertBadRequest(
+                () -> service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L)),
+                "declare attackers");
+    }
+
+    @Test
+    void shouldRejectAttackerNotOnBattlefield() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 5); // DeclareAttackers
+
+        assertBadRequest(
+                () -> service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L)),
+                "attacker is not on the battlefield");
+    }
+
+    @Test
+    void shouldRejectBlockerNotOnBattlefield() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        advanceSteps(match, 2);
+        service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
+        advanceSteps(match, 1);
+
+        assertBadRequest(
+                () -> service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of(99L, 1L)),
+                "blocker is not on the battlefield");
+    }
+
     private void assertBadRequest(ThrowingCallable action, String reason) {
         assertThatThrownBy(action)
                 .isInstanceOfSatisfying(

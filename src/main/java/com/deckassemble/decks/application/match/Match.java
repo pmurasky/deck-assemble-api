@@ -2,7 +2,10 @@ package com.deckassemble.decks.application.match;
 
 import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.decks.application.simulation.DeckLibraryResolver;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -15,6 +18,7 @@ public final class Match {
 
     private final UUID id;
     private final List<PlayerState> players;
+    private final List<Permanent> pendingAttackers = new ArrayList<>();
     private int activePlayerIndex;
     private int turnNumber = 1;
     private TurnStep step = new TurnStep.Untap();
@@ -118,6 +122,7 @@ public final class Match {
         PlayerState active = activePlayer();
         active.untapAll();
         active.setLandPlayedThisTurn(false);
+        pendingAttackers.clear();
     }
 
     private void drawForActivePlayer() {
@@ -137,6 +142,136 @@ public final class Match {
     public void concede(PlayerId seat) {
         requireInProgress();
         markLoser(seat);
+    }
+
+    /**
+     * Declares the active player's attackers: each must be one of their battlefield permanents and
+     * taps. Damage assignment order and keywords arrive in #47.
+     */
+    public void declareAttackers(List<Long> printingIds) {
+        requireInProgress();
+        requireStep(new TurnStep.DeclareAttackers(), "declare attackers");
+        PlayerState attacker = activePlayer();
+        for (long printingId : printingIds) {
+            Permanent creature = findAttacker(attacker, printingId);
+            creature.tap();
+            pendingAttackers.add(creature);
+        }
+    }
+
+    /**
+     * Declares blockers (blocker printing -> attacker printing) for the defending player and
+     * resolves combat damage immediately: each attacker assigns lethal to its blockers in order
+     * (excess is lost without trample), blockers deal their power back, unblocked attackers hit
+     * the defender, and destroyed creatures go to the graveyard.
+     */
+    public void declareBlockers(Map<Long, Long> blockerToAttacker) {
+        requireInProgress();
+        requireStep(new TurnStep.DeclareBlockers(), "declare blockers");
+        PlayerState defender = opponentOf(activePlayer().playerId());
+        validateBlockers(defender, blockerToAttacker);
+        resolveCombatDamage(defender, blockerToAttacker);
+        pendingAttackers.clear();
+        markDefeatedPlayers();
+    }
+
+    private Permanent findAttacker(PlayerState attacker, long printingId) {
+        return attacker.battlefield().stream()
+                .filter(permanent -> permanent.card().printingId() == printingId)
+                .filter(permanent -> !pendingAttackers.contains(permanent))
+                .findFirst()
+                .orElseThrow(
+                        () -> new IllegalArgumentException("attacker is not on the battlefield"));
+    }
+
+    private void validateBlockers(PlayerState defender, Map<Long, Long> blockerToAttacker) {
+        for (Map.Entry<Long, Long> assignment : blockerToAttacker.entrySet()) {
+            findOnBattlefield(defender, assignment.getKey(), "blocker is not on the battlefield");
+            boolean attacking =
+                    pendingAttackers.stream()
+                            .anyMatch(
+                                    attacker ->
+                                            attacker.card().printingId()
+                                                    == assignment.getValue());
+            if (!attacking) {
+                throw new IllegalArgumentException("block target is not attacking");
+            }
+        }
+    }
+
+    private void resolveCombatDamage(PlayerState defender, Map<Long, Long> blockerToAttacker) {
+        Map<Permanent, Integer> damageMarked = new HashMap<>();
+        for (Permanent attacker : pendingAttackers) {
+            List<Permanent> blockers = blockersFor(defender, attacker, blockerToAttacker);
+            if (blockers.isEmpty()) {
+                defender.takeCombatDamage(
+                        attacker.power(), attacker.commander() ? attacker.controller() : null);
+            } else {
+                assignDamage(attacker, blockers, damageMarked);
+            }
+        }
+        buryDestroyedPermanents(damageMarked);
+    }
+
+    private List<Permanent> blockersFor(
+            PlayerState defender, Permanent attacker, Map<Long, Long> blockerToAttacker) {
+        return blockerToAttacker.entrySet().stream()
+                .filter(assignment -> assignment.getValue() == attacker.card().printingId())
+                .map(
+                        assignment ->
+                                findOnBattlefield(
+                                        defender, assignment.getKey(), "blocker not found"))
+                .toList();
+    }
+
+    private void assignDamage(
+            Permanent attacker, List<Permanent> blockers, Map<Permanent, Integer> damageMarked) {
+        int remaining = attacker.power();
+        for (Permanent blocker : blockers) {
+            damageMarked.merge(attacker, blocker.power(), Integer::sum);
+            if (remaining <= 0) {
+                continue;
+            }
+            int assigned = Math.min(blocker.toughness(), remaining);
+            damageMarked.merge(blocker, assigned, Integer::sum);
+            remaining -= assigned;
+        }
+    }
+
+    private void buryDestroyedPermanents(Map<Permanent, Integer> damageMarked) {
+        for (PlayerState player : players) {
+            List<Permanent> destroyed =
+                    player.battlefield().stream()
+                            .filter(
+                                    permanent ->
+                                            damageMarked.getOrDefault(permanent, 0)
+                                                    >= permanent.toughness())
+                            .toList();
+            player.battlefield().removeAll(destroyed);
+            destroyed.forEach(permanent -> player.graveyard().add(permanent.card()));
+        }
+    }
+
+    private Permanent findOnBattlefield(PlayerState player, long printingId, String error) {
+        return player.battlefield().stream()
+                .filter(permanent -> permanent.card().printingId() == printingId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(error));
+    }
+
+    private void markDefeatedPlayers() {
+        for (PlayerState player : players) {
+            if (loser == null && player.isDefeated()) {
+                markLoser(player.playerId());
+            }
+        }
+    }
+
+    private void requireStep(TurnStep required, String action) {
+        if (!step.equals(required)) {
+            throw new IllegalArgumentException(
+                    "cannot " + action + " during the " + step.stepName() + " step");
+        }
     }
 
     private void requireInProgress() {

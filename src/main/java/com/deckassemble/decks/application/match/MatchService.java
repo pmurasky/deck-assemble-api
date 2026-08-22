@@ -91,6 +91,22 @@ public class MatchService {
         return applyAction(entry, () -> entry.match().concede(entry.callerSeat()));
     }
 
+    /** The active player's declared attackers (printing ids) tap and wait for blocks. */
+    public Match declareAttackers(UUID matchId, long callerProfileId, List<Long> printingIds) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().declareAttackers(printingIds));
+    }
+
+    /**
+     * The defending player declares blockers (blocker printing id -> attacker printing id) and
+     * combat damage resolves immediately with auto-assigned damage order.
+     */
+    public Match declareBlockers(
+            UUID matchId, long callerProfileId, Map<Long, Long> blockerToAttacker) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().declareBlockers(blockerToAttacker));
+    }
+
     private MatchEntry authorizedEntry(UUID matchId, long callerProfileId) {
         MatchEntry entry = entry(matchId);
         if (entry.callerProfileId() != callerProfileId) {
