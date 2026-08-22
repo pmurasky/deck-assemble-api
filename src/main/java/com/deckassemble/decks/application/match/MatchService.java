@@ -20,12 +20,14 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class MatchService {
 
-    // ponytail: in-memory match store, a database table can replace it when matches need to outlive the process
+    // ponytail: in-memory match store, a database table can replace it when matches need to outlive
+    // the process
     private final Map<UUID, MatchEntry> matches = new ConcurrentHashMap<>();
 
     private final MatchDeckFactory deckFactory;
 
-    public MatchService(DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
+    public MatchService(
+            DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
         this.deckFactory = new MatchDeckFactory(deckRevisionService, cardCatalogService);
     }
 
@@ -33,9 +35,7 @@ public class MatchService {
     public Match start(MatchRequest request, long callerProfileId) {
         MulliganDraw.validateLandRange(request);
         long seed =
-                request.seed() != null
-                        ? request.seed()
-                        : ThreadLocalRandom.current().nextLong();
+                request.seed() != null ? request.seed() : ThreadLocalRandom.current().nextLong();
         RandomGenerator random = RandomGeneratorFactory.getDefault().create(seed);
         DeckSnapshot yourSnapshot =
                 deckFactory.snapshotAt(request.yourDeckId(), request.yourRevision());
@@ -82,7 +82,8 @@ public class MatchService {
     /** Passes priority for the seat currently holding it; both passes resolve or advance. */
     public Match passPriority(UUID matchId, long callerProfileId) {
         MatchEntry entry = authorizedEntry(matchId, callerProfileId);
-        return applyAction(entry, () -> entry.match().stackResolver().passPriorityForHolder(entry.match()));
+        return applyAction(
+                entry, () -> entry.match().stackResolver().passPriorityForHolder(entry.match()));
     }
 
     /** The caller's own seat concedes; the match is over. */
@@ -135,13 +136,13 @@ public class MatchService {
     }
 
     /**
-     * Auto-passes while the priority holder is the non-active player with auto-pass enabled and
-     * an empty stack; the active player always faces real decisions.
+     * Auto-passes while the priority holder is the non-active player with auto-pass enabled and an
+     * empty stack; the active player always faces real decisions.
      */
     private void cascadeAutoPasses(Match match) {
         int iterations = 0;
         while (autoPassApplies(match)) {
-            if (++iterations > match.stackResolver().cascadeLimit) {
+            if (++iterations > match.stackResolver().cascadeLimit()) {
                 throw new IllegalStateException("auto-pass cascade limit exceeded");
             }
             match.stackResolver().passPriorityForHolder(match);

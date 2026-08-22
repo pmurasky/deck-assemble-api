@@ -1,19 +1,19 @@
 package com.deckassemble.decks.application.match;
 
 import com.deckassemble.cards.application.PracticeCard;
-import com.deckassemble.decks.application.simulation.DeckLibraryResolver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.jspecify.annotations.Nullable;
 
 /** The stack and priority: pass order, both-pass resolution, and step advancement. */
 final class StackResolver {
 
+    private static final int DEFAULT_CASCADE_LIMIT = 100;
+
     private final List<StackObject> stack = new ArrayList<>();
     private PlayerId priorityHolder;
     private int passesInSuccession;
-    int cascadeLimit = 100;
+    private int cascadeLimit = DEFAULT_CASCADE_LIMIT;
 
     StackResolver(PlayerId activePlayer) {
         this.priorityHolder = activePlayer;
@@ -32,59 +32,21 @@ final class StackResolver {
         passesInSuccession = 0;
     }
 
-    /** Casts a spell: validates priority, timing, and target existence, then pushes it. */
-    void castSpell(
-            Match match, PlayerId casterId, long printingId, StackObject.@Nullable Target target) {
-        if (match.loser() != null) {
-            throw new IllegalArgumentException("match is over");
-        }
-        if (!priorityHolder.equals(casterId)) {
-            throw new IllegalArgumentException("player does not have priority");
-        }
-        PlayerState caster = match.player(casterId);
-        PracticeCard card = removeCastableCard(caster, printingId);
-        validateCastTiming(match, caster, card);
-        if (target != null && target.missingFrom(match)) {
-            throw new IllegalArgumentException("target does not exist");
-        }
-        push(new StackObject(casterId, card, target));
-        priorityHolder = match.opponentOf(casterId).playerId();
-    }
-
     void resetPriority(PlayerId holder) {
         priorityHolder = holder;
         passesInSuccession = 0;
     }
 
-    private PracticeCard removeCastableCard(PlayerState caster, long printingId) {
-        PracticeCard commander = caster.commander();
-        if (commander.printingId() == printingId && caster.commanderInCommandZone()) {
-            caster.incrementCommanderTax();
-            caster.setCommanderInCommandZone(false);
-            return commander;
-        }
-        PracticeCard card = caster.requireInHand(printingId);
-        if (DeckLibraryResolver.isLand(card.card())) {
-            throw new IllegalArgumentException("lands are played, not cast");
-        }
-        caster.hand().remove(card);
-        return card;
+    int cascadeLimit() {
+        return cascadeLimit;
     }
 
-    private void validateCastTiming(Match match, PlayerState caster, PracticeCard card) {
-        String typeLine = card.card().getTypeLine();
-        if (typeLine != null && typeLine.toLowerCase(Locale.ROOT).contains("instant")) {
-            return;
-        }
-        if (caster != match.activePlayer() || !isMainStep(match) || !stack.isEmpty()) {
-            throw new IllegalArgumentException(
-                    card.card().getName() + " can only be cast at sorcery speed");
-        }
+    void cascadeLimit(int limit) {
+        cascadeLimit = limit;
     }
 
-    private boolean isMainStep(Match match) {
-        return match.step() instanceof TurnStep.FirstMain
-                || match.step() instanceof TurnStep.SecondMain;
+    void givePriorityTo(PlayerId holder) {
+        priorityHolder = holder;
     }
 
     void passPriorityForHolder(Match match) {

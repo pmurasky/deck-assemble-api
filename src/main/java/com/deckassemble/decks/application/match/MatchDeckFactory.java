@@ -21,7 +21,8 @@ final class MatchDeckFactory {
     private final DeckRevisionService deckRevisionService;
     private final CardCatalogService cardCatalogService;
 
-    MatchDeckFactory(DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
+    MatchDeckFactory(
+            DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
         this.deckRevisionService = deckRevisionService;
         this.cardCatalogService = cardCatalogService;
     }
@@ -34,7 +35,8 @@ final class MatchDeckFactory {
         return deckRevisionService.snapshotAtForSharedAccess(deckId, revision);
     }
 
-    PlayerState buildPlayer(DeckSnapshot snapshot, MulliganRequest request, RandomGenerator random) {
+    PlayerState buildPlayer(
+            DeckSnapshot snapshot, MulliganRequest request, RandomGenerator random) {
         Map<Long, PracticeCard> catalog = loadCatalog(snapshot);
         Map<Long, Card> cardsByPrinting = toCards(catalog);
         List<Long> library =

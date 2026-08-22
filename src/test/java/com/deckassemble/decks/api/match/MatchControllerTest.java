@@ -74,7 +74,8 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.PLAY_LAND, 55L, null, null, null, null, null);
+                new MatchActionRequest(
+                        MatchActionType.PLAY_LAND, 55L, null, null, null, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService).playLand(MATCH_ID, CALLER_PROFILE_ID, 55L);
@@ -86,7 +87,8 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.DECLARE_BLOCKERS, null, null, null, null, null, null);
+                new MatchActionRequest(
+                        MatchActionType.DECLARE_BLOCKERS, null, null, null, null, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService).declareBlockers(MATCH_ID, CALLER_PROFILE_ID, Map.of());
@@ -108,7 +110,8 @@ class MatchControllerTest {
     void shouldRejectSpellActionWithoutPrintingId() {
         stubCallerProfile();
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.CAST_SPELL, null, null, null, null, null, null);
+                new MatchActionRequest(
+                        MatchActionType.CAST_SPELL, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> controller.act(MATCH_ID, request))
                 .isInstanceOfSatisfying(
@@ -125,8 +128,7 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(
-                        MatchActionType.CAST_SPELL, 9L, null, null, 7L, null, null);
+                new MatchActionRequest(MatchActionType.CAST_SPELL, 9L, null, null, 7L, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService)

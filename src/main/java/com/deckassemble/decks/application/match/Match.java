@@ -55,13 +55,14 @@ public final class Match {
     }
 
     /**
-     * Casts a spell for the player holding priority: commanders from the command zone (adding
-     * tax), other cards from hand. The spell goes on the stack and resolves once both players
-     * pass priority in succession.
+     * Casts a spell for the player holding priority: commanders from the command zone (adding tax),
+     * other cards from hand. The spell goes on the stack and resolves once both players pass
+     * priority in succession.
      */
     public void castSpell(long printingId, StackObject.@Nullable Target target) {
         requireInProgress();
-        stackResolver.castSpell(this, stackResolver.priorityHolder(), printingId, target);
+        SpellCasting.castSpell(
+                this, stackResolver, stackResolver.priorityHolder(), printingId, target);
     }
 
     /** Advances to the next step, beginning a new turn for the opponent after Cleanup. */
