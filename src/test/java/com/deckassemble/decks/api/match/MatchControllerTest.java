@@ -13,6 +13,7 @@ import com.deckassemble.decks.application.match.MatchActionRequest.MatchActionTy
 import com.deckassemble.decks.application.match.MatchRequest;
 import com.deckassemble.decks.application.match.MatchResponse;
 import com.deckassemble.decks.application.match.MatchService;
+import com.deckassemble.decks.application.match.StackObject;
 import com.deckassemble.shared.security.CurrentProfile;
 import com.deckassemble.users.domain.Profile;
 import java.util.Map;
@@ -73,7 +74,7 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.PLAY_LAND, 55L, null, null);
+                new MatchActionRequest(MatchActionType.PLAY_LAND, 55L, null, null, null, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService).playLand(MATCH_ID, CALLER_PROFILE_ID, 55L);
@@ -85,7 +86,7 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.DECLARE_BLOCKERS, null, null, null);
+                new MatchActionRequest(MatchActionType.DECLARE_BLOCKERS, null, null, null, null, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService).declareBlockers(MATCH_ID, CALLER_PROFILE_ID, Map.of());
@@ -97,7 +98,7 @@ class MatchControllerTest {
         stubCallerProfile();
         when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.CONCEDE, null, null, null);
+                new MatchActionRequest(MatchActionType.CONCEDE, null, null, null, null, null, null);
 
         assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
         verify(matchService).concede(MATCH_ID, CALLER_PROFILE_ID);
@@ -107,7 +108,7 @@ class MatchControllerTest {
     void shouldRejectSpellActionWithoutPrintingId() {
         stubCallerProfile();
         MatchActionRequest request =
-                new MatchActionRequest(MatchActionType.CAST_SPELL, null, null, null);
+                new MatchActionRequest(MatchActionType.CAST_SPELL, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> controller.act(MATCH_ID, request))
                 .isInstanceOfSatisfying(
@@ -115,6 +116,64 @@ class MatchControllerTest {
                         exception ->
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(matchService);
+    }
+
+    @Test
+    void shouldDelegateCastSpellWithPermanentTarget() {
+        MatchResponse response = mock(MatchResponse.class);
+        stubCallerProfile();
+        when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
+        MatchActionRequest request =
+                new MatchActionRequest(
+                        MatchActionType.CAST_SPELL, 9L, null, null, 7L, null, null);
+
+        assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
+        verify(matchService)
+                .castSpell(
+                        MATCH_ID,
+                        CALLER_PROFILE_ID,
+                        9L,
+                        new StackObject.Target.PermanentTarget(7L));
+    }
+
+    @Test
+    void shouldRejectCastSpellWithTwoTargets() {
+        stubCallerProfile();
+        MatchActionRequest request =
+                new MatchActionRequest(
+                        MatchActionType.CAST_SPELL, 9L, null, null, 7L, UUID.randomUUID(), null);
+
+        assertThatThrownBy(() -> controller.act(MATCH_ID, request))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getReason()).isEqualTo("at most one target"));
+        verifyNoInteractions(matchService);
+    }
+
+    @Test
+    void shouldDelegateSetAutoPass() {
+        MatchResponse response = mock(MatchResponse.class);
+        stubCallerProfile();
+        when(matchService.view(MATCH_ID, CALLER_PROFILE_ID)).thenReturn(response);
+        MatchActionRequest request =
+                new MatchActionRequest(
+                        MatchActionType.SET_AUTO_PASS, null, null, null, null, null, true);
+
+        assertThat(controller.act(MATCH_ID, request)).isSameAs(response);
+        verify(matchService).setAutoPass(MATCH_ID, CALLER_PROFILE_ID, true);
+    }
+
+    @Test
+    void shouldRejectSetAutoPassWithoutFlag() {
+        stubCallerProfile();
+        MatchActionRequest request =
+                new MatchActionRequest(
+                        MatchActionType.SET_AUTO_PASS, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> controller.act(MATCH_ID, request))
+                .isInstanceOf(ResponseStatusException.class);
         verifyNoInteractions(matchService);
     }
 

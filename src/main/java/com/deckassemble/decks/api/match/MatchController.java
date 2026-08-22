@@ -5,6 +5,8 @@ import com.deckassemble.decks.application.match.MatchActionRequest;
 import com.deckassemble.decks.application.match.MatchRequest;
 import com.deckassemble.decks.application.match.MatchResponse;
 import com.deckassemble.decks.application.match.MatchService;
+import com.deckassemble.decks.application.match.PlayerId;
+import com.deckassemble.decks.application.match.StackObject;
 import com.deckassemble.shared.security.CurrentProfile;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -60,8 +62,11 @@ public class MatchController {
         switch (request.type()) {
             case PLAY_LAND -> matchService.playLand(matchId, callerProfileId, printingId(request));
             case CAST_SPELL ->
-                    matchService.castSpell(matchId, callerProfileId, printingId(request), null);
+                    matchService.castSpell(
+                            matchId, callerProfileId, printingId(request), target(request));
             case PASS_PRIORITY -> matchService.passPriority(matchId, callerProfileId);
+            case SET_AUTO_PASS ->
+                    matchService.setAutoPass(matchId, callerProfileId, autoPassEnabled(request));
             case DECLARE_ATTACKERS ->
                     matchService.declareAttackers(
                             matchId, callerProfileId, orEmpty(request.attackerIds()));
@@ -79,6 +84,27 @@ public class MatchController {
                     HttpStatus.BAD_REQUEST, "printingId is required for " + request.type());
         }
         return request.printingId();
+    }
+
+    private static StackObject.@Nullable Target target(MatchActionRequest request) {
+        if (request.targetPermanentId() != null && request.targetPlayerId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "at most one target");
+        }
+        if (request.targetPermanentId() != null) {
+            return new StackObject.Target.PermanentTarget(request.targetPermanentId());
+        }
+        if (request.targetPlayerId() != null) {
+            return new StackObject.Target.PlayerTarget(new PlayerId(request.targetPlayerId()));
+        }
+        return null;
+    }
+
+    private static boolean autoPassEnabled(MatchActionRequest request) {
+        if (request.autoPassEnabled() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "autoPassEnabled is required for " + request.type());
+        }
+        return request.autoPassEnabled();
     }
 
     private static List<Long> orEmpty(@Nullable List<Long> ids) {
