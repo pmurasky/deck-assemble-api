@@ -262,7 +262,7 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         advanceSteps(match, 3);
 
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
 
         assertThat(you.hand()).hasSize(6);
         assertThat(you.battlefield()).hasSize(1);
@@ -279,7 +279,7 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         advanceSteps(match, 3);
 
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
 
         assertThat(you.hand()).hasSize(6);
         assertThat(you.battlefield()).isEmpty();
@@ -293,7 +293,7 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         advanceSteps(match, 3);
 
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 10L);
+        castAndResolve(match, 10L);
 
         assertThat(you.hand()).hasSize(7);
         assertThat(you.commanderTax()).isEqualTo(2);
@@ -302,7 +302,7 @@ class MatchServiceTest {
         assertThat(you.battlefield().getFirst().commander()).isTrue();
 
         assertBadRequest(
-                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 10L),
+                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 10L, null),
                 "card is not in hand");
     }
 
@@ -333,7 +333,7 @@ class MatchServiceTest {
         assertBadRequest(
                 () -> service().passPriority(match.id(), CALLER_PROFILE_ID), "match is over");
         assertBadRequest(
-                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 1L), "match is over");
+                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 1L, null), "match is over");
     }
 
     @Test
@@ -363,7 +363,7 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         PlayerState opponent = match.players().get(1);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
         advanceSteps(match, 2); // BeginCombat, DeclareAttackers
 
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
@@ -387,7 +387,7 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         PlayerState opponent = match.players().get(1);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 10L);
+        castAndResolve(match, 10L);
         advanceSteps(match, 2);
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(10L));
         advanceSteps(match, 1);
@@ -408,7 +408,7 @@ class MatchServiceTest {
         Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
         PlayerState opponent = match.players().get(1);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
         advanceSteps(match, 2);
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
         advanceSteps(match, 1);
@@ -425,9 +425,9 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         PlayerState opponent = match.players().get(1);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L); // Bear 2/2
+        castAndResolve(match, 1L); // Bear 2/2
         advanceSteps(match, 12); // opponent's FirstMain (turn 2)
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 2L); // Elite 3/3
+        castAndResolve(match, 2L); // Elite 3/3
         advanceSteps(match, 14); // your DeclareAttackers (turn 3)
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
         advanceSteps(match, 1);
@@ -450,9 +450,9 @@ class MatchServiceTest {
         PlayerState you = match.players().getFirst();
         PlayerState opponent = match.players().get(1);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
         advanceSteps(match, 12);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 2L);
+        castAndResolve(match, 2L);
         advanceSteps(match, 14);
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
         advanceSteps(match, 1);
@@ -491,7 +491,7 @@ class MatchServiceTest {
         stubMatchDecks(8, defaultCatalog());
         Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
         advanceSteps(match, 3);
-        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+        castAndResolve(match, 1L);
         advanceSteps(match, 2);
         service().declareAttackers(match.id(), CALLER_PROFILE_ID, List.of(1L));
         advanceSteps(match, 1);
@@ -499,6 +499,140 @@ class MatchServiceTest {
         assertBadRequest(
                 () -> service().declareBlockers(match.id(), CALLER_PROFILE_ID, Map.of(99L, 1L)),
                 "blocker is not on the battlefield");
+    }
+
+    @Test
+    void shouldKeepSpellOnStackUntilBothPlayersPass() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        advanceSteps(match, 3);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L, null);
+
+        assertThat(match.stackResolver().stack()).hasSize(1);
+        assertThat(you.battlefield()).isEmpty();
+        assertThat(you.hand()).hasSize(6);
+
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.stackResolver().stack()).hasSize(1);
+        assertThat(you.battlefield()).isEmpty();
+
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.stackResolver().stack()).isEmpty();
+        assertThat(you.battlefield()).hasSize(1);
+    }
+
+    @Test
+    void shouldResolveTopOfStackBeforeEarlierSpells() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, instantCard(1L, "Shock"));
+        catalog.put(2L, instantCard(2L, "Bolt"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+        advanceSteps(match, 3);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L, null);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 2L, null);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(opponent.graveyard())
+                .extracting(card -> card.card().getName())
+                .containsExactly("Bolt");
+        assertThat(you.graveyard()).isEmpty();
+        assertThat(match.stackResolver().stack()).hasSize(1);
+
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(you.graveyard())
+                .extracting(card -> card.card().getName())
+                .containsExactly("Shock");
+        assertThat(match.stackResolver().stack()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectSorcerySpeedCastWithNonEmptyStack() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, instantCard(1L, "Shock"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L, null);
+
+        assertBadRequest(
+                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 2L, null),
+                "sorcery speed");
+    }
+
+    @Test
+    void shouldRejectCastWithMissingTarget() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+
+        assertBadRequest(
+                () ->
+                        service()
+                                .castSpell(
+                                        match.id(),
+                                        CALLER_PROFILE_ID,
+                                        1L,
+                                        new StackObject.Target.PermanentTarget(99L)),
+                "target does not exist");
+    }
+
+    @Test
+    void shouldFizzleWhenTargetLeavesBeforeResolution() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        you.battlefield()
+                .add(
+                        new Permanent(
+                                new PracticeCard(99L, creatureCard(99L, "Target", "2", "2"), null),
+                                you.playerId(),
+                                false));
+        advanceSteps(match, 3);
+        service()
+                .castSpell(
+                        match.id(),
+                        CALLER_PROFILE_ID,
+                        1L,
+                        new StackObject.Target.PermanentTarget(99L));
+
+        you.battlefield().clear();
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.stackResolver().stack()).isEmpty();
+        assertThat(you.battlefield()).isEmpty();
+        assertThat(you.graveyard()).hasSize(1);
+    }
+
+    @Test
+    void shouldRejectCastWhenPlayerDoesNotHavePriority() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState opponent = match.players().get(1);
+
+        assertThatThrownBy(
+                        () ->
+                                match.stackResolver()
+                                        .castSpell(match, opponent.playerId(), 1L, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not have priority");
+    }
+
+    private void castAndResolve(Match match, long printingId) {
+        service().castSpell(match.id(), CALLER_PROFILE_ID, printingId, null);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
     }
 
     private void assertBadRequest(ThrowingCallable action, String reason) {

@@ -60,7 +60,7 @@ public class MatchController {
         switch (request.type()) {
             case PLAY_LAND -> matchService.playLand(matchId, callerProfileId, printingId(request));
             case CAST_SPELL ->
-                    matchService.castSpell(matchId, callerProfileId, printingId(request));
+                    matchService.castSpell(matchId, callerProfileId, printingId(request), null);
             case PASS_PRIORITY -> matchService.passPriority(matchId, callerProfileId);
             case DECLARE_ATTACKERS ->
                     matchService.declareAttackers(

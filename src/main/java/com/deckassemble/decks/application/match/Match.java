@@ -55,14 +55,13 @@ public final class Match {
     }
 
     /**
-     * Casts a spell at sorcery speed: commanders from the command zone (adding tax), other cards
-     * from hand. Spells resolve immediately — creatures and permanents enter the battlefield,
-     * instants and sorceries go to the graveyard.
+     * Casts a spell for the player holding priority: commanders from the command zone (adding
+     * tax), other cards from hand. The spell goes on the stack and resolves once both players
+     * pass priority in succession.
      */
-    public void castSpell(long printingId) {
+    public void castSpell(long printingId, StackObject.@Nullable Target target) {
         requireInProgress();
-        requireMainStep();
-        MainPhaseActions.castSpell(activePlayer(), printingId);
+        stackResolver.castSpell(this, stackResolver.priorityHolder(), printingId, target);
     }
 
     /** Advances to the next step, beginning a new turn for the opponent after Cleanup. */
@@ -81,6 +80,7 @@ public final class Match {
         if (next instanceof TurnStep.Draw) {
             drawForActivePlayer();
         }
+        stackResolver.resetPriority(activePlayer().playerId());
     }
 
     /** Draws for the active player, skipping the first draw of the player on the play. */

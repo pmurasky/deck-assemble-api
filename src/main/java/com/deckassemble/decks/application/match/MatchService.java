@@ -16,6 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -82,10 +83,17 @@ public class MatchService {
         return applyAction(entry, () -> entry.match().playLand(printingId));
     }
 
-    /** Casts a spell for the active seat; the caller must be the match's participant. */
-    public Match castSpell(UUID matchId, long callerProfileId, long printingId) {
+    /**
+     * Casts a spell for the seat holding priority, with an optional single target; the caller
+     * must be the match's participant.
+     */
+    public Match castSpell(
+            UUID matchId,
+            long callerProfileId,
+            long printingId,
+            StackObject.@Nullable Target target) {
         MatchEntry entry = authorizedEntry(matchId, callerProfileId);
-        return applyAction(entry, () -> entry.match().castSpell(printingId));
+        return applyAction(entry, () -> entry.match().castSpell(printingId, target));
     }
 
     /** Passes priority for the seat that currently holds it; the caller must be a participant. */
