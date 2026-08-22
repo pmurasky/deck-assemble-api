@@ -47,7 +47,8 @@ public final class Permanent {
                             + stat
                             + " '"
                             + value
-                            + "' and cannot be used in a match");
+                            + "' and cannot be used in a match",
+                    exception);
         }
     }
 

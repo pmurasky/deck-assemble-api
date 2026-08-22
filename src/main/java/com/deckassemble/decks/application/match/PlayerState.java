@@ -2,9 +2,9 @@ package com.deckassemble.decks.application.match;
 
 import com.deckassemble.cards.application.PracticeCard;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -23,7 +23,7 @@ public final class PlayerState {
     private final List<PracticeCard> graveyard = new ArrayList<>();
     private final List<PracticeCard> exile = new ArrayList<>();
     private final PracticeCard commander;
-    private final Map<PlayerId, Integer> commanderDamageReceived = new HashMap<>();
+    private final Map<PlayerId, Integer> commanderDamageReceived = new ConcurrentHashMap<>();
     private int life = STARTING_LIFE;
     private int commanderTax;
     private boolean landPlayedThisTurn;
@@ -53,6 +53,14 @@ public final class PlayerState {
         return life <= 0
                 || commanderDamageReceived.values().stream()
                         .anyMatch(damage -> damage >= COMMANDER_DAMAGE_LIMIT);
+    }
+
+    /** Finds a card in hand by printing id, or throws. */
+    public PracticeCard requireInHand(long printingId) {
+        return hand.stream()
+                .filter(card -> card.printingId() == printingId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("card is not in hand"));
     }
 
     public PlayerId playerId() {

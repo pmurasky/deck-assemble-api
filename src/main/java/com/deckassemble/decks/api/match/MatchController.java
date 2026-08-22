@@ -59,7 +59,8 @@ public class MatchController {
     private void apply(UUID matchId, long callerProfileId, MatchActionRequest request) {
         switch (request.type()) {
             case PLAY_LAND -> matchService.playLand(matchId, callerProfileId, printingId(request));
-            case CAST_SPELL -> matchService.castSpell(matchId, callerProfileId, printingId(request));
+            case CAST_SPELL ->
+                    matchService.castSpell(matchId, callerProfileId, printingId(request));
             case ADVANCE_STEP -> matchService.advanceStep(matchId, callerProfileId);
             case DECLARE_ATTACKERS ->
                     matchService.declareAttackers(
@@ -68,6 +69,7 @@ public class MatchController {
                     matchService.declareBlockers(
                             matchId, callerProfileId, orEmpty(request.blockerAssignments()));
             case CONCEDE -> matchService.concede(matchId, callerProfileId);
+            default -> throw new IllegalStateException("unexpected action: " + request.type());
         }
     }
 

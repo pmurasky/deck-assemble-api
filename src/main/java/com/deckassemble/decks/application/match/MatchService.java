@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Runs in-memory two-player Commander matches. Mirrors {@code PracticeSessionService}: matches
- * live in a process-local map keyed by match id, and the caller's deck library and opening hand are
+ * Runs in-memory two-player Commander matches. Mirrors {@code PracticeSessionService}: matches live
+ * in a process-local map keyed by match id, and the caller's deck library and opening hand are
  * built through the shared mulligan/library helpers.
  */
 @Service
@@ -35,12 +35,15 @@ public class MatchService {
     private final DeckRevisionService deckRevisionService;
     private final CardCatalogService cardCatalogService;
 
-    public MatchService(DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
+    public MatchService(
+            DeckRevisionService deckRevisionService, CardCatalogService cardCatalogService) {
         this.deckRevisionService = deckRevisionService;
         this.cardCatalogService = cardCatalogService;
     }
 
-    /** A stored match plus the profile allowed to drive it (hot-seat: the caller pilots both seats). */
+    /**
+     * A stored match plus the profile allowed to drive it (hot-seat: the caller pilots both seats).
+     */
     public record MatchEntry(Match match, long callerProfileId, PlayerId callerSeat) {}
 
     public Match start(MatchRequest request, long callerProfileId) {
@@ -126,7 +129,8 @@ public class MatchService {
         try {
             action.run();
         } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
         return entry.match();
     }
@@ -172,7 +176,8 @@ public class MatchService {
         try {
             Permanent.validateParseable(card);
         } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
     }
 
@@ -192,9 +197,7 @@ public class MatchService {
     }
 
     private static boolean isCommander(
-            DeckSnapshot.CardEntry entry,
-            DeckSnapshot snapshot,
-            Map<Long, PracticeCard> catalog) {
+            DeckSnapshot.CardEntry entry, DeckSnapshot snapshot, Map<Long, PracticeCard> catalog) {
         PracticeCard card = catalog.get(entry.cardPrintingId());
         return card != null && card.card().getId().equals(snapshot.commanderCardId());
     }
@@ -206,9 +209,7 @@ public class MatchService {
 
     private static RandomGenerator randomFor(MatchRequest request) {
         long seed =
-                request.seed() != null
-                        ? request.seed()
-                        : ThreadLocalRandom.current().nextLong();
+                request.seed() != null ? request.seed() : ThreadLocalRandom.current().nextLong();
         return RandomGeneratorFactory.getDefault().create(seed);
     }
 }

@@ -1,30 +1,25 @@
 package com.deckassemble.decks.application.match;
 
-import com.deckassemble.cards.application.PracticeCard;
-import com.deckassemble.decks.application.simulation.DeckLibraryResolver;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A two-player Commander match: the two seats, whose turn it is, the current step, and the legal
- * moves each seat can take. Damage, triggers, and real priority arrive in later issues; this class
- * models sorcery-speed plays and the turn cycle only.
+ * A two-player Commander match: zones, life totals, commander damage, and the turn structure.
+ * Hidden information is enforced by the view layer, not here.
  */
 public final class Match {
 
     private final UUID id;
     private final List<PlayerState> players;
-    private final List<Permanent> pendingAttackers = new ArrayList<>();
+    private final CombatResolver combat = new CombatResolver();
     private int activePlayerIndex;
     private int turnNumber = 1;
     private TurnStep step = new TurnStep.Untap();
-    // The player on the play skips their first Draw step; cleared once that step has passed.
+    // The player on the play skips their first Draw step.
     private boolean initialDrawSkipPending = true;
-    private @Nullable PlayerId loser;
+    @Nullable private PlayerId loser;
 
     public Match(UUID id, PlayerState first, PlayerState second, boolean firstOnThePlay) {
         this.id = id;
@@ -36,79 +31,49 @@ public final class Match {
         return players.stream()
                 .filter(player -> player.playerId().equals(playerId))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("player is not part of this match"));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("player is not part of this match"));
     }
 
     public PlayerState opponentOf(PlayerId playerId) {
         PlayerState player = player(playerId);
-        return players.getFirst() == player ? players.get(1) : players.getFirst();
+        return players.getFirst().equals(player) ? players.get(1) : players.getFirst();
     }
 
     public void markLoser(PlayerId playerId) {
-        loser = player(playerId).playerId();
+        player(playerId);
+        loser = playerId;
     }
 
-    /** Plays a land from the active player's hand: main step only, one per turn. */
+    /** Plays a land from the active player's hand onto their battlefield. */
     public void playLand(long printingId) {
         requireInProgress();
         requireMainStep();
-        PlayerState player = activePlayer();
-        if (player.landPlayedThisTurn()) {
-            throw new IllegalArgumentException("already played a land this turn");
-        }
-        PracticeCard card = findInHand(player, printingId);
-        if (!DeckLibraryResolver.isLand(card.card())) {
-            throw new IllegalArgumentException("card is not a land: " + card.card().getName());
-        }
-        player.hand().remove(card);
-        player.battlefield().add(new Permanent(card, player.playerId(), false));
-        player.setLandPlayedThisTurn(true);
+        MainPhaseActions.playLand(activePlayer(), printingId);
     }
 
     /**
-     * Casts a spell from the active player's hand (or their commander from the command zone,
-     * paying the commander tax) at sorcery speed. It resolves immediately: creatures and other
-     * permanents enter the battlefield, instants and sorceries go to the graveyard. No mana costs
-     * are modeled yet.
+     * Casts a spell at sorcery speed: commanders from the command zone (adding tax), other cards
+     * from hand. Spells resolve immediately — creatures and permanents enter the battlefield,
+     * instants and sorceries go to the graveyard.
      */
     public void castSpell(long printingId) {
         requireInProgress();
         requireMainStep();
-        PlayerState player = activePlayer();
-        if (player.commanderInCommandZone() && player.commander().printingId() == printingId) {
-            castCommanderFromCommandZone(player);
-            return;
-        }
-        PracticeCard card = findInHand(player, printingId);
-        if (DeckLibraryResolver.isLand(card.card())) {
-            throw new IllegalArgumentException(
-                    "lands are played, not cast: " + card.card().getName());
-        }
-        player.hand().remove(card);
-        resolveSpell(player, card);
+        MainPhaseActions.castSpell(activePlayer(), printingId);
     }
 
-    private void castCommanderFromCommandZone(PlayerState player) {
-        player.incrementCommanderTax();
-        player.setCommanderInCommandZone(false);
-        player.battlefield().add(new Permanent(player.commander(), player.playerId(), true));
-    }
-
-    private void resolveSpell(PlayerState player, PracticeCard card) {
-        String typeLine = card.card().getTypeLine();
-        if (typeLine != null && (typeLine.contains("Instant") || typeLine.contains("Sorcery"))) {
-            player.graveyard().add(card);
-        } else {
-            player.battlefield().add(new Permanent(card, player.playerId(), false));
-        }
-    }
-
-    /** Moves to the next step, starting a new turn (untap, switch active player, draw) on wrap. */
+    /** Advances to the next step, beginning a new turn for the opponent after Cleanup. */
     public void advanceStep() {
         requireInProgress();
         TurnStep next = step.next();
         if (next instanceof TurnStep.Untap) {
-            beginNewTurn();
+            turnNumber++;
+            activePlayerIndex = 1 - activePlayerIndex;
+            PlayerState active = activePlayer();
+            active.untapAll();
+            active.setLandPlayedThisTurn(false);
+            combat.reset();
         }
         step = next;
         if (next instanceof TurnStep.Draw) {
@@ -116,155 +81,41 @@ public final class Match {
         }
     }
 
-    private void beginNewTurn() {
-        turnNumber++;
-        activePlayerIndex = 1 - activePlayerIndex;
-        PlayerState active = activePlayer();
-        active.untapAll();
-        active.setLandPlayedThisTurn(false);
-        pendingAttackers.clear();
-    }
-
-    private void drawForActivePlayer() {
+    /** Draws for the active player, skipping the first draw of the player on the play. */
+    public void drawForActivePlayer() {
         if (initialDrawSkipPending) {
             initialDrawSkipPending = false;
             return;
         }
-        PlayerState active = activePlayer();
-        if (active.library().isEmpty()) {
-            markLoser(active.playerId());
+        PlayerState player = activePlayer();
+        if (player.library().isEmpty()) {
+            markLoser(player.playerId());
             return;
         }
-        active.hand().add(active.library().removeFirst());
+        player.hand().add(player.library().removeFirst());
     }
 
     /** The given seat concedes; the match is over. */
     public void concede(PlayerId seat) {
-        requireInProgress();
         markLoser(seat);
     }
 
-    /**
-     * Declares the active player's attackers: each must be one of their battlefield permanents and
-     * taps. Damage assignment order and keywords arrive in #47.
-     */
+    /** The active player declares attackers (printing ids); they tap and wait for blocks. */
     public void declareAttackers(List<Long> printingIds) {
         requireInProgress();
         requireStep(new TurnStep.DeclareAttackers(), "declare attackers");
-        PlayerState attacker = activePlayer();
-        for (long printingId : printingIds) {
-            Permanent creature = findAttacker(attacker, printingId);
-            creature.tap();
-            pendingAttackers.add(creature);
-        }
+        combat.declareAttackers(activePlayer(), printingIds);
     }
 
     /**
-     * Declares blockers (blocker printing -> attacker printing) for the defending player and
-     * resolves combat damage immediately: each attacker assigns lethal to its blockers in order
-     * (excess is lost without trample), blockers deal their power back, unblocked attackers hit
-     * the defender, and destroyed creatures go to the graveyard.
+     * The defending player declares blockers (blocker printing id to attacker printing id) and
+     * combat damage resolves immediately with auto-assigned damage order.
      */
     public void declareBlockers(Map<Long, Long> blockerToAttacker) {
         requireInProgress();
         requireStep(new TurnStep.DeclareBlockers(), "declare blockers");
-        PlayerState defender = opponentOf(activePlayer().playerId());
-        validateBlockers(defender, blockerToAttacker);
-        resolveCombatDamage(defender, blockerToAttacker);
-        pendingAttackers.clear();
-        markDefeatedPlayers();
-    }
-
-    private Permanent findAttacker(PlayerState attacker, long printingId) {
-        return attacker.battlefield().stream()
-                .filter(permanent -> permanent.card().printingId() == printingId)
-                .filter(permanent -> !pendingAttackers.contains(permanent))
-                .findFirst()
-                .orElseThrow(
-                        () -> new IllegalArgumentException("attacker is not on the battlefield"));
-    }
-
-    private void validateBlockers(PlayerState defender, Map<Long, Long> blockerToAttacker) {
-        for (Map.Entry<Long, Long> assignment : blockerToAttacker.entrySet()) {
-            findOnBattlefield(defender, assignment.getKey(), "blocker is not on the battlefield");
-            boolean attacking =
-                    pendingAttackers.stream()
-                            .anyMatch(
-                                    attacker ->
-                                            attacker.card().printingId()
-                                                    == assignment.getValue());
-            if (!attacking) {
-                throw new IllegalArgumentException("block target is not attacking");
-            }
-        }
-    }
-
-    private void resolveCombatDamage(PlayerState defender, Map<Long, Long> blockerToAttacker) {
-        Map<Permanent, Integer> damageMarked = new HashMap<>();
-        for (Permanent attacker : pendingAttackers) {
-            List<Permanent> blockers = blockersFor(defender, attacker, blockerToAttacker);
-            if (blockers.isEmpty()) {
-                defender.takeCombatDamage(
-                        attacker.power(), attacker.commander() ? attacker.controller() : null);
-            } else {
-                assignDamage(attacker, blockers, damageMarked);
-            }
-        }
-        buryDestroyedPermanents(damageMarked);
-    }
-
-    private List<Permanent> blockersFor(
-            PlayerState defender, Permanent attacker, Map<Long, Long> blockerToAttacker) {
-        return blockerToAttacker.entrySet().stream()
-                .filter(assignment -> assignment.getValue() == attacker.card().printingId())
-                .map(
-                        assignment ->
-                                findOnBattlefield(
-                                        defender, assignment.getKey(), "blocker not found"))
-                .toList();
-    }
-
-    private void assignDamage(
-            Permanent attacker, List<Permanent> blockers, Map<Permanent, Integer> damageMarked) {
-        int remaining = attacker.power();
-        for (Permanent blocker : blockers) {
-            damageMarked.merge(attacker, blocker.power(), Integer::sum);
-            if (remaining <= 0) {
-                continue;
-            }
-            int assigned = Math.min(blocker.toughness(), remaining);
-            damageMarked.merge(blocker, assigned, Integer::sum);
-            remaining -= assigned;
-        }
-    }
-
-    private void buryDestroyedPermanents(Map<Permanent, Integer> damageMarked) {
-        for (PlayerState player : players) {
-            List<Permanent> destroyed =
-                    player.battlefield().stream()
-                            .filter(
-                                    permanent ->
-                                            damageMarked.getOrDefault(permanent, 0)
-                                                    >= permanent.toughness())
-                            .toList();
-            player.battlefield().removeAll(destroyed);
-            destroyed.forEach(permanent -> player.graveyard().add(permanent.card()));
-        }
-    }
-
-    private Permanent findOnBattlefield(PlayerState player, long printingId, String error) {
-        return player.battlefield().stream()
-                .filter(permanent -> permanent.card().printingId() == printingId)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(error));
-    }
-
-    private void markDefeatedPlayers() {
-        for (PlayerState player : players) {
-            if (loser == null && player.isDefeated()) {
-                markLoser(player.playerId());
-            }
-        }
+        combat.declareBlockers(
+                activePlayer(), opponentOf(activePlayer().playerId()), blockerToAttacker, this);
     }
 
     private void requireStep(TurnStep required, String action) {
@@ -286,13 +137,6 @@ public final class Match {
         }
     }
 
-    private static PracticeCard findInHand(PlayerState player, long printingId) {
-        return player.hand().stream()
-                .filter(card -> card.printingId() == printingId)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("card is not in hand"));
-    }
-
     public UUID id() {
         return id;
     }
@@ -305,10 +149,6 @@ public final class Match {
         return players.get(activePlayerIndex);
     }
 
-    public int activePlayerIndex() {
-        return activePlayerIndex;
-    }
-
     public int turnNumber() {
         return turnNumber;
     }
@@ -317,15 +157,11 @@ public final class Match {
         return step;
     }
 
-    public boolean initialDrawSkipPending() {
-        return initialDrawSkipPending;
-    }
-
-    public @Nullable PlayerId loser() {
+    @Nullable public PlayerId loser() {
         return loser;
     }
 
-    public @Nullable PlayerId winner() {
+    @Nullable public PlayerId winner() {
         return loser == null ? null : opponentOf(loser).playerId();
     }
 }

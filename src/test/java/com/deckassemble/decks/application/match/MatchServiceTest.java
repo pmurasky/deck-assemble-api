@@ -6,16 +6,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
 import com.deckassemble.cards.application.CardCatalogService;
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.decks.application.history.DeckRevisionService;
 import com.deckassemble.decks.application.history.DeckSnapshot;
 import com.deckassemble.decks.application.simulation.MulliganStrategy;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -131,7 +131,7 @@ class MatchServiceTest {
     }
 
     private static Map<Long, Card> defaultCatalog() {
-        Map<Long, Card> catalog = new HashMap<>();
+        Map<Long, Card> catalog = new ConcurrentHashMap<>();
         catalog.put(1L, creatureCard(1L, "Bear", "2", "2"));
         catalog.put(10L, creatureCard(YOUR_COMMANDER_CARD_ID, "Your Commander", "5", "5"));
         catalog.put(2L, creatureCard(2L, "Elite", "3", "3"));
@@ -183,8 +183,7 @@ class MatchServiceTest {
         }
     }
 
-    private static DeckSnapshot snapshot(
-            List<DeckSnapshot.CardEntry> cards, long commanderCardId) {
+    private static DeckSnapshot snapshot(List<DeckSnapshot.CardEntry> cards, long commanderCardId) {
         return new DeckSnapshot(
                 "Deck",
                 "COMMANDER",
@@ -253,8 +252,7 @@ class MatchServiceTest {
         stubMatchDecks(8, catalog);
         Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
 
-        assertBadRequest(
-                () -> service().playLand(match.id(), CALLER_PROFILE_ID, 1L), "main step");
+        assertBadRequest(() -> service().playLand(match.id(), CALLER_PROFILE_ID, 1L), "main step");
     }
 
     @Test
@@ -332,7 +330,8 @@ class MatchServiceTest {
 
         assertThat(match.loser()).isEqualTo(you.playerId());
         assertThat(match.winner()).isEqualTo(opponent.playerId());
-        assertBadRequest(() -> service().advanceStep(match.id(), CALLER_PROFILE_ID), "match is over");
+        assertBadRequest(
+                () -> service().advanceStep(match.id(), CALLER_PROFILE_ID), "match is over");
         assertBadRequest(
                 () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 1L), "match is over");
     }
@@ -507,8 +506,7 @@ class MatchServiceTest {
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception -> {
-                            assertThat(exception.getStatusCode())
-                                    .isEqualTo(HttpStatus.BAD_REQUEST);
+                            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                             assertThat(exception.getReason()).contains(reason);
                         });
     }

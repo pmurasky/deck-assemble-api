@@ -1,10 +1,10 @@
 package com.deckassemble.decks.application.match;
 
 /**
- * The twelve steps of a two-player Commander match turn, in order. Sealed so {@link #next()} can
- * be an exhaustive pattern-matching switch with no default branch. {@code Cleanup.next()} wraps
- * back to {@link Untap}; the {@link Match} aggregate owns the turn boundary (incrementing the
- * turn number and switching the active player) when it sees that wrap.
+ * The twelve steps of a two-player Commander match turn, in order. Sealed so {@link #next()} can be
+ * an exhaustive pattern-matching switch with no default branch. {@code Cleanup.next()} wraps back
+ * to {@link Untap}; the {@link Match} aggregate owns the turn boundary (incrementing the turn
+ * number and switching the active player) when it sees that wrap.
  */
 public sealed interface TurnStep {
 
