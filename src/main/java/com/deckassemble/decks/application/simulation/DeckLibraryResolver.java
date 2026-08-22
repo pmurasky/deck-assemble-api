@@ -17,23 +17,23 @@ import org.jspecify.annotations.Nullable;
  * needs to honor London mulligan land ranges. Pure computation over an already-loaded snapshot and
  * already-resolved card facts — no DB access of its own.
  */
-final class DeckLibraryResolver {
+public final class DeckLibraryResolver {
 
     private static final String MAIN_DECK_SECTION = "MAIN_DECK";
 
     private DeckLibraryResolver() {}
 
-    static List<DeckSnapshot.CardEntry> mainDeckEntries(DeckSnapshot snapshot) {
+    public static List<DeckSnapshot.CardEntry> mainDeckEntries(DeckSnapshot snapshot) {
         return snapshot.cards().stream()
                 .filter(entry -> MAIN_DECK_SECTION.equals(entry.deckSection()))
                 .toList();
     }
 
-    static List<Long> printingIdsOf(List<DeckSnapshot.CardEntry> entries) {
+    public static List<Long> printingIdsOf(List<DeckSnapshot.CardEntry> entries) {
         return entries.stream().map(DeckSnapshot.CardEntry::cardPrintingId).distinct().toList();
     }
 
-    static List<Long> expandLibrary(
+    public static List<Long> expandLibrary(
             List<DeckSnapshot.CardEntry> entries,
             Map<Long, Card> cardsByPrinting,
             DeckSnapshot snapshot) {
@@ -66,7 +66,7 @@ final class DeckLibraryResolver {
     // mana-curve/land-count analytics: lowercased type line (front face + all other faces)
     // contains "land". Reimplemented here (rather than depending on that package-private type)
     // against the Card facts this service already resolves for commander-identity exclusion.
-    static boolean isLand(@Nullable Card card) {
+    public static boolean isLand(@Nullable Card card) {
         if (card == null) {
             return false;
         }

@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
  * deck library ({@link DeckSampleHandRequest}, {@link DeckSimulationRequest}), so {@link
  * MulliganDraw} can operate on either without depending on one concrete request type.
  */
-interface MulliganRequest {
+public interface MulliganRequest {
 
     MulliganStrategy mulliganStrategy();
 

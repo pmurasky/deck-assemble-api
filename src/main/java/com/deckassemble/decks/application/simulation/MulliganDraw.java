@@ -19,9 +19,9 @@ import org.springframework.web.server.ResponseStatusException;
  * Monte Carlo simulation — can keep reading from where the opening hand left off, using the same
  * shuffle and the same random-number sequence.
  */
-final class MulliganDraw {
+public final class MulliganDraw {
 
-    static final int HAND_SIZE = 7;
+    public static final int HAND_SIZE = 7;
 
     // ponytail: cap London mulligans at 3 (bottoming down to a 4-card hand) instead of looping
     // until the land range is satisfied or the hand is mulliganed away entirely. Bounds worst-case
@@ -33,9 +33,9 @@ final class MulliganDraw {
     private MulliganDraw() {}
 
     /** The full shuffled library for one drawn game, plus how many London mulligans it took. */
-    record Result(List<Long> shuffledLibrary, int mulliganCount) {}
+    public record Result(List<Long> shuffledLibrary, int mulliganCount) {}
 
-    static void validateLandRange(MulliganRequest request) {
+    public static void validateLandRange(MulliganRequest request) {
         if (request.mulliganStrategy() != MulliganStrategy.LONDON_LAND_RANGE) {
             return;
         }
@@ -54,7 +54,7 @@ final class MulliganDraw {
         return min != null && max != null && min >= 0 && max <= HAND_SIZE && min <= max;
     }
 
-    static Result draw(
+    public static Result draw(
             List<Long> library,
             Map<Long, Card> cardsByPrinting,
             RandomGenerator random,
