@@ -67,6 +67,48 @@ public class MatchService {
         return entry;
     }
 
+    /** Plays a land for the active seat; the caller must be the match's participant. */
+    public Match playLand(UUID matchId, long callerProfileId, long printingId) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().playLand(printingId));
+    }
+
+    /** Casts a spell for the active seat; the caller must be the match's participant. */
+    public Match castSpell(UUID matchId, long callerProfileId, long printingId) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().castSpell(printingId));
+    }
+
+    /** Advances to the next step; the caller must be the match's participant. */
+    public Match advanceStep(UUID matchId, long callerProfileId) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().advanceStep());
+    }
+
+    /** The caller's own seat concedes; the match is over. */
+    public Match concede(UUID matchId, long callerProfileId) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(entry, () -> entry.match().concede(entry.callerSeat()));
+    }
+
+    private MatchEntry authorizedEntry(UUID matchId, long callerProfileId) {
+        MatchEntry entry = entry(matchId);
+        if (entry.callerProfileId() != callerProfileId) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "caller is not a participant in match " + matchId);
+        }
+        return entry;
+    }
+
+    private static Match applyAction(MatchEntry entry, Runnable action) {
+        try {
+            action.run();
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+        }
+        return entry.match();
+    }
+
     private PlayerState buildPlayer(
             DeckSnapshot snapshot, MulliganRequest request, RandomGenerator random, PlayerId seat) {
         Map<Long, PracticeCard> catalog = loadCatalog(snapshot);

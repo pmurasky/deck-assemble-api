@@ -27,6 +27,7 @@ public final class PlayerState {
     private int life = STARTING_LIFE;
     private int commanderTax;
     private boolean landPlayedThisTurn;
+    private boolean commanderInCommandZone = true;
 
     public PlayerState(
             PlayerId playerId,
@@ -104,5 +105,18 @@ public final class PlayerState {
 
     public void setLandPlayedThisTurn(boolean landPlayedThisTurn) {
         this.landPlayedThisTurn = landPlayedThisTurn;
+    }
+
+    public boolean commanderInCommandZone() {
+        return commanderInCommandZone;
+    }
+
+    public void setCommanderInCommandZone(boolean commanderInCommandZone) {
+        this.commanderInCommandZone = commanderInCommandZone;
+    }
+
+    /** Untaps every permanent on this player's battlefield. */
+    public void untapAll() {
+        battlefield.forEach(Permanent::untap);
     }
 }

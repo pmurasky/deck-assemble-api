@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
 import com.deckassemble.cards.application.CardCatalogService;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.cards.domain.Card;
 import com.deckassemble.decks.application.history.DeckRevisionService;
@@ -160,6 +161,28 @@ class MatchServiceTest {
         return card;
     }
 
+    private static Card landCard(long id, String name) {
+        Card card = new Card("oracle-" + id, name);
+        card.setTypeLine("Land");
+        card.setOracleText("");
+        ReflectionTestUtils.setField(card, "id", id);
+        return card;
+    }
+
+    private static Card instantCard(long id, String name) {
+        Card card = new Card("oracle-" + id, name);
+        card.setTypeLine("Instant");
+        card.setOracleText("");
+        ReflectionTestUtils.setField(card, "id", id);
+        return card;
+    }
+
+    private void advanceSteps(Match match, int count) {
+        for (int i = 0; i < count; i++) {
+            service().advanceStep(match.id(), CALLER_PROFILE_ID);
+        }
+    }
+
     private static DeckSnapshot snapshot(
             List<DeckSnapshot.CardEntry> cards, long commanderCardId) {
         return new DeckSnapshot(
@@ -190,6 +213,159 @@ class MatchServiceTest {
                 null,
                 seed,
                 callerOnThePlay);
+    }
+
+    @Test
+    void shouldPlayLandDuringMainStep() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, landCard(1L, "Forest"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        advanceSteps(match, 3); // Upkeep, Draw (skipped on turn 1), FirstMain
+
+        Match result = service().playLand(match.id(), CALLER_PROFILE_ID, 1L);
+
+        assertThat(result).isSameAs(match);
+        assertThat(you.hand()).hasSize(6);
+        assertThat(you.battlefield()).hasSize(1);
+        assertThat(you.landPlayedThisTurn()).isTrue();
+    }
+
+    @Test
+    void shouldRejectSecondLandInSameTurn() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, landCard(1L, "Forest"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        service().playLand(match.id(), CALLER_PROFILE_ID, 1L);
+
+        assertBadRequest(
+                () -> service().playLand(match.id(), CALLER_PROFILE_ID, 1L),
+                "already played a land this turn");
+    }
+
+    @Test
+    void shouldRejectLandOutsideMainStep() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, landCard(1L, "Forest"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+
+        assertBadRequest(
+                () -> service().playLand(match.id(), CALLER_PROFILE_ID, 1L), "main step");
+    }
+
+    @Test
+    void shouldCastCreatureOntoBattlefield() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        advanceSteps(match, 3);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+
+        assertThat(you.hand()).hasSize(6);
+        assertThat(you.battlefield()).hasSize(1);
+        assertThat(you.battlefield().getFirst().tapped()).isFalse();
+        assertThat(you.graveyard()).isEmpty();
+    }
+
+    @Test
+    void shouldSendInstantToGraveyardAfterResolving() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, instantCard(1L, "Shock"));
+        stubMatchDecks(8, catalog);
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        advanceSteps(match, 3);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L);
+
+        assertThat(you.hand()).hasSize(6);
+        assertThat(you.battlefield()).isEmpty();
+        assertThat(you.graveyard()).hasSize(1);
+    }
+
+    @Test
+    void shouldCastCommanderFromCommandZoneAndIncreaseTax() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        advanceSteps(match, 3);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 10L);
+
+        assertThat(you.hand()).hasSize(7);
+        assertThat(you.commanderTax()).isEqualTo(2);
+        assertThat(you.commanderInCommandZone()).isFalse();
+        assertThat(you.battlefield()).hasSize(1);
+        assertThat(you.battlefield().getFirst().commander()).isTrue();
+
+        assertBadRequest(
+                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 10L),
+                "card is not in hand");
+    }
+
+    @Test
+    void shouldRejectActionFromNonParticipant() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+
+        assertThatThrownBy(() -> service().advanceStep(match.id(), 999L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void shouldRejectActionsAfterMatchEnds() {
+        stubMatchDecks(8, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+
+        service().concede(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.loser()).isEqualTo(you.playerId());
+        assertThat(match.winner()).isEqualTo(opponent.playerId());
+        assertBadRequest(() -> service().advanceStep(match.id(), CALLER_PROFILE_ID), "match is over");
+        assertBadRequest(
+                () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 1L), "match is over");
+    }
+
+    @Test
+    void shouldSwitchActivePlayerAndDrawOnNewTurn() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
+        PlayerState you = match.players().getFirst();
+        PlayerState opponent = match.players().get(1);
+
+        advanceSteps(match, 12); // full first turn: back to Untap of turn 2
+
+        assertThat(match.turnNumber()).isEqualTo(2);
+        assertThat(match.step()).isInstanceOf(TurnStep.Untap.class);
+        assertThat(match.activePlayer()).isSameAs(opponent);
+        assertThat(you.hand()).hasSize(7); // on the play: turn-1 Draw skipped
+
+        advanceSteps(match, 2); // Upkeep, Draw
+
+        assertThat(opponent.hand()).hasSize(8);
+        assertThat(opponent.library()).hasSize(1);
+    }
+
+    private void assertBadRequest(ThrowingCallable action, String reason) {
+        assertThatThrownBy(action)
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception -> {
+                            assertThat(exception.getStatusCode())
+                                    .isEqualTo(HttpStatus.BAD_REQUEST);
+                            assertThat(exception.getReason()).contains(reason);
+                        });
     }
 
     private @Nullable MatchService service;
