@@ -13,6 +13,7 @@ final class StackResolver {
     private final List<StackObject> stack = new ArrayList<>();
     private PlayerId priorityHolder;
     private int passesInSuccession;
+    int cascadeLimit = 100;
 
     StackResolver(PlayerId activePlayer) {
         this.priorityHolder = activePlayer;

@@ -27,6 +27,7 @@ public final class PlayerState {
     private int life = STARTING_LIFE;
     private int commanderTax;
     private boolean landPlayedThisTurn;
+    private boolean autoPassEnabled;
     private boolean commanderInCommandZone = true;
 
     public PlayerState(
@@ -113,6 +114,14 @@ public final class PlayerState {
 
     public void setLandPlayedThisTurn(boolean landPlayedThisTurn) {
         this.landPlayedThisTurn = landPlayedThisTurn;
+    }
+
+    public boolean autoPassEnabled() {
+        return autoPassEnabled;
+    }
+
+    public void setAutoPassEnabled(boolean autoPassEnabled) {
+        this.autoPassEnabled = autoPassEnabled;
     }
 
     public boolean commanderInCommandZone() {

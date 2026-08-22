@@ -177,6 +177,76 @@ class MatchServiceTest {
         return card;
     }
 
+    @Test
+    void shouldAutoPassForNonActivePlayerWithEmptyStack() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 41L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        match.players().get(1).setAutoPassEnabled(true);
+
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.step()).isEqualTo(new TurnStep.BeginCombat());
+        assertThat(match.stackResolver().priorityHolder())
+                .isEqualTo(match.activePlayer().playerId());
+    }
+
+    @Test
+    void shouldNotAutoPassForTheActivePlayer() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 41L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        match.players().get(0).setAutoPassEnabled(true);
+        match.players().get(1).setAutoPassEnabled(true);
+
+        service().passPriority(match.id(), CALLER_PROFILE_ID);
+
+        assertThat(match.step()).isEqualTo(new TurnStep.BeginCombat());
+        assertThat(match.stackResolver().priorityHolder())
+                .isEqualTo(match.players().get(0).playerId());
+    }
+
+    @Test
+    void shouldNotAutoPassWhileStackIsNonEmpty() {
+        Map<Long, Card> catalog = defaultCatalog();
+        catalog.put(1L, instantCard(1L, "Shock"));
+        stubMatchDecks(9, catalog);
+        Match match = service().start(request(true, 41L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        match.players().get(1).setAutoPassEnabled(true);
+
+        service().castSpell(match.id(), CALLER_PROFILE_ID, 1L, null);
+
+        assertThat(match.stackResolver().stack()).hasSize(1);
+        assertThat(match.step()).isInstanceOf(TurnStep.FirstMain.class);
+        assertThat(match.stackResolver().priorityHolder())
+                .isEqualTo(match.players().get(1).playerId());
+    }
+
+    @Test
+    void shouldThrowWhenCascadeLimitIsExceeded() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 41L), CALLER_PROFILE_ID);
+        advanceSteps(match, 3);
+        match.players().get(1).setAutoPassEnabled(true);
+        match.stackResolver().cascadeLimit = 0;
+
+        assertThatThrownBy(() -> service().passPriority(match.id(), CALLER_PROFILE_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cascade limit");
+    }
+
+    @Test
+    void shouldToggleAutoPassForCallersSeat() {
+        stubMatchDecks(9, defaultCatalog());
+        Match match = service().start(request(true, 41L), CALLER_PROFILE_ID);
+
+        service().setAutoPass(match.id(), CALLER_PROFILE_ID, true);
+
+        assertThat(match.players().get(0).autoPassEnabled()).isTrue();
+        assertThat(match.players().get(1).autoPassEnabled()).isFalse();
+    }
+
     private void advanceSteps(Match match, int count) {
         for (int i = 0; i < count; i++) {
             match.advanceStepNow();

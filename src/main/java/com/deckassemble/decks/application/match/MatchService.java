@@ -91,6 +91,13 @@ public class MatchService {
         return applyAction(entry, () -> entry.match().concede(entry.callerSeat()));
     }
 
+    /** Toggles auto-pass for the caller's own seat. */
+    public Match setAutoPass(UUID matchId, long callerProfileId, boolean enabled) {
+        MatchEntry entry = authorizedEntry(matchId, callerProfileId);
+        return applyAction(
+                entry, () -> entry.match().player(entry.callerSeat()).setAutoPassEnabled(enabled));
+    }
+
     /** The active player's declared attackers (printing ids) tap and wait for blocks. */
     public Match declareAttackers(UUID matchId, long callerProfileId, List<Long> printingIds) {
         MatchEntry entry = authorizedEntry(matchId, callerProfileId);
@@ -123,7 +130,30 @@ public class MatchService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
+        cascadeAutoPasses(entry.match());
         return entry.match();
+    }
+
+    /**
+     * Auto-passes while the priority holder is the non-active player with auto-pass enabled and
+     * an empty stack; the active player always faces real decisions.
+     */
+    private void cascadeAutoPasses(Match match) {
+        int iterations = 0;
+        while (autoPassApplies(match)) {
+            if (++iterations > match.stackResolver().cascadeLimit) {
+                throw new IllegalStateException("auto-pass cascade limit exceeded");
+            }
+            match.stackResolver().passPriorityForHolder(match);
+        }
+    }
+
+    private boolean autoPassApplies(Match match) {
+        if (match.loser() != null || !match.stackResolver().stack().isEmpty()) {
+            return false;
+        }
+        PlayerState holder = match.player(match.stackResolver().priorityHolder());
+        return holder.autoPassEnabled() && !holder.equals(match.activePlayer());
     }
 
     /** One live match plus the profile allowed to drive it (hot-seat for both sides). */
