@@ -88,10 +88,15 @@ public class MatchService {
         return applyAction(entry, () -> entry.match().castSpell(printingId));
     }
 
-    /** Advances to the next step; the caller must be the match's participant. */
-    public Match advanceStep(UUID matchId, long callerProfileId) {
+    /** Passes priority for the seat that currently holds it; the caller must be a participant. */
+    public Match passPriority(UUID matchId, long callerProfileId) {
         MatchEntry entry = authorizedEntry(matchId, callerProfileId);
-        return applyAction(entry, () -> entry.match().advanceStep());
+        return applyAction(
+                entry,
+                () -> {
+                    Match match = entry.match();
+                    match.stackResolver().passPriorityForHolder(match);
+                });
     }
 
     /** The caller's own seat concedes; the match is over. */

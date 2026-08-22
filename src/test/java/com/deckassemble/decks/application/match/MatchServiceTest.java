@@ -179,7 +179,7 @@ class MatchServiceTest {
 
     private void advanceSteps(Match match, int count) {
         for (int i = 0; i < count; i++) {
-            service().advanceStep(match.id(), CALLER_PROFILE_ID);
+            match.advanceStepNow();
         }
     }
 
@@ -311,7 +311,7 @@ class MatchServiceTest {
         stubMatchDecks(8, defaultCatalog());
         Match match = service().start(request(true, 42L), CALLER_PROFILE_ID);
 
-        assertThatThrownBy(() -> service().advanceStep(match.id(), 999L))
+        assertThatThrownBy(() -> service().passPriority(match.id(), 999L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->
@@ -329,9 +329,9 @@ class MatchServiceTest {
         service().concede(match.id(), CALLER_PROFILE_ID);
 
         assertThat(match.loser()).isEqualTo(you.playerId());
-        assertThat(match.winner()).isEqualTo(opponent.playerId());
+        assertThat(match.opponentOf(match.loser()).playerId()).isEqualTo(opponent.playerId());
         assertBadRequest(
-                () -> service().advanceStep(match.id(), CALLER_PROFILE_ID), "match is over");
+                () -> service().passPriority(match.id(), CALLER_PROFILE_ID), "match is over");
         assertBadRequest(
                 () -> service().castSpell(match.id(), CALLER_PROFILE_ID, 1L), "match is over");
     }
@@ -397,7 +397,7 @@ class MatchServiceTest {
         assertThat(opponent.life()).isEqualTo(19);
         assertThat(opponent.commanderDamageReceived()).containsEntry(you.playerId(), 21);
         assertThat(match.loser()).isEqualTo(opponent.playerId());
-        assertThat(match.winner()).isEqualTo(you.playerId());
+        assertThat(match.opponentOf(match.loser()).playerId()).isEqualTo(you.playerId());
     }
 
     @Test

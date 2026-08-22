@@ -14,6 +14,7 @@ public final class Match {
     private final UUID id;
     private final List<PlayerState> players;
     private final CombatResolver combat = new CombatResolver();
+    private final StackResolver stackResolver;
     private int activePlayerIndex;
     private int turnNumber = 1;
     private TurnStep step = new TurnStep.Untap();
@@ -25,6 +26,7 @@ public final class Match {
         this.id = id;
         this.players = List.of(first, second);
         this.activePlayerIndex = firstOnThePlay ? 0 : 1;
+        this.stackResolver = new StackResolver(activePlayer().playerId());
     }
 
     public PlayerState player(PlayerId playerId) {
@@ -64,7 +66,7 @@ public final class Match {
     }
 
     /** Advances to the next step, beginning a new turn for the opponent after Cleanup. */
-    public void advanceStep() {
+    void advanceStepNow() {
         requireInProgress();
         TurnStep next = step.next();
         if (next instanceof TurnStep.Untap) {
@@ -161,7 +163,7 @@ public final class Match {
         return loser;
     }
 
-    @Nullable public PlayerId winner() {
-        return loser == null ? null : opponentOf(loser).playerId();
+    StackResolver stackResolver() {
+        return stackResolver;
     }
 }

@@ -15,6 +15,7 @@ public final class MatchView {
     public static MatchResponse forPlayer(Match match, PlayerId viewer) {
         PlayerState you = match.player(viewer);
         PlayerState opponent = match.opponentOf(viewer);
+        PlayerId loser = match.loser();
         return new MatchResponse(
                 match.id(),
                 match.turnNumber(),
@@ -22,8 +23,8 @@ public final class MatchView {
                 match.activePlayer().playerId(),
                 playerView(you, true),
                 playerView(opponent, false),
-                match.winner(),
-                match.loser());
+                loser == null ? null : match.opponentOf(loser).playerId(),
+                loser);
     }
 
     private static PlayerView playerView(PlayerState player, boolean showHand) {

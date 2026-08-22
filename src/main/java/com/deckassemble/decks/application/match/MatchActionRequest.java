@@ -16,7 +16,7 @@ public record MatchActionRequest(
     public enum MatchActionType {
         PLAY_LAND,
         CAST_SPELL,
-        ADVANCE_STEP,
+        PASS_PRIORITY,
         DECLARE_ATTACKERS,
         DECLARE_BLOCKERS,
         CONCEDE
