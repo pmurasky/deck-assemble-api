@@ -93,6 +93,30 @@ class MatchViewTest {
         assertThat(response.winner()).isEqualTo(match.players().get(1).playerId());
     }
 
+    @Test
+    void shouldExposeStackAndPriorityAsPublicInformation() {
+        Match match = newMatch();
+        PlayerId caller = match.players().get(0).playerId();
+        PlayerId opponent = match.players().get(1).playerId();
+        match.players().get(1).setAutoPassEnabled(true);
+        match.advanceStepNow();
+        match.advanceStepNow();
+        match.advanceStepNow();
+        match.castSpell(11L, new StackObject.Target.PlayerTarget(opponent));
+
+        MatchResponse response = MatchView.forPlayer(match, caller);
+
+        assertThat(response.priorityPlayerId()).isEqualTo(opponent);
+        assertThat(response.stack()).hasSize(1);
+        MatchResponse.StackObjectView object = response.stack().get(0);
+        assertThat(object.card().name()).isEqualTo("Caller One");
+        assertThat(object.controller()).isEqualTo(caller);
+        assertThat(object.targetPlayerId()).isEqualTo(opponent.value());
+        assertThat(object.targetPermanentId()).isNull();
+        assertThat(response.you().autoPassEnabled()).isFalse();
+        assertThat(response.opponent().autoPassEnabled()).isTrue();
+    }
+
     private Match newMatch() {
         PlayerState caller =
                 new PlayerState(

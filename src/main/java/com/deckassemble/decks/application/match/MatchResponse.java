@@ -15,7 +15,9 @@ public record MatchResponse(
         PlayerView you,
         PlayerView opponent,
         @Nullable PlayerId winner,
-        @Nullable PlayerId loser) {
+        @Nullable PlayerId loser,
+        List<StackObjectView> stack,
+        PlayerId priorityPlayerId) {
 
     /** Public card data as exposed to a player. */
     public record CardView(
@@ -59,6 +61,13 @@ public record MatchResponse(
         }
     }
 
+    /** One spell on the stack; the stack is a public zone. */
+    public record StackObjectView(
+            CardView card,
+            PlayerId controller,
+            @Nullable Long targetPermanentId,
+            @Nullable UUID targetPlayerId) {}
+
     /** Per-player zone view; hand contents are only populated for the viewing player. */
     public record PlayerView(
             PlayerId playerId,
@@ -72,5 +81,6 @@ public record MatchResponse(
             CardView commander,
             int commanderTax,
             Map<PlayerId, Integer> commanderDamageReceived,
-            boolean landPlayedThisTurn) {}
+            boolean landPlayedThisTurn,
+            boolean autoPassEnabled) {}
 }

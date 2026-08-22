@@ -4,7 +4,9 @@ import com.deckassemble.cards.application.PracticeCard;
 import com.deckassemble.decks.application.match.MatchResponse.CardView;
 import com.deckassemble.decks.application.match.MatchResponse.PermanentView;
 import com.deckassemble.decks.application.match.MatchResponse.PlayerView;
+import com.deckassemble.decks.application.match.MatchResponse.StackObjectView;
 import java.util.List;
+import java.util.UUID;
 
 /** Maps a match to the response for one player, enforcing hidden-information rules. */
 public final class MatchView {
@@ -24,7 +26,9 @@ public final class MatchView {
                 playerView(you, true),
                 playerView(opponent, false),
                 loser == null ? null : match.opponentOf(loser).playerId(),
-                loser);
+                loser,
+                stackViews(match),
+                match.stackResolver().priorityHolder());
     }
 
     private static PlayerView playerView(PlayerState player, boolean showHand) {
@@ -40,7 +44,24 @@ public final class MatchView {
                 CardView.of(player.commander()),
                 player.commanderTax(),
                 player.commanderDamageReceived(),
-                player.landPlayedThisTurn());
+                player.landPlayedThisTurn(),
+                player.autoPassEnabled());
+    }
+
+    private static List<StackObjectView> stackViews(Match match) {
+        return match.stackResolver().stack().stream().map(MatchView::stackView).toList();
+    }
+
+    private static StackObjectView stackView(StackObject object) {
+        Long targetPermanentId = null;
+        UUID targetPlayerId = null;
+        if (object.target() instanceof StackObject.Target.PermanentTarget permanent) {
+            targetPermanentId = permanent.printingId();
+        } else if (object.target() instanceof StackObject.Target.PlayerTarget player) {
+            targetPlayerId = player.playerId().value();
+        }
+        return new StackObjectView(
+                CardView.of(object.card()), object.controller(), targetPermanentId, targetPlayerId);
     }
 
     private static List<CardView> cardViews(List<PracticeCard> cards) {
